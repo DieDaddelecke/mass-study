@@ -100,6 +100,14 @@ export const actions = {
   updateSettings(recipe: (s: Draft<Settings>) => void) {
     useProjectStore.getState().update((p) => recipe(p.settings));
   },
+  setActiveVariant(id: string) {
+    useProjectStore.getState().update((p) => {
+      if (p.variants.some((v) => v.id === id)) p.activeVariantId = id;
+    });
+  },
+  updateInfo(recipe: (p: Draft<Project>) => void) {
+    useProjectStore.getState().update(recipe);
+  },
   rename(name: string) {
     useProjectStore.getState().update((p) => {
       p.name = name;

@@ -1,1 +1,317 @@
-{}
+{
+  "app": {
+    "title": "Kubatur – massing studies"
+  },
+  "qat": {
+    "save": "Save (Ctrl+S)",
+    "undo": "Undo (Ctrl+Z)",
+    "redo": "Redo (Ctrl+Y)"
+  },
+  "tabs": {
+    "file": "File",
+    "site": "Site",
+    "volume": "Massing",
+    "modify": "Modify",
+    "view": "View",
+    "analysis": "Analyze",
+    "output": "Output",
+    "archicad": "Archicad",
+    "context": "Modify | Masses"
+  },
+  "backstage": {
+    "back": "Back"
+  },
+  "file": {
+    "new": "New",
+    "open": "Open…",
+    "save": "Save",
+    "saveAs": "Save as…",
+    "saveAsPrompt": "File name",
+    "export": "Export",
+    "exportFormat": {
+      "ifc": "IFC",
+      "xlsx": "Spreadsheet XLSX",
+      "csv": "CSV",
+      "pdf": "PDF",
+      "dxf": "DXF"
+    },
+    "projectInfo": "Project information",
+    "settings": "Settings",
+    "close": "Close project"
+  },
+  "info": {
+    "name": "Project name",
+    "address": "Address",
+    "client": "Client",
+    "author": "Author",
+    "office": "Office",
+    "date": "Date",
+    "revision": "Revision",
+    "phase": "Phase",
+    "crs": "Coordinate system",
+    "saved": "Project saved",
+    "contextLoaded": "{{count}} context buildings loaded"
+  },
+  "errors": {
+    "openFile": "Cannot open the file: {{message}}",
+    "context": "Loading the context failed: {{message}}",
+    "autosave": "Autosave failed"
+  },
+  "ribbon": {
+    "noProject": "No project open",
+    "newSite": "New site",
+    "drawSite": "Draw parcel",
+    "importSite": "Import",
+    "reloadContext": "Reload context",
+    "contextRadius": "Context radius",
+    "drawContext": "Draw building",
+    "loading": "Loading…",
+    "constraints": "Planning rules",
+    "buildable": "Buildable area",
+    "buildingLines": "Building lines",
+    "variants": "Variants",
+    "selectFirst": "Select a mass first",
+    "selected": "{{count}} element(s) selected",
+    "zoomExtents": "Zoom extents",
+    "areaTable": "Area schedule",
+    "kpis": "Key figures",
+    "unitMix": "Unit mix",
+    "variantCompare": "Variant comparison",
+    "warnings": "Warnings",
+    "dossier": "Create dossier",
+    "connect": "Connect",
+    "transfer": "Transfer",
+    "update": "Update",
+    "exportScript": "Export script",
+    "tool": {
+      "select": "Modify",
+      "place": "Place",
+      "move": "Move",
+      "rotate": "Rotate",
+      "copy": "Copy",
+      "mirror": "Mirror",
+      "array": "Array",
+      "align": "Align",
+      "drawSite": "Draw parcel",
+      "drawContext": "Draw building"
+    },
+    "panel": {
+      "site": "Site",
+      "context": "Context",
+      "rules": "Planning law",
+      "typologies": "Typologies",
+      "templates": "Templates",
+      "variants": "Variants",
+      "modify": "Modify",
+      "delete": "Delete",
+      "selection": "Selection",
+      "views": "Views",
+      "navigate": "Navigate",
+      "graphics": "Graphics",
+      "tables": "Schedules",
+      "checks": "Checks",
+      "output": "Output",
+      "archicad": "Archicad"
+    }
+  },
+  "options": {
+    "place": "Place: {{name}}",
+    "selection": "Selection: {{count}}",
+    "contextBuildings": "{{count}} context building(s)",
+    "modify": "Modify"
+  },
+  "param": {
+    "length": "Length",
+    "depth": "Depth",
+    "sections": "Sections",
+    "sectionOffset": "Offset",
+    "count": "Count",
+    "unitWidth": "Unit width",
+    "alternatingOffset": "Alternating offset",
+    "alignment": "Alignment",
+    "closed": "Closed",
+    "align": {
+      "center": "Center",
+      "left": "Left",
+      "right": "Right"
+    }
+  },
+  "props": {
+    "title": "Properties",
+    "noProject": "No project",
+    "multi": "{{count}} masses",
+    "contextBuilding": "Context building",
+    "view3d": "3D view: {3D}",
+    "group": {
+      "identity": "Identity data",
+      "dimensions": "Dimensions",
+      "position": "Position",
+      "storeys": "Storeys",
+      "usage": "Usage",
+      "results": "Results (read-only)",
+      "context": "Existing building",
+      "graphics": "Graphics",
+      "project": "Project"
+    },
+    "name": "Name",
+    "area": "Area",
+    "rotation": "Rotation",
+    "storeys": {
+      "basementCount": "Basements",
+      "basementHeight": "Basement height",
+      "groundHeight": "Ground floor height",
+      "upperCount": "Upper storeys",
+      "upperHeight": "Storey height",
+      "setbackCount": "Setback storeys",
+      "setbackDistance": "Setback distance",
+      "parapet": "Parapet",
+      "slab": "Slab thickness"
+    },
+    "mixed": "<varies>",
+    "usage": "Usage",
+    "defaultUsage": "(default)",
+    "presetRetail": "Retail ground floor, housing above",
+    "access": "Access",
+    "bgf": "Gross floor area",
+    "depth": "Depth",
+    "resolvedAccess": "Resolved access",
+    "suitability": {
+      "zweispaenner": "2 units/core",
+      "dreispaenner": "3 units/core",
+      "laubengang": "Gallery",
+      "mittelflur": "Central corridor",
+      "punkthaus": "Point block",
+      "reihenhaus": "Row house",
+      "buero": "Office",
+      "zellenbuero": "Cellular office",
+      "kombibuero": "Combi office",
+      "openSpace": "Open plan",
+      "atrium": "Atrium"
+    },
+    "height": "Height",
+    "levels": "Levels",
+    "estimated": "Height estimated",
+    "hidden": "Hidden",
+    "demolished": "To be demolished",
+    "source": "Source",
+    "yes": "yes",
+    "no": "no"
+  },
+  "browser": {
+    "title": "Project browser",
+    "views": "Views",
+    "views3d": "3D views",
+    "schedules": "Schedules",
+    "variants": "Variants",
+    "site": "Site and context",
+    "parcels": "Parcels ({{count}})",
+    "context": "Context buildings ({{count}})",
+    "building": "Building {{n}}",
+    "hide": "Hide",
+    "show": "Show",
+    "doubleClick": "Double-click to open"
+  },
+  "views": {
+    "3d": "3D",
+    "axo": "Axonometry",
+    "axoSW": "Axonometry SW",
+    "axoNE": "Axonometry NE",
+    "site": "Site plan",
+    "elevations": "Elevations",
+    "elevN": "North elevation",
+    "elevE": "East elevation",
+    "elevS": "South elevation",
+    "elevW": "West elevation",
+    "sections": "Sections",
+    "sectionA": "Section A",
+    "sectionB": "Section B",
+    "areas": "Areas",
+    "none": "No view open – double-click {3D} in the project browser"
+  },
+  "view": {
+    "style": "Visual style",
+    "projection": "Projection",
+    "perspective": "Perspective",
+    "orthographic": "Orthographic",
+    "styles": {
+      "wireframe": "Wireframe",
+      "hiddenLine": "Hidden line",
+      "shaded": "Shaded",
+      "consistentColors": "Consistent colors",
+      "realistic": "Realistic"
+    }
+  },
+  "status": {
+    "ready": "Ready",
+    "snap": "Snap",
+    "snapTitle": "Toggle snapping",
+    "warningsTitle": "Warnings",
+    "archicad": "Archicad: not connected"
+  },
+  "kpi": {
+    "title": "Key figures",
+    "target": "{{status}} (target ≤ {{target}})"
+  },
+  "start": {
+    "subtitle": "Urban massing studies",
+    "new": "New project",
+    "open": "Open a file (.massing.json)",
+    "demo": "Demo project (Palaiseau)",
+    "recent": "Recent projects (autosaved)",
+    "noRecent": "No saved projects yet."
+  },
+  "settings": {
+    "general": "General",
+    "profile": "Rule profile",
+    "profiles": {
+      "FR": "France (CES, floor area, R+n)",
+      "DE": "Germany (GRZ, GFZ, BauNVO)"
+    },
+    "notation": "Storey notation",
+    "notations": {
+      "fr": "RDC, R+1 …",
+      "de": "EG, 1.OG …",
+      "roman": "I, II, III …"
+    },
+    "language": "Language",
+    "languages": {
+      "fr": "Français",
+      "de": "Deutsch",
+      "en": "English"
+    },
+    "ratios": "Main ratios",
+    "wallThickness": "Exterior wall thickness",
+    "technicalShare": "Technical share",
+    "interiorShare": "Interior construction share",
+    "parkingArea": "Area per parking space",
+    "parkingPerDwelling": "Spaces per dwelling",
+    "workplaceArea": "Area per workplace",
+    "circulation": "Circulation share by access type"
+  },
+  "rules": {
+    "fr": "France (PLU)",
+    "de": "Germany (Bebauungsplan)",
+    "empriseMax": "Max. site coverage (CES)",
+    "hauteurMax": "Max. height",
+    "clear": "Clear",
+    "note": "Empty fields = no target. Values drive the traffic lights of the key-figure bar."
+  },
+  "warnings": {
+    "none": "No warnings.",
+    "severity": "Severity",
+    "message": "Message",
+    "select": "Select",
+    "sev": {
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "massOverlap": "Masses {{masses}} overlap ({{area}} m²).",
+    "outsideSite": "Mass {{masses}} extends beyond the site ({{area}} m²).",
+    "outsideBuildable": "Mass {{masses}} extends beyond the buildable area ({{area}} m²).",
+    "constraintExceeded": "{{key}} exceeds the target: {{actual}} instead of max. {{target}}.",
+    "depthOutOfRange": "Depth of {{masses}} ({{depth}} m) suits no access type.",
+    "lightDepth": "Depth of {{masses}} ({{depth}} m): daylight critical.",
+    "mixPlausibility": "{{masses}}: {{actual}} units per storey and core (expected {{min}}–{{max}}).",
+    "estimatedContextHeights": "Estimated height for {{count}} context building(s)."
+  }
+}
