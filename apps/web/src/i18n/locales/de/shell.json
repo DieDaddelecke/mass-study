@@ -118,7 +118,9 @@
     "place": "Platzieren: {{name}}",
     "selection": "Auswahl: {{count}}",
     "contextBuildings": "{{count}} Umgebungsgebäude",
-    "modify": "Ändern"
+    "modify": "Ändern",
+    "label": "Werkzeugoptionen",
+    "cancel": "Werkzeug beenden"
   },
   "param": {
     "length": "Länge",
@@ -250,15 +252,17 @@
   },
   "kpi": {
     "title": "Kennzahlen",
-    "target": "{{status}} (Vorgabe ≤ {{target}})"
+    "target": "{{status}} (Vorgabe ≤ {{target}})",
+    "open": "Regelprüfung öffnen"
   },
   "start": {
-    "subtitle": "Städtebauliche Massenstudien",
+    "subtitle": "Kubaturen auf dem realen Grundstück skizzieren, vergleichen und prüfen – in Minuten.",
     "new": "Neues Projekt",
-    "open": "Datei öffnen (.massing.json)",
-    "demo": "Demoprojekt (Palaiseau)",
-    "recent": "Zuletzt bearbeitet (automatisch gespeichert)",
-    "noRecent": "Noch keine gespeicherten Projekte."
+    "open": "Datei öffnen",
+    "demo": "Demoprojekt",
+    "recent": "Zuletzt bearbeitet",
+    "noRecent": "Noch keine gespeicherten Projekte.",
+    "eyebrow": "Kubaturstudien · Städtebau"
   },
   "settings": {
     "general": "Allgemein",
@@ -313,5 +317,78 @@
     "lightDepth": "Bautiefe von {{masses}} ({{depth}} m): Belichtung kritisch.",
     "mixPlausibility": "{{masses}}: {{actual}} Wohnungen je Geschoss und Kern (erwartet {{min}}–{{max}}).",
     "estimatedContextHeights": "Höhe von {{count}} Umgebungsgebäude(n) geschätzt."
+  },
+  "cmd": {
+    "undo": "Rückgängig",
+    "redo": "Wiederholen",
+    "select": "Auswählen"
+  },
+  "topbar": {
+    "rename": "Klicken zum Umbenennen"
+  },
+  "theme": {
+    "label": "Design",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System"
+  },
+  "palette": {
+    "open": "Suchen…",
+    "title": "Befehlspalette",
+    "placeholder": "Befehl, Werkzeug oder Ansicht suchen…",
+    "empty": "Keine Befehle gefunden",
+    "navigate": "navigieren",
+    "run": "ausführen",
+    "groups": {
+      "file": "Datei",
+      "edit": "Bearbeiten",
+      "volume": "Volumen",
+      "modify": "Ändern",
+      "site": "Grundstück",
+      "view": "Ansicht",
+      "analysis": "Analyse",
+      "output": "Ausgabe",
+      "archicad": "Archicad",
+      "theme": "Darstellung"
+    }
+  },
+  "dock": {
+    "label": "Werkzeuge",
+    "volumes": "Volumen"
+  },
+  "panel": {
+    "label": "Projekt",
+    "project": "Projekt",
+    "masses": "Volumen",
+    "noMasses": "Keine Volumen – wählen Sie eine Form unter „Volumen“.",
+    "renameHint": "Doppelklick zum Umbenennen",
+    "parcels": "Flurstücke",
+    "context": "Nachbargebäude",
+    "collapse": "Bereich einklappen",
+    "expand": "Bereich anzeigen"
+  },
+  "layers": {
+    "title": "Ebenen",
+    "context": "Umgebung",
+    "buildings": "Gebäude",
+    "roads": "Straßen",
+    "green": "Grünflächen",
+    "trees": "Bäume",
+    "water": "Wasser",
+    "parcels": "Flurstücke",
+    "basemap": "Hintergrund",
+    "basemaps": {
+      "none": "Keiner",
+      "plan": "IGN-Karte",
+      "ortho": "Luftbild"
+    }
+  },
+  "inspector": {
+    "title": "Inspektor",
+    "noSelection": "Keine Auswahl",
+    "site": "Grundstück",
+    "siteArea": "Grundstücksfläche",
+    "constraints": "Festsetzungen",
+    "editRules": "Festsetzungen bearbeiten…"
   }
 }

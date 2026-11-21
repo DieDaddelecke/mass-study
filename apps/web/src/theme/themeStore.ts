@@ -7,6 +7,9 @@ export type ThemePreference = ThemeName | 'system';
 const KEY = 'kubatur.theme';
 
 function readPreference(): ThemePreference {
+  // `?theme=dark|light|system` overrides the stored preference (screenshots, links).
+  const q = new URLSearchParams(window.location.search).get('theme');
+  if (q === 'light' || q === 'dark' || q === 'system') return q;
   try {
     const v = localStorage.getItem(KEY);
     if (v === 'light' || v === 'dark' || v === 'system') return v;

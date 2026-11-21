@@ -31,7 +31,6 @@ export function closeProject(): void {
 }
 
 export function newProject(): void {
-  useShellStore.getState().setTab('volume');
   useUiStore.getState().setNewProjectOpen(true);
 }
 

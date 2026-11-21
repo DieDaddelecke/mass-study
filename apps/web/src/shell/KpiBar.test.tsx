@@ -33,3 +33,15 @@ describe('KPI bar', () => {
     expect(screen.getByText('GFZ')).toBeTruthy();
   });
 });
+
+describe('KPI cards', () => {
+  afterEach(cleanup);
+  it('opens the rules dialog on click', async () => {
+    const { useShellStore } = await import('./shellStore');
+    const { fireEvent } = await import('@testing-library/react');
+    useProjectStore.getState().load(palaiseauDemo());
+    const { container } = render(<KpiBar />);
+    fireEvent.click(container.querySelector('[data-kpi="ces"]')!);
+    expect(useShellStore.getState().dialog).toBe('constraints');
+  });
+});

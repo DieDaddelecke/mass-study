@@ -1,4 +1,5 @@
-import { Box, EyeOff, Maximize, Sun } from 'lucide-react';
+import * as Menu from '@radix-ui/react-dropdown-menu';
+import { Box, Check, ChevronDown, House, Maximize, Palette, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { VisualStyle } from '../store/tools';
 import { useUiStore } from '../store/uiStore';
@@ -12,7 +13,7 @@ const STYLES: VisualStyle[] = [
   'realistic',
 ];
 
-/** Small Revit-like view control bar at the bottom of the viewport. */
+/** Floating view controls (bottom-left): visual style, sun, projection, zoom, home. */
 export function ViewControlBar() {
   const { t } = useTranslation('viewport');
   const style = useUiStore((s) => s.visualStyle);
@@ -22,30 +23,39 @@ export function ViewControlBar() {
   const sun = useViewportStore((s) => s.sunEnabled);
   const setSun = useViewportStore((s) => s.setSunEnabled);
   const zoomExtents = useViewportStore((s) => s.requestZoomExtents);
+  const home = useViewportStore((s) => s.requestHome);
   const sunActive = style === 'realistic' && sun;
+  const persp = projection === 'perspective';
   return (
-    <div className="vp-bar" role="toolbar" aria-label={t('bar.label')}>
-      <span className="vp-bar-scale" aria-disabled title={t('bar.scaleDisabled')}>
-        1:200
-      </span>
+    <div className="glass vp-bar" role="toolbar" aria-label={t('bar.label')}>
+      <Menu.Root>
+        <Menu.Trigger
+          className="vp-style"
+          aria-label={t('bar.visualStyle')}
+          title={t('bar.visualStyle')}
+        >
+          <Palette size={15} strokeWidth={1.75} />
+          <span>{t(`style.${style}`)}</span>
+          <ChevronDown size={13} strokeWidth={1.75} />
+        </Menu.Trigger>
+        <Menu.Portal>
+          <Menu.Content className="menu glass" side="top" align="start" sideOffset={10}>
+            <Menu.Label className="menu-label">{t('bar.visualStyle')}</Menu.Label>
+            {STYLES.map((s) => (
+              <Menu.Item key={s} className="menu-item" onSelect={() => setStyle(s)}>
+                <span className="menu-check">{s === style && <Check size={14} />}</span>
+                {t(`style.${s}`)}
+              </Menu.Item>
+            ))}
+          </Menu.Content>
+        </Menu.Portal>
+      </Menu.Root>
       <span className="vp-bar-sep" />
-      <select
-        className="vp-bar-select"
-        value={style}
-        title={t('bar.visualStyle')}
-        aria-label={t('bar.visualStyle')}
-        onChange={(e) => setStyle(e.target.value as VisualStyle)}
-      >
-        {STYLES.map((s) => (
-          <option key={s} value={s}>
-            {t(`style.${s}`)}
-          </option>
-        ))}
-      </select>
       <button
         type="button"
         className={`vp-bar-btn${sunActive ? ' is-on' : ''}`}
         title={t('bar.sun')}
+        aria-label={t('bar.sun')}
         aria-pressed={sunActive}
         onClick={() => {
           if (style !== 'realistic') {
@@ -54,33 +64,36 @@ export function ViewControlBar() {
           } else setSun(!sun);
         }}
       >
-        <Sun size={15} />
+        <Sun size={16} strokeWidth={1.75} />
       </button>
       <button
         type="button"
-        className={`vp-bar-btn${projection === 'perspective' ? ' is-on' : ''}`}
-        title={projection === 'perspective' ? t('bar.toOrtho') : t('bar.toPersp')}
-        aria-pressed={projection === 'perspective'}
-        onClick={() => setProjection(projection === 'perspective' ? 'orthographic' : 'perspective')}
+        className="vp-bar-btn vp-proj"
+        title={persp ? t('bar.toOrtho') : t('bar.toPersp')}
+        aria-label={persp ? t('bar.toOrtho') : t('bar.toPersp')}
+        onClick={() => setProjection(persp ? 'orthographic' : 'perspective')}
       >
-        <Box size={15} />
-      </button>
-      <button
-        type="button"
-        className="vp-bar-btn"
-        title={t('bar.zoomExtents')}
-        onClick={zoomExtents}
-      >
-        <Maximize size={15} />
+        <Box size={16} strokeWidth={1.75} />
+        <span>{persp ? t('bar.persp') : t('bar.ortho')}</span>
       </button>
       <span className="vp-bar-sep" />
       <button
         type="button"
         className="vp-bar-btn"
-        disabled
-        title={`${t('bar.isolate')} – ${t('bar.soon')}`}
+        title={t('bar.zoomExtents')}
+        aria-label={t('bar.zoomExtents')}
+        onClick={zoomExtents}
       >
-        <EyeOff size={15} />
+        <Maximize size={16} strokeWidth={1.75} />
+      </button>
+      <button
+        type="button"
+        className="vp-bar-btn"
+        title={t('cube.home')}
+        aria-label={t('cube.home')}
+        onClick={home}
+      >
+        <House size={16} strokeWidth={1.75} />
       </button>
     </div>
   );
