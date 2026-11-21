@@ -21,6 +21,8 @@ import { useShellStore } from './shell/shellStore';
 import { startAutosave } from './persistence/autosave';
 import { useResolvedTheme } from './theme/themeStore';
 import { Viewport3D } from './viewport/Viewport3D';
+import { DrawingView } from './drawings/DrawingView';
+import { TablesView } from './tables/TablesView';
 import { NewProjectDialog } from './newProject/NewProjectDialog';
 import { palaiseauDemo } from './demo/palaiseau';
 
@@ -38,6 +40,9 @@ if (
  *   viewport/*    the 3D view (scene, nav cube, view controls, tools, snapping, grips)
  *   newProject/*  the "Nouveau projet" dialog with map, cadastre, import
  *   persistence/* autosave (IndexedDB) and *.massing.json files
+ *   drawings/*    2D views from @kubatur/drawing (site plan, elevations, sections, axonometry)
+ *   tables/*      schedules and XLSX/CSV export
+ *   exports/*     file exports (IFC, XLSX, CSV, PDF)
  */
 export function App() {
   const { t } = useTranslation('shell');
@@ -67,8 +72,10 @@ export function App() {
             <main className="stage">
               {activeView === '3d' ? (
                 <Viewport3D />
+              ) : activeView === 'areas' ? (
+                <TablesView />
               ) : (
-                <div className="placeholder">{t('common:inPreparation')}</div>
+                <DrawingView view={activeView} />
               )}
             </main>
             <div className="ui-layer">
