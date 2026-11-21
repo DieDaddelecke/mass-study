@@ -1,1 +1,98 @@
-{}
+{
+  "title": "Nouveau projet",
+  "close": "Fermer",
+  "cancel": "Annuler",
+  "busy": "Recherche…",
+  "address": {
+    "title": "Adresse",
+    "placeholder": "Rechercher une adresse…",
+    "noResult": "Aucun résultat pour cette adresse.",
+    "kind": {
+      "address": "adresse",
+      "street": "voie",
+      "locality": "lieu-dit",
+      "municipality": "commune",
+      "poi": "lieu",
+      "other": "autre"
+    }
+  },
+  "site": {
+    "title": "Terrain",
+    "parcels": "Parcelle(s)",
+    "draw": "Dessiner",
+    "import": "Importer",
+    "area": "Surface"
+  },
+  "parcels": {
+    "help": "Cliquez sur la carte pour sélectionner une parcelle ; un second clic la désélectionne. Plusieurs parcelles sont fusionnées.",
+    "loading": "Chargement de la parcelle…",
+    "notCovered": "Aucun cadastre disponible à cet endroit. Dessinez ou importez le terrain.",
+    "none": "Aucune parcelle à cet endroit.",
+    "ref": "Parcelle",
+    "area": "Contenance",
+    "remove": "Retirer",
+    "total_one": "Total ({{count}} parcelle)",
+    "total_other": "Total ({{count}} parcelles)",
+    "merged": "fusionnées"
+  },
+  "draw": {
+    "help": "Cliquez les sommets sur la carte. Double-clic ou Entrée : terminer · Retour arrière : annuler le dernier point · Échap : abandonner.",
+    "start": "Dessiner le terrain",
+    "restart": "Redessiner",
+    "finish": "Terminer",
+    "undo": "Annuler le point",
+    "cancel": "Abandonner",
+    "vertices_one": "{{count}} sommet",
+    "vertices_other": "{{count}} sommets"
+  },
+  "import": {
+    "help": "GeoJSON (WGS 84) ou DXF avec une polyligne fermée.",
+    "choose": "Choisir un fichier…",
+    "polyline": "Polyligne",
+    "polylineOption": "n° {{n}} – calque {{layer}} ({{count}} sommets)",
+    "unit": "Unité",
+    "reference": "Référence",
+    "local": "Coordonnées locales",
+    "lambert93": "Lambert-93 (EPSG:2154)",
+    "placedAtAddress": "Placé à l'adresse choisie.",
+    "placedAtCenter": "Placé au centre de la carte.",
+    "replace": "Replacer",
+    "errors": {
+      "invalidJson": "Fichier JSON illisible.",
+      "noPolygon": "Aucun polygone trouvé dans le fichier.",
+      "notWgs84": "Les coordonnées ne sont pas en WGS 84 (longitude/latitude).",
+      "invalidDxf": "Fichier DXF illisible.",
+      "noClosed": "Aucune polyligne fermée trouvée dans le DXF."
+    }
+  },
+  "project": {
+    "title": "Projet",
+    "name": "Nom",
+    "namePlaceholder": "Nom du projet",
+    "radius": "Rayon du contexte"
+  },
+  "map": {
+    "hintParcels": "Cliquez sur une parcelle pour la sélectionner.",
+    "hintDraw": "Cliquez sur la carte pour commencer le tracé.",
+    "hintDrawing": "Double-clic ou Entrée pour terminer, Échap pour abandonner.",
+    "hintImport": "Le terrain importé s'affiche sur la carte."
+  },
+  "create": {
+    "button": "Créer le projet",
+    "needSite": "Choisissez un terrain pour créer le projet.",
+    "phase": {
+      "creating": "Création du projet…",
+      "context": "Chargement des bâtiments voisins ({{radius}} m)…"
+    },
+    "contextFailed": "Projet créé sans contexte : {{msg}}"
+  },
+  "errors": {
+    "bad_request": "Requête invalide.",
+    "not_found": "Aucune donnée trouvée.",
+    "upstream_error": "Le service de données géographiques est indisponible. Réessayez plus tard.",
+    "rate_limited": "Trop de requêtes. Patientez quelques secondes.",
+    "network": "Serveur injoignable. Vérifiez la connexion.",
+    "http": "Erreur du serveur (HTTP {{status}}).",
+    "unknown": "Une erreur inattendue est survenue."
+  }
+}

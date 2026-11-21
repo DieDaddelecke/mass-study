@@ -1,1 +1,98 @@
-{}
+{
+  "title": "Neues Projekt",
+  "close": "Schließen",
+  "cancel": "Abbrechen",
+  "busy": "Suche…",
+  "address": {
+    "title": "Adresse",
+    "placeholder": "Adresse suchen…",
+    "noResult": "Keine Treffer für diese Adresse.",
+    "kind": {
+      "address": "Adresse",
+      "street": "Straße",
+      "locality": "Ort",
+      "municipality": "Gemeinde",
+      "poi": "Ort",
+      "other": "sonstiges"
+    }
+  },
+  "site": {
+    "title": "Grundstück",
+    "parcels": "Flurstück(e)",
+    "draw": "Zeichnen",
+    "import": "Importieren",
+    "area": "Fläche"
+  },
+  "parcels": {
+    "help": "Klicken Sie in die Karte, um ein Flurstück zu wählen; erneuter Klick hebt die Auswahl auf. Mehrere Flurstücke werden zusammengelegt.",
+    "loading": "Flurstück wird geladen…",
+    "notCovered": "Hier ist kein Kataster verfügbar. Zeichnen oder importieren Sie das Grundstück.",
+    "none": "Kein Flurstück an dieser Stelle.",
+    "ref": "Flurstück",
+    "area": "Amtl. Fläche",
+    "remove": "Entfernen",
+    "total_one": "Summe ({{count}} Flurstück)",
+    "total_other": "Summe ({{count}} Flurstücke)",
+    "merged": "zusammengelegt"
+  },
+  "draw": {
+    "help": "Eckpunkte in die Karte klicken. Doppelklick oder Enter: beenden · Rücktaste: letzten Punkt entfernen · Esc: abbrechen.",
+    "start": "Grundstück zeichnen",
+    "restart": "Neu zeichnen",
+    "finish": "Beenden",
+    "undo": "Punkt zurück",
+    "cancel": "Abbrechen",
+    "vertices_one": "{{count}} Eckpunkt",
+    "vertices_other": "{{count}} Eckpunkte"
+  },
+  "import": {
+    "help": "GeoJSON (WGS 84) oder DXF mit geschlossener Polylinie.",
+    "choose": "Datei wählen…",
+    "polyline": "Polylinie",
+    "polylineOption": "Nr. {{n}} – Layer {{layer}} ({{count}} Punkte)",
+    "unit": "Einheit",
+    "reference": "Bezug",
+    "local": "Lokale Koordinaten",
+    "lambert93": "Lambert-93 (EPSG:2154)",
+    "placedAtAddress": "An der gewählten Adresse platziert.",
+    "placedAtCenter": "In der Kartenmitte platziert.",
+    "replace": "Neu platzieren",
+    "errors": {
+      "invalidJson": "JSON-Datei nicht lesbar.",
+      "noPolygon": "Kein Polygon in der Datei gefunden.",
+      "notWgs84": "Koordinaten sind nicht in WGS 84 (Länge/Breite).",
+      "invalidDxf": "DXF-Datei nicht lesbar.",
+      "noClosed": "Keine geschlossene Polylinie im DXF gefunden."
+    }
+  },
+  "project": {
+    "title": "Projekt",
+    "name": "Name",
+    "namePlaceholder": "Projektname",
+    "radius": "Umgebungsradius"
+  },
+  "map": {
+    "hintParcels": "Flurstück anklicken, um es auszuwählen.",
+    "hintDraw": "In die Karte klicken, um zu zeichnen.",
+    "hintDrawing": "Doppelklick oder Enter zum Beenden, Esc zum Abbrechen.",
+    "hintImport": "Das importierte Grundstück wird in der Karte angezeigt."
+  },
+  "create": {
+    "button": "Projekt anlegen",
+    "needSite": "Wählen Sie ein Grundstück, um das Projekt anzulegen.",
+    "phase": {
+      "creating": "Projekt wird angelegt…",
+      "context": "Umgebungsbebauung wird geladen ({{radius}} m)…"
+    },
+    "contextFailed": "Projekt ohne Umgebung angelegt: {{msg}}"
+  },
+  "errors": {
+    "bad_request": "Ungültige Anfrage.",
+    "not_found": "Keine Daten gefunden.",
+    "upstream_error": "Der Geodatendienst ist nicht erreichbar. Bitte später erneut versuchen.",
+    "rate_limited": "Zu viele Anfragen. Bitte einige Sekunden warten.",
+    "network": "Server nicht erreichbar. Verbindung prüfen.",
+    "http": "Serverfehler (HTTP {{status}}).",
+    "unknown": "Ein unerwarteter Fehler ist aufgetreten."
+  }
+}
