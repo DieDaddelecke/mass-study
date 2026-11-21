@@ -49,6 +49,10 @@
       "punkthaus": "Plot à cage centrale",
       "reihenhaus": "Maisons en bande",
       "buero": "Plateau libre"
-    }
+    },
+    "facadeTip": "façade {{facade}} m (min {{min}} m)",
+    "facadeRule": "Longueur de façade minimale par type (séjour, chambre PMR, chambres, cloisons)",
+    "facadeMark": "Façade du logement",
+    "facadeFail": "{{count}} logement(s) sous la longueur de façade minimale (!)"
   }
 }

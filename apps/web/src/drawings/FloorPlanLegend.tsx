@@ -1,6 +1,7 @@
-import type { MassLayout, UnitType } from '@kubatur/core';
+import { requiredFacade, type MassLayout, type UnitRules, type UnitType } from '@kubatur/core';
 import { FLOOR_PLAN_COLORS, unitColor } from '@kubatur/drawing';
 import { useTranslation } from 'react-i18next';
+import { formatNumber } from '../i18n';
 import { useShellStore } from '../shell/shellStore';
 
 const fmt = (n: number) => Math.round(n).toLocaleString('fr-FR');
@@ -10,10 +11,12 @@ export function FloorPlanLegend({
   layouts,
   storey,
   mix,
+  rules,
 }: {
   layouts: readonly MassLayout[];
   storey: number;
   mix: readonly UnitType[];
+  rules: UnitRules;
 }) {
   const { t } = useTranslation('drawing');
   const leftOpen = useShellStore((s) => s.leftOpen);
@@ -36,6 +39,7 @@ export function FloorPlanLegend({
   const total = counts.reduce((a, c) => a + c.count, 0);
   const totalArea = counts.reduce((a, c) => a + c.area, 0);
   const outOfRange = here.some(({ s }) => s.units.some((u) => u.outOfRange));
+  const failing = here.reduce((a, { s }) => a + s.summary.facadeViolations, 0);
   const hasOpen = here.some(({ s }) => s.open.length > 0);
   const differs = layouts.filter(
     (m) => m.areaBasedDwellings > 0 && m.totals.units !== m.areaBasedDwellings,
@@ -70,12 +74,16 @@ export function FloorPlanLegend({
                 </td>
                 <td className="num">{c.count}</td>
                 <td className="num muted">{fmt(c.area)} m²</td>
+                <td className="num muted" title={t('fp.facadeRule')}>
+                  ≥ {formatNumber(requiredFacade(c.type, rules))} m
+                </td>
               </tr>
             ))}
             <tr className="dv-legend-total">
               <td>{t('fp.total')}</td>
               <td className="num">{total}</td>
               <td className="num muted">{fmt(totalArea)} m²</td>
+              <td />
             </tr>
           </tbody>
         </table>
@@ -91,6 +99,13 @@ export function FloorPlanLegend({
           <span className="dv-legend-sw" style={{ background: FLOOR_PLAN_COLORS.circulation }} />
           {t('fp.circulation')}
         </li>
+        <li>
+          <span
+            className="dv-legend-sw dv-legend-line"
+            style={{ background: FLOOR_PLAN_COLORS.facade }}
+          />
+          {t('fp.facadeMark')}
+        </li>
         {hasOpen && (
           <li>
             <span className="dv-legend-sw" style={{ background: FLOOR_PLAN_COLORS.open }} />
@@ -98,6 +113,13 @@ export function FloorPlanLegend({
           </li>
         )}
       </ul>
+      <p className="dv-legend-note">
+        {t('fp.facadeRule')} :{' '}
+        {mix.map((u) => `${u.label} ${formatNumber(requiredFacade(u, rules))} m`).join(' · ')}
+      </p>
+      {failing > 0 && (
+        <p className="dv-legend-note dv-legend-warn">{t('fp.facadeFail', { count: failing })}</p>
+      )}
       {outOfRange && <p className="dv-legend-note">{t('fp.outOfRange')}</p>}
       {differs.map((m) => (
         <p key={m.massId} className="dv-legend-note">

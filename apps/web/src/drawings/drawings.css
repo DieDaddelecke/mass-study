@@ -223,3 +223,13 @@
   line-height: 1.4;
   color: var(--text-3);
 }
+.dv-legend-sw.dv-legend-line {
+  height: 3px;
+  border-radius: 2px;
+  vertical-align: 3px;
+  box-shadow: none;
+}
+.dv-legend-warn {
+  color: var(--error-text);
+  font-weight: 600;
+}

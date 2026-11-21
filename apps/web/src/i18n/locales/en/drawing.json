@@ -49,6 +49,10 @@
       "punkthaus": "Point block (central core)",
       "reihenhaus": "Terraced houses",
       "buero": "Open floor"
-    }
+    },
+    "facadeTip": "façade {{facade}} m (min {{min}} m)",
+    "facadeRule": "Minimum façade length per type (living room, accessible bedroom, bedrooms, partitions)",
+    "facadeMark": "Façade of the dwelling",
+    "facadeFail": "{{count}} dwelling(s) below the minimum façade length (!)"
   }
 }

@@ -49,6 +49,10 @@
       "punkthaus": "Punkthaus",
       "reihenhaus": "Reihenhäuser",
       "buero": "Offene Fläche"
-    }
+    },
+    "facadeTip": "Fassade {{facade}} m (min. {{min}} m)",
+    "facadeRule": "Mindest-Fassadenlänge je Typ (Wohnraum, rollstuhlgerechtes Schlafzimmer, Zimmer, Innenwände)",
+    "facadeMark": "Fassade der Wohnung",
+    "facadeFail": "{{count}} Wohnung(en) unter der Mindest-Fassadenlänge (!)"
   }
 }

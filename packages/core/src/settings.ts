@@ -1,20 +1,21 @@
+import { DEFAULT_UNIT_RULES } from './unitRules.js';
 import type { RuleProfileId, Settings, StoreyStack, UnitType, Usage } from './types.js';
 
 /** Office default unit mix (France: T1 … T5). Shares sum to 1. */
 export const DEFAULT_UNIT_MIX_FR: UnitType[] = [
-  { id: 't1', label: 'T1', share: 0.1, areaMin: 25, areaTarget: 30, areaMax: 35 },
-  { id: 't2', label: 'T2', share: 0.3, areaMin: 40, areaTarget: 45, areaMax: 50 },
-  { id: 't3', label: 'T3', share: 0.35, areaMin: 58, areaTarget: 65, areaMax: 70 },
-  { id: 't4', label: 'T4', share: 0.2, areaMin: 75, areaTarget: 82, areaMax: 90 },
-  { id: 't5', label: 'T5', share: 0.05, areaMin: 90, areaTarget: 100, areaMax: 115 },
+  { id: 't1', label: 'T1', rooms: 1, share: 0.1, areaMin: 25, areaTarget: 30, areaMax: 35 },
+  { id: 't2', label: 'T2', rooms: 2, share: 0.3, areaMin: 40, areaTarget: 45, areaMax: 50 },
+  { id: 't3', label: 'T3', rooms: 3, share: 0.35, areaMin: 58, areaTarget: 65, areaMax: 70 },
+  { id: 't4', label: 'T4', rooms: 4, share: 0.2, areaMin: 75, areaTarget: 82, areaMax: 90 },
+  { id: 't5', label: 'T5', rooms: 5, share: 0.05, areaMin: 90, areaTarget: 100, areaMax: 115 },
 ];
 
 export const DEFAULT_UNIT_MIX_DE: UnitType[] = [
-  { id: '1zi', label: '1-Zi', share: 0.1, areaMin: 28, areaTarget: 35, areaMax: 40 },
-  { id: '2zi', label: '2-Zi', share: 0.3, areaMin: 45, areaTarget: 55, areaMax: 62 },
-  { id: '3zi', label: '3-Zi', share: 0.35, areaMin: 65, areaTarget: 75, areaMax: 85 },
-  { id: '4zi', label: '4-Zi', share: 0.2, areaMin: 85, areaTarget: 95, areaMax: 105 },
-  { id: '5zi', label: '5-Zi', share: 0.05, areaMin: 105, areaTarget: 115, areaMax: 130 },
+  { id: '1zi', label: '1-Zi', rooms: 1, share: 0.1, areaMin: 28, areaTarget: 35, areaMax: 40 },
+  { id: '2zi', label: '2-Zi', rooms: 2, share: 0.3, areaMin: 45, areaTarget: 55, areaMax: 62 },
+  { id: '3zi', label: '3-Zi', rooms: 3, share: 0.35, areaMin: 65, areaTarget: 75, areaMax: 85 },
+  { id: '4zi', label: '4-Zi', rooms: 4, share: 0.2, areaMin: 85, areaTarget: 95, areaMax: 105 },
+  { id: '5zi', label: '5-Zi', rooms: 5, share: 0.05, areaMin: 105, areaTarget: 115, areaMax: 130 },
 ];
 
 export function defaultSettings(profile: RuleProfileId = 'FR'): Settings {
@@ -59,6 +60,7 @@ export function defaultSettings(profile: RuleProfileId = 'FR'): Settings {
       landingDepth: 1.5,
     },
     unitMix: profile === 'FR' ? DEFAULT_UNIT_MIX_FR : DEFAULT_UNIT_MIX_DE,
+    unitRules: { ...DEFAULT_UNIT_RULES },
     workplaceArea: 12,
     parking: {
       perDwelling: 1,

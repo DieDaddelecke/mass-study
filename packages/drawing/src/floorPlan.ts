@@ -35,6 +35,10 @@ export const FLOOR_PLAN_COLORS = {
   circulation: '#ececea',
   open: '#f4f1ea',
   wall: '#2a2a2a',
+  /** Façade pieces of the dwellings (subtle). */
+  facade: '#5b8fc7',
+  /** Dwellings below the minimum façade length. */
+  facadeFail: '#d0342c',
 };
 
 /** Colour of a unit type (by its position in the mix). */
@@ -50,7 +54,12 @@ export interface FloorPlanOptions extends CommonOptions {
   site?: boolean;
   /** Unit mix for colours (default: project settings). */
   unitMix?: readonly UnitType[];
+  /** Tooltip text of the façade check, default French ("façade 9,40 m (min 9,10 m)"). */
+  facadeText?: (facade: number, required: number) => string;
 }
+
+const fmtM = (v: number) => `${v.toFixed(2).replace('.', ',')} m`;
+const defaultFacadeText = (f: number, r: number) => `façade ${fmtM(f)} (min ${fmtM(r)})`;
 
 const rings = (p: Polygon): Vec2[][] => [p.outer, ...(p.holes ?? [])];
 
@@ -193,7 +202,14 @@ export function floorPlan(
     for (const u of st.units)
       items.push({
         ...fill(u.polygon, unitColor(u.typeId, mix)),
-        title: `${u.label} · ${fmtArea(u.area)}${u.outOfRange ? ' *' : ''}`,
+        title: `${u.label} · ${fmtArea(u.area)}${u.outOfRange ? ' *' : ''} · ${(
+          opts.facadeText ?? defaultFacadeText
+        )(u.facade, u.facadeRequired)}${u.facadeOk ? '' : ' !'}`,
+        ...(u.facadeOk
+          ? {}
+          : {
+              hatch: { angle: 45, spacingMm: 1.2, pen: 1, color: FLOOR_PLAN_COLORS.facadeFail },
+            }),
       } as DItem);
     for (const k of st.cores) {
       items.push(fill(k.polygon, FLOOR_PLAN_COLORS.core));
@@ -215,12 +231,12 @@ export function floorPlan(
         labels.push({
           kind: 'text',
           at,
-          text: u.outOfRange ? `${u.label}*` : u.label,
+          text: `${u.label}${u.outOfRange ? '*' : ''}${u.facadeOk ? '' : ' !'}`,
           sizeMm: big ? 2.6 : 1.8,
           anchor: 'middle',
           baseline: 'bottom',
           weight: 'bold',
-          color: COLORS.ink,
+          color: u.facadeOk ? COLORS.ink : FLOOR_PLAN_COLORS.facadeFail,
           offsetMm: [0, 0.2],
         });
         labels.push({
@@ -237,6 +253,15 @@ export function floorPlan(
   }
   // footprint outline of this storey (pen 5)
   for (const p of here) for (const r of rings(p)) items.push(line(r, 5, 'solid', COLORS.ink, true));
+  // façade pieces of each dwelling (subtle, on the outline), failing dwellings in red
+  for (const st of storeys)
+    for (const u of st.units) {
+      for (const [a, b] of u.facadeSegments ?? [])
+        items.push(line([a, b], 2, 'solid', FLOOR_PLAN_COLORS.facade));
+      if (!u.facadeOk)
+        for (const r of rings(u.polygon))
+          items.push(line(r, 4, 'solid', FLOOR_PLAN_COLORS.facadeFail, true));
+    }
   items.push(...labels);
 
   items.push({ kind: 'symbol', type: 'north', at: [ext.maxX - 3, ext.maxY - 5] });

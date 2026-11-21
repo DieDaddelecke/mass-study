@@ -1,4 +1,4 @@
-import { massLayouts } from '@kubatur/core';
+import { massLayouts, resolveUnitRules } from '@kubatur/core';
 import {
   chooseScale,
   renderSvg,
@@ -200,7 +200,12 @@ export function DrawingView({ view }: { view: DrawingViewId }) {
       </div>
 
       {layouts && project && (
-        <FloorPlanLegend layouts={layouts} storey={storey} mix={project.settings.unitMix} />
+        <FloorPlanLegend
+          layouts={layouts}
+          storey={storey}
+          mix={project.settings.unitMix}
+          rules={resolveUnitRules(project.settings)}
+        />
       )}
 
       <div className="dv-toolbar glass" onPointerDown={(e) => e.stopPropagation()}>

@@ -280,6 +280,22 @@ export interface UnitType {
   areaMin: number;
   areaTarget: number;
   areaMax: number;
+  /** Number of main rooms (T3 = 3: living + 2 bedrooms); default: digit in id / label. */
+  rooms?: number;
+}
+
+/** Office rules for dwellings: minimum façade lengths per room, m. */
+export interface UnitRules {
+  /** Living room (séjour), m (3.60). */
+  livingMinFacade: number;
+  /** PMR bedroom of every dwelling with a bedroom, m (2.80). */
+  pmrBedroomMinFacade: number;
+  /** Every further bedroom, m (2.50). */
+  bedroomMinFacade: number;
+  /** Partition between rooms along the façade, m (0.10). */
+  interiorWall: number;
+  /** Whether the gallery side of a Laubengang dwelling counts as façade. */
+  galleryCountsAsFacade: boolean;
 }
 
 export interface Settings {
@@ -323,6 +339,8 @@ export interface Settings {
     landingDepth?: number;
   };
   unitMix: UnitType[];
+  /** Office façade rules for dwellings (defaults when missing). */
+  unitRules?: UnitRules;
   workplaceArea: number;
   parking: {
     perDwelling: number;

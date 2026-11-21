@@ -12,6 +12,7 @@ import {
   type DrawingModel,
   type DrawingTexts,
 } from '@kubatur/drawing';
+import i18n, { formatNumber } from '../i18n';
 import type { ViewId } from '../store/tools';
 
 export type DrawingViewId = Exclude<ViewId, '3d' | 'areas'>;
@@ -53,6 +54,8 @@ export function buildDrawing(
       const layouts = s.layouts ?? massLayouts(result, project.settings);
       return floorPlan(project, input.solids, s.storey ?? typicalStorey(layouts), layouts, {
         neighbours: s.neighbours,
+        facadeText: (f, r) =>
+          i18n.t('drawing:fp.facadeTip', { facade: formatNumber(f), min: formatNumber(r) }),
       });
     }
     case 'elevN':

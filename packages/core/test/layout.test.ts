@@ -50,9 +50,15 @@ function checkPartition(l: StoreyLayout): void {
   expect(Math.abs(inside - u) / fp).toBeLessThan(0.005);
 }
 
-function mixDeviation(l: StoreyLayout): number {
+/** Deviation of the unit area from the targets (raised to façade width × row depth). */
+function mixDeviation(l: StoreyLayout, rowDepth: number): number {
   const target = l.units.reduce(
-    (s, u) => s + settings.unitMix.find((t) => t.id === u.typeId)!.areaTarget,
+    (s, u) =>
+      s +
+      Math.max(
+        settings.unitMix.find((t) => t.id === u.typeId)!.areaTarget,
+        u.facadeRequired * rowDepth,
+      ),
     0,
   );
   return Math.abs(l.summary.unitArea - target) / target;
@@ -91,14 +97,14 @@ describe('storeyLayout', () => {
     const l = layoutOf({ kind: 'solitaer', length: 60, depth: 10 }, 'laubengang');
     expect(l.circulation.some((c) => c.kind === 'gallery')).toBe(true);
     expect(l.units.length).toBeGreaterThan(5);
-    expect(mixDeviation(l)).toBeLessThan(0.05);
+    expect(mixDeviation(l, 10 - 1.6)).toBeLessThan(0.05);
     checkPartition(l);
   });
 
   it('Mittelflur follows the mix within ±5 %', () => {
     const l = layoutOf({ kind: 'solitaer', length: 60, depth: 17 }, 'mittelflur');
     expect(l.circulation.some((c) => c.kind === 'corridor')).toBe(true);
-    expect(mixDeviation(l)).toBeLessThan(0.05);
+    expect(mixDeviation(l, (17 - 1.8) / 2)).toBeLessThan(0.05);
     checkPartition(l);
   });
 

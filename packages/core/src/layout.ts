@@ -23,6 +23,13 @@ import {
   union,
 } from './geometry.js';
 import { requiredCores, resolveAccess } from './typologies.js';
+import {
+  facadeOf,
+  polygonEdges,
+  requiredFacade,
+  resolveUnitRules,
+  unitRooms,
+} from './unitRules.js';
 import type {
   AccessType,
   Mass,
@@ -54,6 +61,14 @@ export interface LayoutUnit {
   coreIndex: number;
   /** True when the area lies outside [areaMin, areaMax] of the chosen type. */
   outOfRange: boolean;
+  /** Façade length of the unit (edges on the exterior of the storey footprint), m. */
+  facade: number;
+  /** Minimum façade length of the chosen type (office rules), m. */
+  facadeRequired: number;
+  /** False when the unit does not meet the minimum façade length. */
+  facadeOk: boolean;
+  /** Façade pieces of the unit (world coordinates), for drawing. */
+  facadeSegments: [Vec2, Vec2][];
 }
 
 export interface LayoutTypeCount {
@@ -71,6 +86,8 @@ export interface StoreyLayoutSummary {
   circulationArea: number;
   openArea: number;
   footprintArea: number;
+  /** Units below the minimum façade length of their type. */
+  facadeViolations: number;
 }
 
 export interface StoreyLayout {
@@ -284,6 +301,8 @@ interface FixedUnit {
 interface Row {
   rect: Rect;
   core: number;
+  /** Façade sides of the row (long sides on the exterior: 1 or 2). */
+  sides: number;
 }
 interface BarPlan {
   cores: Rect[];
@@ -360,6 +379,7 @@ function rowTypes(
   mix: readonly UnitType[],
   avgTarget: number,
   count?: number,
+  fit?: { length: number; depth: number; minWidth: (t: UnitType) => number },
 ): UnitType[] {
   const maxT = Math.max(...mix.map((t) => t.areaTarget));
   const minT = Math.min(...mix.map((t) => t.areaTarget));
@@ -375,9 +395,17 @@ function rowTypes(
       chosen.push(t);
     }
     // local improvement: swap single types (pool types first, then any mix type)
+    // a type forced wider than its target by the façade rule takes that larger area
+    const effTargets = (ts: UnitType[]) =>
+      fit
+        ? ts.reduce((s, t) => s + Math.max(t.areaTarget, fit.minWidth(t) * fit.depth), 0)
+        : sumTargets(ts);
+    const excess = (ts: UnitType[]) =>
+      fit ? Math.max(0, ts.reduce((s, t) => s + fit.minWidth(t), 0) - fit.length) : 0;
     const cost = (ts: UnitType[]) =>
-      Math.abs(sumTargets(ts) - area) +
-      ts.reduce((s, t) => s + (pool.includes(t) ? 0 : avgTarget * 0.08), 0);
+      Math.abs(effTargets(ts) - area) +
+      ts.reduce((s, t) => s + (pool.includes(t) ? 0 : avgTarget * 0.08), 0) +
+      excess(ts) * avgTarget * 10;
     let improved = true;
     for (let it = 0; improved && it < 30; it++) {
       improved = false;
@@ -410,6 +438,60 @@ function rowTypes(
   return ordered;
 }
 
+/** Façade rules as seen by the planner. */
+interface FacadeCtx {
+  /** Minimum façade length of a type, m. */
+  req: (t: UnitType) => number;
+  /** Next smaller type of the mix (fewer rooms), if any. */
+  down: (t: UnitType) => UnitType | undefined;
+  /** Gallery side counts as façade. */
+  gallery: boolean;
+}
+
+/**
+ * Replaces the type with the largest façade requirement by the next smaller type until
+ * `feasible` holds (or nothing can be downgraded any more).
+ */
+function fitTypes(
+  types: (UnitType | undefined)[],
+  fc: FacadeCtx,
+  feasible: (ts: (UnitType | undefined)[]) => boolean,
+): (UnitType | undefined)[] {
+  const ts = [...types];
+  for (let it = 0; it < 30 && !feasible(ts); it++) {
+    let bi = -1;
+    ts.forEach((t, i) => {
+      if (t && fc.down(t) && (bi < 0 || fc.req(t) > fc.req(ts[bi]!))) bi = i;
+    });
+    if (bi < 0) break;
+    ts[bi] = fc.down(ts[bi]!);
+  }
+  return ts;
+}
+
+/** Widths for a row of length `len`: proportional to `weights`, each at least `mins`. */
+function allocate(len: number, weights: readonly number[], mins: readonly number[]): number[] {
+  const n = weights.length;
+  const minSum = mins.reduce((a, b) => a + b, 0);
+  if (minSum >= len - 1e-9) return mins.map((m) => (len * m) / (minSum || 1));
+  const fixed = new Array<boolean>(n).fill(false);
+  let w: number[] = [];
+  for (let it = 0; it <= n; it++) {
+    const rest = len - mins.reduce((s, m, i) => s + (fixed[i] ? m : 0), 0);
+    const wsum = weights.reduce((s, x, i) => s + (fixed[i] ? 0 : x), 0) || 1;
+    w = weights.map((x, i) => (fixed[i] ? mins[i]! : (rest * x) / wsum));
+    let changed = false;
+    w.forEach((x, i) => {
+      if (!fixed[i] && x < mins[i]! - 1e-9) {
+        fixed[i] = true;
+        changed = true;
+      }
+    });
+    if (!changed) break;
+  }
+  return w;
+}
+
 /** Evenly spaced core centres along [0, L]. */
 const coreCentres = (L: number, n: number): number[] =>
   Array.from({ length: n }, (_, i) => ((i + 0.5) * L) / n);
@@ -423,6 +505,7 @@ function planBar(
   avgTarget: number,
   n: number,
   pick: (area: number, count: number) => UnitType[],
+  fc: FacadeCtx,
 ): BarPlan {
   const L = bar.length;
   const D = bar.depth;
@@ -435,7 +518,7 @@ function planBar(
   }
   // a bar without its own core (e.g. a short wing) is served by a neighbouring core
   if (n <= 0) {
-    if (residential) plan.rows.push({ rect: [0, 0, L, D], core: -1 });
+    if (residential) plan.rows.push({ rect: [0, 0, L, D], core: -1, sides: 2 });
     return plan;
   }
   const centres = coreCentres(L, n);
@@ -459,15 +542,26 @@ function planBar(
         const td = D - cd - dim.landingDepth;
         if (access === 'dreispaenner' && td >= 3 && S - cw >= 8) {
           const est = S * D - cw * cd - S * 0.4 * dim.landingDepth;
-          const [big, mid, small] = pick(est, 3);
-          const tot = (big?.areaTarget ?? 1) + (mid?.areaTarget ?? 1) + (small?.areaTarget ?? 1);
-          // third unit (behind the landing) = the smallest type
-          let wm = (est * (small?.areaTarget ?? 1)) / tot / td;
-          wm = Math.min(Math.max(wm, cw), S - 6);
-          const A = S * D - cw * cd - wm * dim.landingDepth;
-          const side = (wm - cw) / 2;
-          let wl = ((A * (big?.areaTarget ?? 1)) / tot - side * cd) / D;
-          wl = Math.min(Math.max(wl, 3), S - wm - 3);
+          // façades: big/mid units = north + south strip (2 w + side), small unit = south (wm)
+          const geo = (ts: (UnitType | undefined)[]) => {
+            const [big, mid, small] = ts;
+            const tot = (big?.areaTarget ?? 1) + (mid?.areaTarget ?? 1) + (small?.areaTarget ?? 1);
+            // third unit (behind the landing) = the smallest type
+            let wm = (est * (small?.areaTarget ?? 1)) / tot / td;
+            wm = Math.min(Math.max(wm, cw), S - 6);
+            wm = Math.max(wm, small ? fc.req(small) : 0);
+            const A = S * D - cw * cd - wm * dim.landingDepth;
+            const side = (wm - cw) / 2;
+            const lo = Math.max(3, big ? (fc.req(big) - side) / 2 : 0);
+            const hi = S - wm - Math.max(3, mid ? (fc.req(mid) - side) / 2 : 0);
+            let wl = ((A * (big?.areaTarget ?? 1)) / tot - side * cd) / D;
+            wl = Math.min(Math.max(wl, 3), S - wm - 3);
+            wl = Math.min(Math.max(wl, lo), hi);
+            return { wm, wl, side, ok: lo <= hi + 1e-9 };
+          };
+          const ts = fitTypes(pick(est, 3), fc, (x) => geo(x).ok);
+          const [big, mid, small] = ts;
+          const { wm, wl, side } = geo(ts);
           const m0 = s0 + wl;
           const m1 = m0 + wm;
           const k0 = m0 + side;
@@ -482,10 +576,23 @@ function planBar(
           const kb1 = D - cd < 1 ? D : kb0 + cd;
           const back = cw * (D - kb1);
           const A = S * D - cw * cd - cw * kb0;
-          const [t1, t2] = pick(A, 2);
+          // façades: left unit 2 (c − s0) (− cw without the strip behind the core),
+          // right unit 2 (s1 − c − cw / 2); the core moves within these bounds
+          const noBack = D - kb1 < 1e-6 ? cw : 0;
+          const bounds = (x: (UnitType | undefined)[]) => [
+            s0 + ((x[0] ? fc.req(x[0]) : 0) + noBack) / 2,
+            s1 - cw / 2 - (x[1] ? fc.req(x[1]) : 0) / 2,
+          ];
+          const ts = fitTypes(pick(A, 2), fc, (x) => {
+            const [lo, hi] = bounds(x);
+            return lo! <= hi! + 1e-9;
+          });
+          const [t1, t2] = ts;
+          const [lo, hi] = bounds(ts);
           const r = (t1?.areaTarget ?? 1) / ((t1?.areaTarget ?? 1) + (t2?.areaTarget ?? 1));
           // left unit (with the strip behind the core) gets share r
-          const c = clampC(s0 + (A * r - back) / D + cw / 2, s0, s1, cw / 2);
+          let c = clampC(s0 + (A * r - back) / D + cw / 2, s0, s1, cw / 2);
+          if (lo! <= hi! + 1e-9) c = Math.min(Math.max(c, lo!), hi!);
           const k0 = c - cw / 2;
           const k1 = c + cw / 2;
           plan.cores.push([k0, kb0, k1, kb1]);
@@ -499,15 +606,16 @@ function planBar(
     case 'laubengang': {
       const g = Math.min(dim.galleryWidth, D / 3);
       plan.circulation.push({ kind: 'gallery', rect: [0, 0, L, g] });
+      const gs = fc.gallery ? 2 : 1;
       let a = 0;
       centres.forEach((c, i) => {
         const k0 = Math.max(0, c - cw / 2);
         const k1 = Math.min(L, c + cw / 2);
         plan.cores.push([k0, g, k1, D]);
-        if (k0 - a > 1e-6) plan.rows.push({ rect: [a, g, k0, D], core: i });
+        if (k0 - a > 1e-6) plan.rows.push({ rect: [a, g, k0, D], core: i, sides: gs });
         a = k1;
       });
-      if (L - a > 1e-6) plan.rows.push({ rect: [a, g, L, D], core: n - 1 });
+      if (L - a > 1e-6) plan.rows.push({ rect: [a, g, L, D], core: n - 1, sides: gs });
       return plan;
     }
     case 'mittelflur': {
@@ -520,14 +628,14 @@ function planBar(
         const k0 = x - cw / 2;
         const k1 = x + cw / 2;
         plan.cores.push([k0, 0, k1, m0]);
-        if (k0 - a > 1e-6) plan.rows.push({ rect: [a, 0, k0, m0], core: i });
+        if (k0 - a > 1e-6) plan.rows.push({ rect: [a, 0, k0, m0], core: i, sides: 1 });
         a = k1;
       });
-      if (L - a > 1e-6) plan.rows.push({ rect: [a, 0, L, m0], core: n - 1 });
+      if (L - a > 1e-6) plan.rows.push({ rect: [a, 0, L, m0], core: n - 1, sides: 1 });
       // south row split at the midpoints between cores (core assignment only)
       const bounds = [0, ...centres.slice(1).map((x, i) => (x + centres[i]!) / 2), L];
       for (let i = 0; i < n; i++)
-        plan.rows.push({ rect: [bounds[i]!, m1, bounds[i + 1]!, D], core: i });
+        plan.rows.push({ rect: [bounds[i]!, m1, bounds[i + 1]!, D], core: i, sides: 1 });
       return plan;
     }
     case 'punkthaus': {
@@ -668,12 +776,23 @@ export function storeyLayout(
   const usage = first.usage;
   const residential = usage === 'wohnen' && mix.length > 0;
   const effAccess: AccessType = access;
+  const rules = resolveUnitRules(settings);
+  const fc: FacadeCtx = {
+    req: (t) => requiredFacade(t, rules),
+    down: (t) => {
+      const r = unitRooms(t);
+      return [...mix]
+        .filter((x) => unitRooms(x) < r)
+        .sort((a, b) => unitRooms(b) - unitRooms(a) || b.share - a.share)[0];
+    },
+    gallery: rules.galleryCountsAsFacade,
+  };
 
   const cores: LayoutArea[] = [];
   const circulation: LayoutArea[] = [];
   const open: LayoutArea[] = [];
   const raw: RawUnit[] = [];
-  const rows: { frame: Frame; rect: Rect; core: number; region: Polygon[] }[] = [];
+  const rows: { frame: Frame; rect: Rect; core: number; region: Polygon[]; sides: number }[] = [];
   const regions: Polygon[] = [];
 
   const clip = (region: Polygon[], p: Polygon): Polygon[] =>
@@ -709,6 +828,7 @@ export function storeyLayout(
         avgTarget,
         coresPerBar[bi]!,
         pick,
+        fc,
       );
       const coreBase = cores.length;
       for (const r of plan.cores) {
@@ -741,7 +861,13 @@ export function storeyLayout(
           });
       }
       for (const r of plan.rows)
-        rows.push({ frame: bar.frame, rect: r.rect, core: coreOf(r.core), region: bar.region });
+        rows.push({
+          frame: bar.frame,
+          rect: r.rect,
+          core: coreOf(r.core),
+          region: bar.region,
+          sides: r.sides,
+        });
     }
   }
 
@@ -774,12 +900,32 @@ export function storeyLayout(
       // combination closest to its area (pool types first), widths then fill the row exactly
       const pool = mixSequence(Math.max(1, Math.round(rowTotal / avgTarget)) + rows.length, mix);
       rows.forEach((row, ri) => {
-        const ordered = rowTypes(rowAreas[ri]!, pool, mix, avgTarget);
         const [a0, b0, a1, b1] = row.rect;
-        const total = sumTargets(ordered);
+        // each unit at least as wide as its façade requirement (per façade side)
+        const minWidth = (t: UnitType) => fc.req(t) / Math.max(1, row.sides);
+        const len = a1 - a0;
+        let ordered = rowTypes(rowAreas[ri]!, pool, mix, avgTarget, undefined, {
+          length: len,
+          depth: b1 - b0,
+          minWidth,
+        });
+        const fitsRow = (ts: (UnitType | undefined)[]) =>
+          ts.reduce((x, t) => x + (t ? minWidth(t) : 0), 0) <= len + 1e-9;
+        ordered = fitTypes(ordered, fc, fitsRow).filter((t): t is UnitType => !!t);
+        while (ordered.length > 1 && !fitsRow(ordered)) {
+          // drop the smallest unit; its width goes to the others
+          let si = 0;
+          ordered.forEach((t, i) => (t.areaTarget < ordered[si]!.areaTarget ? (si = i) : 0));
+          ordered.splice(si, 1);
+        }
+        const widths = allocate(
+          len,
+          ordered.map((t) => Math.max(t.areaTarget, minWidth(t) * (b1 - b0))),
+          ordered.map(minWidth),
+        );
         let a = a0;
         ordered.forEach((t, i) => {
-          const w = i === ordered.length - 1 ? a1 - a : ((a1 - a0) * t.areaTarget) / total;
+          const w = i === ordered.length - 1 ? a1 - a : widths[i]!;
           const polys = clip(row.region, rectPoly(row.frame, [a, b0, a + w, b1]));
           a += w;
           if (!polys.length) return;
@@ -841,14 +987,54 @@ export function storeyLayout(
       }
       if (!merged) circulation.push({ kind: 'landing', polygon: l, area: la });
     }
-    for (const u of raw) {
-      const polygon = simplify(u.polys[0]!);
-      const area = polygonArea(polygon);
-      let choice = u.type ?? typeByArea(area, mix, new Map());
-      const t = choice.type;
-      if (area < t.areaMin - 1e-6 || area > t.areaMax + 1e-6) {
-        choice = typeByArea(area, mix, new Map());
+    // --- façade rules: measure, merge units without enough façade, downgrade types ----
+    const outline = union(solids.map((x) => normalizePolygon(x.footprint)));
+    const facadeSegs = polygonEdges(outline);
+    if (rules.galleryCountsAsFacade)
+      facadeSegs.push(
+        ...polygonEdges(circulation.filter((c) => c.kind === 'gallery').map((c) => c.polygon)),
+      );
+    const minReq = Math.min(...mix.map(fc.req));
+    const polys = raw.map((u) => simplify(u.polys[0]!));
+    const fac = polys.map((p) => facadeOf(p, facadeSegs).length);
+    const alive = raw.map(() => true);
+    for (let i = 0; i < raw.length; i++) {
+      if (!alive[i] || fac[i]! >= minReq - 1e-6) continue;
+      // merge with the neighbour sharing the longest wall (the merged unit must stay one polygon)
+      const edges = polygonEdges([polys[i]!]);
+      const cands = raw
+        .map((_, j) => ({
+          j,
+          shared: j === i || !alive[j] ? 0 : facadeOf(polys[j]!, edges).length,
+        }))
+        .filter((c) => c.shared > 1)
+        .sort((x, y) => y.shared - x.shared);
+      for (const { j } of cands) {
+        const m = union([polys[j]!, polys[i]!]);
+        if (m.length !== 1 || m[0]!.holes?.length) continue;
+        polys[j] = simplify(m[0]!);
+        fac[j] = facadeOf(polys[j]!, facadeSegs).length;
+        alive[i] = false;
+        if (raw[j]!.type && raw[i]!.type) delete raw[j]!.type;
+        break;
       }
+    }
+    raw.forEach((u, i) => {
+      if (!alive[i]) return;
+      const polygon = polys[i]!;
+      const area = polygonArea(polygon);
+      const facade = facadeOf(polygon, facadeSegs);
+      const allowed = mix.filter((t) => fc.req(t) <= facade.length + 1e-6);
+      const pool = allowed.length ? allowed : mix;
+      let choice = u.type ?? typeByArea(area, pool, new Map());
+      const t = choice.type;
+      if (!pool.includes(t) || area < t.areaMin - 1e-6 || area > t.areaMax + 1e-6) {
+        choice = typeByArea(area, pool, new Map());
+        // a wide unit with little façade: the largest type the façade allows
+        if (allowed.length && !allowed.includes(choice.type))
+          choice = typeByArea(area, allowed, new Map());
+      }
+      const need = fc.req(choice.type);
       units.push({
         polygon,
         typeId: choice.type.id,
@@ -857,8 +1043,12 @@ export function storeyLayout(
         coreIndex:
           u.core < 0 && effAccess !== 'reihenhaus' ? nearestCoreIndex(cores, polygon) : u.core,
         outOfRange: choice.outOfRange,
+        facade: facade.length,
+        facadeRequired: need,
+        facadeOk: facade.length >= need - 1e-6,
+        facadeSegments: facade.segments,
       });
-    }
+    });
   }
 
   const byType: LayoutTypeCount[] = mix
@@ -883,6 +1073,7 @@ export function storeyLayout(
     circulationArea: sum(circulation),
     openArea: sum(open),
     footprintArea: footprints.reduce((s, p) => s + polygonArea(p), 0),
+    facadeViolations: units.filter((u) => !u.facadeOk).length,
   };
   const r1 = (x: number) => Math.round(x * 10) / 10;
   const signature = [
