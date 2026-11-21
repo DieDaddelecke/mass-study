@@ -153,3 +153,105 @@ export function facadeOf(
   }
   return { length, segments };
 }
+
+/** Minimum façade widths of the main rooms of a type: séjour, chambre PMR, chambres. */
+export function roomMinWidths(
+  t: Pick<UnitType, 'id' | 'label' | 'rooms'>,
+  rules: UnitRules = DEFAULT_UNIT_RULES,
+): number[] {
+  const r = unitRooms(t);
+  const out = [rules.livingMinFacade];
+  if (r >= 2) out.push(rules.pmrBedroomMinFacade);
+  for (let i = 2; i < r; i++) out.push(rules.bedroomMinFacade);
+  return out;
+}
+
+/**
+ * Assignment of rooms (minimum widths) to façade pieces (lengths) so that every piece holds its
+ * rooms side by side with a partition between them; a room is never split over two pieces.
+ * Returns the piece index of every room, or null when no assignment fits. With `pref`, the
+ * séjour (room 0) goes to the piece with the highest preference that still allows a fit;
+ * among those, the assignment with the most spare length on the fullest piece wins.
+ */
+export function assignRooms(
+  widths: readonly number[],
+  pieces: readonly number[],
+  wall: number,
+  pref?: readonly number[],
+): number[] | null {
+  const n = widths.length;
+  const m = pieces.length;
+  if (!m) return n ? null : [];
+  let best: number[] | null = null;
+  let bestKey: [number, number] = [-Infinity, -Infinity];
+  const load = new Array<number>(m).fill(0);
+  const count = new Array<number>(m).fill(0);
+  const cur: number[] = [];
+  // rooms sorted wide first prune earlier; keep the original indices
+  const order = widths.map((w, i) => i).sort((a, b) => widths[b]! - widths[a]!);
+  const rec = (k: number) => {
+    if (k === n) {
+      let slack = Infinity;
+      for (let j = 0; j < m; j++) if (count[j]) slack = Math.min(slack, pieces[j]! - load[j]!);
+      const key: [number, number] = [pref ? (pref[cur[0]!] ?? 0) : 0, slack];
+      if (key[0] > bestKey[0] || (key[0] === bestKey[0] && key[1] > bestKey[1] + 1e-9)) {
+        bestKey = key;
+        best = [...cur];
+      }
+      return;
+    }
+    const i = order[k]!;
+    for (let j = 0; j < m; j++) {
+      const add = widths[i]! + (count[j] ? wall : 0);
+      if (load[j]! + add > pieces[j]! + 1e-6) continue;
+      load[j] = load[j]! + add;
+      count[j]!++;
+      cur[i] = j;
+      rec(k + 1);
+      load[j] = load[j]! - add;
+      count[j]!--;
+    }
+  };
+  rec(0);
+  return best;
+}
+
+/** True when the rooms of a type fit on façade pieces of the given lengths. */
+export function roomsFit(
+  t: Pick<UnitType, 'id' | 'label' | 'rooms'>,
+  pieces: readonly number[],
+  rules: UnitRules = DEFAULT_UNIT_RULES,
+): boolean {
+  return assignRooms(roomMinWidths(t, rules), pieces, rules.interiorWall) !== null;
+}
+
+/**
+ * Minimum dwelling width of a type in a row with `sides` façades of the same length (1: one
+ * façade, 2: through dwelling or gallery + façade): rooms are not split over two façades.
+ */
+export function minUnitWidth(
+  t: Pick<UnitType, 'id' | 'label' | 'rooms'>,
+  sides: number,
+  rules: UnitRules = DEFAULT_UNIT_RULES,
+  /** Further façade pieces of fixed length (e.g. a short return beside a core). */
+  extra: readonly number[] = [],
+): number {
+  const w = roomMinWidths(t, rules);
+  const bins = Math.max(1, Math.round(sides));
+  const fits = (x: number) =>
+    assignRooms(
+      w,
+      [...new Array<number>(bins).fill(x), ...extra.filter((e) => e > 0)],
+      rules.interiorWall,
+    ) !== null;
+  let lo = 0;
+  let hi = requiredFacade(t, rules);
+  if (fits(lo)) return 0;
+  while (hi - lo > 0.005) {
+    const mid = (lo + hi) / 2;
+    if (fits(mid)) hi = mid;
+    else lo = mid;
+  }
+  const r = Math.round(hi * 100) / 100;
+  return fits(r) ? r : Math.ceil(hi * 100 - 1e-6) / 100;
+}

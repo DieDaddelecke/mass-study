@@ -83,6 +83,9 @@ describe('rooms of a dwelling', () => {
     [{ kind: 'solitaer', length: 60, depth: 10 }, 'laubengang'],
     [{ kind: 'solitaer', length: 40, depth: 12 }, 'zweispaenner'],
     [{ kind: 'solitaer', length: 60, depth: 17 }, 'mittelflur'],
+    [{ kind: 'solitaer', length: 55, depth: 13 }, 'zweispaenner'],
+    [{ kind: 'solitaer', length: 50, depth: 13 }, 'dreispaenner'],
+    [{ kind: 'solitaer', length: 24, depth: 22 }, 'punkthaus'],
   ] as [Typology, AccessType][])
     it(`every dwelling of a ${access} storey gets its rooms`, () => {
       const l = layoutOf(t, access);
@@ -103,8 +106,10 @@ describe('rooms of a dwelling', () => {
         expect(merged.reduce((s, p) => s + polygonArea(p), 0)).toBeCloseTo(area(u.rooms), 1);
         for (const r of u.rooms) expect(r.facadeOk).toBe(r.facade >= r.facadeRequired - 0.02);
       }
-      // the unit sizes follow the façade rules, so nearly all rooms get their minimum façade
-      const rooms = l.units.flatMap((u) => u.rooms);
-      expect(rooms.filter((r) => r.facadeOk).length / rooms.length).toBeGreaterThan(0.75);
+      // the dwelling widths follow the rooms, so every room gets its minimum façade
+      for (const u of l.units) {
+        expect(u.facadeOk).toBe(true);
+        expect(u.rooms.every((r) => r.facadeOk)).toBe(true);
+      }
     });
 });
