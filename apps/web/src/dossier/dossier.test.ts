@@ -79,6 +79,8 @@ describe('dossier sheets', () => {
     const g = placeSvg(v500!.svg, 30, 40, v500!.widthMm, v500!.heightMm);
     expect(g.startsWith('<g transform="translate(30 40)')).toBe(true);
     expect(g).not.toContain(' scale(');
+    // the drawing font survives the inlining (else the PDF falls back to Times)
+    expect(g).toMatch(/^<g [^>]*font-family="Inter,/);
   });
 
   it('auto scale picks a standard scale fitting the box', () => {
