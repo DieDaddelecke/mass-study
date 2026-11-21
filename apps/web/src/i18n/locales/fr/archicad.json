@@ -1,0 +1,76 @@
+{
+  "title": "Archicad",
+  "untitled": "Projet sans titre",
+  "transfer": "Transférer vers « {{name}} »",
+  "update": "Mettre à jour « {{name}} »",
+  "remove": "Retirer de Archicad ({{count}} éléments)",
+  "bridge": {
+    "title": "Passerelle locale",
+    "status": {
+      "idle": "Non vérifiée",
+      "checking": "Recherche de la passerelle…",
+      "offline": "Passerelle introuvable",
+      "unpaired": "Passerelle trouvée, code d'appairage requis",
+      "ready": "Connectée (passerelle {{version}})"
+    },
+    "howTo": "Démarrez la passerelle sur cet ordinateur (Python 3.10+), puis saisissez le code d'appairage affiché :",
+    "token": "Code d'appairage",
+    "advanced": "Avancé",
+    "url": "Adresse de la passerelle",
+    "connect": "Connecter"
+  },
+  "instance": {
+    "title": "Projet Archicad",
+    "none": "Aucun Archicad ouvert. Ouvrez Archicad avec le module Tapir, puis actualisez.",
+    "noTapir": "absent",
+    "refresh": "Actualiser"
+  },
+  "options": {
+    "title": "Éléments à créer",
+    "zones": "Zones (surfaces, nom, numéro)",
+    "morphs": "Volumes (Morphs)",
+    "slabs": "Dalles",
+    "offsetX": "Décalage X",
+    "offsetY": "Décalage Y",
+    "rotation": "Rotation"
+  },
+  "mode": {
+    "replace": "Remplacer les éléments déjà transférés ({{count}})",
+    "create": "Ajouter sans supprimer"
+  },
+  "preview": {
+    "title": "Aperçu",
+    "summary": "{{zones}} zones, {{morphs}} volumes, {{slabs}} dalles sur {{storeys}} niveaux, sur le calque « MS - Massenstudie ».",
+    "level": "Niveau",
+    "storey": "Étage",
+    "archicadStory": "Étage Archicad",
+    "offset": "Décalage",
+    "storiesUnchanged": "La structure des étages d'Archicad n'est jamais modifiée : chaque niveau est placé sur l'étage Archicad le plus proche en dessous."
+  },
+  "warning": {
+    "noStories": "Le projet Archicad n'a pas d'étages.",
+    "noMasses": "La variante active ne contient aucun volume.",
+    "teamwork": "Projet Teamwork : les éléments doivent pouvoir être réservés.",
+    "librariesMissing": "Bibliothèques indisponibles dans Archicad : {{names}}. Si le tampon de zone en fait partie, Archicad refuse les zones ; elles seront alors remplacées par des volumes.",
+    "levelWithoutStory": "Niveau {{level}} m ({{label}}) sans étage Archicad à cette hauteur : placé sur « {{story}} » avec décalage.",
+    "belowLowestStory": "Niveau {{level}} m ({{label}}) sous l'étage Archicad le plus bas."
+  },
+  "progress": {
+    "prepare": "Préparation (calque, catégories)…",
+    "delete": "Suppression des éléments précédents…",
+    "zones": "Création des zones…",
+    "slabs": "Création des dalles…",
+    "morphs": "Création des volumes…",
+    "tag": "Marquage des éléments…",
+    "done": "Terminé"
+  },
+  "result": {
+    "created": "Créés : {{zones}} zones, {{morphs}} volumes, {{slabs}} dalles.",
+    "deleted": "{{count}} éléments précédents supprimés.",
+    "zoneFallback": "Archicad a refusé toutes les zones (tampon de zone ou bibliothèque manquants). Des volumes ont été créés à la place. Chargez la bibliothèque Archicad du projet puis relancez.",
+    "removed": "{{count}} éléments retirés d'Archicad."
+  },
+  "pill": {
+    "ready": "Archicad : connecté – ouvrir le transfert"
+  }
+}

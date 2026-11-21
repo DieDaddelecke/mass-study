@@ -1,0 +1,133 @@
+.ac {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: min(560px, 100%);
+}
+.ac-section h3 {
+  margin: 0 0 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+.ac-section p {
+  margin: 4px 0;
+}
+.ac-help {
+  font-size: var(--fs-sm);
+  opacity: 0.8;
+}
+.ac-help code {
+  display: block;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--field);
+  user-select: all;
+}
+.ac-muted {
+  opacity: 0.65;
+  font-size: var(--fs-sm);
+}
+.ac-status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: var(--fs-sm);
+  background: var(--field);
+  margin-bottom: 6px;
+}
+.ac-status.is-ready {
+  background: var(--ok-soft);
+}
+.ac-status.is-offline,
+.ac-status.is-unpaired {
+  background: var(--error-soft);
+  color: var(--error-text);
+}
+.ac-advanced {
+  margin: 4px 0 8px;
+  font-size: var(--fs-sm);
+}
+.ac-instances {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+}
+.ac-instances li label {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 4px 0;
+}
+.ac-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 4px 0 8px;
+}
+.ac-checks label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.ac-place {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0 12px;
+}
+.ac-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+.ac-table th,
+.ac-table td {
+  text-align: left;
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--hairline);
+}
+.ac-table tr.is-warn td {
+  color: var(--error-text);
+}
+.ac-warnings {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--error-text);
+  font-size: var(--fs-sm);
+}
+.ac-progress {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.ac-progress progress {
+  flex: 1;
+}
+.ac-result {
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+}
+.ac-result p {
+  margin: 2px 0;
+}
+.ac-result.is-ok {
+  background: var(--ok-soft);
+}
+.ac-result.is-warn,
+.ac-result.is-error {
+  background: var(--error-soft);
+  color: var(--error-text);
+}
+.ac-spacer {
+  flex: 1;
+}
+button.pill-status {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}

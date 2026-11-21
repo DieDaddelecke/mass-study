@@ -1,0 +1,76 @@
+{
+  "title": "Archicad",
+  "untitled": "Unbenanntes Projekt",
+  "transfer": "Nach „{{name}}“ übertragen",
+  "update": "„{{name}}“ aktualisieren",
+  "remove": "Aus Archicad entfernen ({{count}} Elemente)",
+  "bridge": {
+    "title": "Lokale Bridge",
+    "status": {
+      "idle": "Nicht geprüft",
+      "checking": "Suche Bridge…",
+      "offline": "Bridge nicht gefunden",
+      "unpaired": "Bridge gefunden, Pairing-Code nötig",
+      "ready": "Verbunden (Bridge {{version}})"
+    },
+    "howTo": "Bridge auf diesem Rechner starten (Python 3.10+) und den angezeigten Pairing-Code eingeben:",
+    "token": "Pairing-Code",
+    "advanced": "Erweitert",
+    "url": "Adresse der Bridge",
+    "connect": "Verbinden"
+  },
+  "instance": {
+    "title": "Archicad-Projekt",
+    "none": "Kein Archicad geöffnet. Archicad mit dem Add-on Tapir öffnen und aktualisieren.",
+    "noTapir": "fehlt",
+    "refresh": "Aktualisieren"
+  },
+  "options": {
+    "title": "Zu erzeugende Elemente",
+    "zones": "Zonen (Fläche, Name, Nummer)",
+    "morphs": "Volumen (Morphs)",
+    "slabs": "Decken",
+    "offsetX": "Versatz X",
+    "offsetY": "Versatz Y",
+    "rotation": "Drehung"
+  },
+  "mode": {
+    "replace": "Bereits übertragene Elemente ersetzen ({{count}})",
+    "create": "Hinzufügen, nichts löschen"
+  },
+  "preview": {
+    "title": "Vorschau",
+    "summary": "{{zones}} Zonen, {{morphs}} Volumen, {{slabs}} Decken auf {{storeys}} Ebenen, auf der Ebene „MS - Massenstudie“.",
+    "level": "Höhe",
+    "storey": "Geschoss",
+    "archicadStory": "Archicad-Geschoss",
+    "offset": "Versatz",
+    "storiesUnchanged": "Die Geschossstruktur in Archicad wird nie verändert: jede Ebene kommt auf das nächstniedrigere Archicad-Geschoss."
+  },
+  "warning": {
+    "noStories": "Das Archicad-Projekt hat keine Geschosse.",
+    "noMasses": "Die aktive Variante enthält keine Baukörper.",
+    "teamwork": "Teamwork-Projekt: Elemente müssen reserviert werden können.",
+    "librariesMissing": "Nicht verfügbare Bibliotheken in Archicad: {{names}}. Liegt der Zonenstempel darin, lehnt Archicad Zonen ab; sie werden dann durch Volumen ersetzt.",
+    "levelWithoutStory": "Ebene {{level}} m ({{label}}) ohne Archicad-Geschoss auf dieser Höhe: auf „{{story}}“ mit Versatz gelegt.",
+    "belowLowestStory": "Ebene {{level}} m ({{label}}) liegt unter dem untersten Archicad-Geschoss."
+  },
+  "progress": {
+    "prepare": "Vorbereitung (Ebene, Kategorien)…",
+    "delete": "Vorherige Elemente löschen…",
+    "zones": "Zonen anlegen…",
+    "slabs": "Decken anlegen…",
+    "morphs": "Volumen anlegen…",
+    "tag": "Elemente markieren…",
+    "done": "Fertig"
+  },
+  "result": {
+    "created": "Angelegt: {{zones}} Zonen, {{morphs}} Volumen, {{slabs}} Decken.",
+    "deleted": "{{count}} vorherige Elemente gelöscht.",
+    "zoneFallback": "Archicad hat alle Zonen abgelehnt (Zonenstempel oder Bibliothek fehlt). Stattdessen wurden Volumen angelegt. Bibliothek im Projekt laden und erneut übertragen.",
+    "removed": "{{count}} Elemente aus Archicad entfernt."
+  },
+  "pill": {
+    "ready": "Archicad: verbunden – Übertragung öffnen"
+  }
+}
