@@ -1,5 +1,5 @@
 import * as Menu from '@radix-ui/react-dropdown-menu';
-import { Box, Check, ChevronDown, House, Maximize, Palette, Sun } from 'lucide-react';
+import { Box, Check, ChevronDown, House, Magnet, Maximize, Palette, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { VisualStyle } from '../store/tools';
 import { useUiStore } from '../store/uiStore';
@@ -26,6 +26,8 @@ export function ViewControlBar() {
   const zoomExtents = useViewportStore((s) => s.requestZoomExtents);
   const home = useViewportStore((s) => s.requestHome);
   const sunActive = style === 'realistic' && sun;
+  const magnet = useUiStore((s) => s.snap.enabled && s.snap.magnet);
+  const setSnap = useUiStore((s) => s.setSnap);
   const persp = projection === 'perspective';
   return (
     <div className="glass vp-bar" role="toolbar" aria-label={t('bar.label')}>
@@ -76,6 +78,16 @@ export function ViewControlBar() {
       >
         <Box size={16} strokeWidth={1.75} />
         <span>{persp ? t('bar.persp') : t('bar.ortho')}</span>
+      </button>
+      <button
+        type="button"
+        className={`vp-bar-btn${magnet ? ' is-on' : ''}`}
+        title={t('bar.magnet')}
+        aria-label={t('bar.magnet')}
+        aria-pressed={magnet}
+        onClick={() => setSnap(magnet ? { magnet: false } : { magnet: true, enabled: true })}
+      >
+        <Magnet size={16} strokeWidth={1.75} />
       </button>
       <span className="vp-bar-sep" />
       <button

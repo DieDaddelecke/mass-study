@@ -219,7 +219,7 @@ function Hedge({ geometry, color }: { geometry: BufferGeometry | null; color: st
 
 // ---------------------------------------------------------------------------
 
-function Instances({
+export function Instances({
   set,
   geometry,
   color,

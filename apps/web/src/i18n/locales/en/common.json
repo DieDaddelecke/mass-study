@@ -54,7 +54,9 @@
     "totalHeight": "Total height",
     "sdb": "SDP",
     "bgf": "Gross floor area",
-    "nuf": "Usable area"
+    "nuf": "Usable area",
+    "espacesVerts": "Green space",
+    "pleineTerre": "Open ground"
   },
   "status": {
     "ok": "Compliant",

@@ -19,6 +19,7 @@ import type { VisualStyle } from '../store/tools';
 import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
 import { OutdoorFields } from './OutdoorFields';
+import { PlantingProperties, RoofFields, TerraceFields } from './MassShapeFields';
 import { TypologyInputs } from './TypologyInputs';
 import { useShellStore } from './shellStore';
 import { Group, NumField, Row, Segmented, TrafficDot } from './ui';
@@ -48,6 +49,7 @@ export function PropertiesPalette() {
   }
   const masses = activeVariant(project).masses.filter((m) => selection.includes(m.id));
   const ctx = project.context.filter((c) => selection.includes(c.id));
+  const zones = (activeVariant(project).plantings ?? []).filter((z) => selection.includes(z.id));
   let body;
   let type: string;
   let title: string;
@@ -59,6 +61,10 @@ export function PropertiesPalette() {
     body = <MultiMassProperties masses={masses} />;
     title = t('props.multi', { count: masses.length });
     type = t('props.title');
+  } else if (zones.length === 1) {
+    body = <PlantingProperties zone={zones[0]!} />;
+    title = zones[0]!.name;
+    type = t('green.title');
   } else if (ctx.length === 1) {
     body = <ContextProperties c={ctx[0]!} />;
     title = t('props.contextBuilding');
@@ -243,6 +249,8 @@ function MassProperties({ mass }: { mass: Mass }) {
         </Row>
       </Group>
       <StoreyFields get={(f) => f(mass.storeys)} update={update} />
+      <TerraceFields mass={mass} update={update} />
+      <RoofFields mass={mass} update={update} />
       <Group title={t('props.group.usage')}>
         <Row label={t('props.usage')}>
           <select

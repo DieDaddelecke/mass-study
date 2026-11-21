@@ -93,7 +93,8 @@
       "array": "Réseau",
       "align": "Aligner",
       "drawSite": "Dessiner la parcelle",
-      "drawContext": "Dessiner un bâtiment"
+      "drawContext": "Dessiner un bâtiment",
+      "drawGreen": "Zone végétale"
     },
     "panel": {
       "site": "Terrain",
@@ -307,7 +308,9 @@
     "empriseMax": "CES maximal",
     "hauteurMax": "Hauteur maximale",
     "clear": "Effacer",
-    "note": "Champs vides = sans objectif. Les valeurs alimentent les voyants de la barre d'indicateurs."
+    "note": "Champs vides = sans objectif. Les valeurs alimentent les voyants de la barre d'indicateurs.",
+    "espacesVertsMin": "Espaces verts min.",
+    "pleineTerreMin": "Pleine terre min."
   },
   "warnings": {
     "none": "Aucun avertissement.",
@@ -326,7 +329,8 @@
     "lightDepth": "Épaisseur de {{masses}} ({{depth}} m) : éclairement naturel critique.",
     "mixPlausibility": "{{masses}} : {{actual}} logements par palier et noyau (attendu {{min}}–{{max}}).",
     "estimatedContextHeights": "Hauteur estimée pour {{count}} bâtiment(s) de contexte.",
-    "unitFacade": "{{count}} logements ne respectent pas les longueurs de façade minimales ({{masses}})."
+    "unitFacade": "{{count}} logements ne respectent pas les longueurs de façade minimales ({{masses}}).",
+    "constraintBelow": "{{key}} sous le minimum : {{actual}} au lieu de {{target}} min."
   },
   "cmd": {
     "undo": "Annuler",
@@ -424,5 +428,61 @@
     "loggiaMinDepth": "Profondeur min. loggia",
     "balconMinDepth": "Profondeur min. balcon",
     "terraceDepth": "Profondeur terrasse RDC"
+  },
+  "roof": {
+    "title": "Toiture",
+    "kind": "Forme",
+    "kinds": {
+      "flat": "Toit-terrasse",
+      "shed": "Monopente",
+      "gable": "Deux pans",
+      "hip": "Quatre pans"
+    },
+    "pitch": "Pente",
+    "slope": "Pente vers",
+    "ridge": "Faîtage",
+    "alongLength": "dans la longueur",
+    "alongDepth": "dans l'épaisseur",
+    "flip": "Inverser la pente",
+    "note": "Les combles ne sont pas comptés en surface de plancher. Hauteur totale = faîtage."
+  },
+  "terrace": {
+    "title": "Gradins",
+    "from": "Dès l'étage",
+    "side": "Côté",
+    "distance": "Retrait",
+    "remove": "Supprimer le gradin",
+    "add": "Ajouter un gradin",
+    "regular": "Gradins réguliers (un retrait de plus par étage)",
+    "step": "Retrait par étage",
+    "generate": "Générer",
+    "sides": {
+      "all": "Tous les côtés",
+      "front": "Avant",
+      "back": "Arrière",
+      "left": "Gauche",
+      "right": "Droite"
+    }
+  },
+  "green": {
+    "title": "Zone végétale",
+    "kind": "Type",
+    "kinds": {
+      "pleineTerre": "Pleine terre",
+      "pelouse": "Pelouse",
+      "arbustes": "Massif arbustif",
+      "boise": "Boisement",
+      "surDalle": "Jardin sur dalle"
+    },
+    "trees": "Arbres",
+    "treeSpacing": "Espacement",
+    "treeHeight": "Hauteur",
+    "treeNote": "Espacement 0 = pas d'arbres. Les arbres sont répartis en quinconce.",
+    "delete": "Supprimer la zone"
+  },
+  "align": {
+    "mode": "Mode",
+    "facade": "Façade",
+    "volume": "Volume entier"
   }
 }

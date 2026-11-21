@@ -2,6 +2,7 @@ import type {
   Constraints,
   ContextBuilding,
   Mass,
+  PlantingZone,
   Project,
   Settings,
   Surroundings,
@@ -87,6 +88,19 @@ export const actions = {
     useProjectStore.getState().update((p) => {
       const v = draftVariant(p);
       v.masses = v.masses.filter((m) => !ids.includes(m.id));
+      if (v.plantings) v.plantings = v.plantings.filter((z) => !ids.includes(z.id));
+    });
+  },
+  addPlanting(z: PlantingZone) {
+    useProjectStore.getState().update((p) => {
+      const v = draftVariant(p);
+      (v.plantings ??= []).push(z);
+    });
+  },
+  updatePlanting(id: string, recipe: (z: Draft<PlantingZone>) => void) {
+    useProjectStore.getState().update((p) => {
+      const z = draftVariant(p).plantings?.find((x) => x.id === id);
+      if (z) recipe(z);
     });
   },
   setContext(buildings: ContextBuilding[]) {

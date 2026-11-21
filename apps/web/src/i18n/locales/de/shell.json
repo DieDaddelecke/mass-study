@@ -93,7 +93,8 @@
       "array": "Reihe",
       "align": "Ausrichten",
       "drawSite": "Flurstück zeichnen",
-      "drawContext": "Gebäude zeichnen"
+      "drawContext": "Gebäude zeichnen",
+      "drawGreen": "Vegetationszone"
     },
     "panel": {
       "site": "Grundstück",
@@ -307,7 +308,9 @@
     "empriseMax": "CES max.",
     "hauteurMax": "Max. Höhe (FR)",
     "clear": "Entfernen",
-    "note": "Leere Felder = keine Vorgabe. Die Werte steuern die Ampeln der Kennzahlenleiste."
+    "note": "Leere Felder = keine Vorgabe. Die Werte steuern die Ampeln der Kennzahlenleiste.",
+    "espacesVertsMin": "Grünflächen min.",
+    "pleineTerreMin": "Unversiegelt min."
   },
   "warnings": {
     "none": "Keine Warnungen.",
@@ -326,7 +329,8 @@
     "lightDepth": "Bautiefe von {{masses}} ({{depth}} m): Belichtung kritisch.",
     "mixPlausibility": "{{masses}}: {{actual}} Wohnungen je Geschoss und Kern (erwartet {{min}}–{{max}}).",
     "estimatedContextHeights": "Höhe von {{count}} Umgebungsgebäude(n) geschätzt.",
-    "unitFacade": "{{count}} Wohnungen erfüllen die Mindest-Fassadenlängen nicht ({{masses}})."
+    "unitFacade": "{{count}} Wohnungen erfüllen die Mindest-Fassadenlängen nicht ({{masses}}).",
+    "constraintBelow": "{{key}} unter dem Minimum: {{actual}} statt min. {{target}}."
   },
   "cmd": {
     "undo": "Rückgängig",
@@ -424,5 +428,61 @@
     "loggiaMinDepth": "Mindesttiefe Loggia",
     "balconMinDepth": "Mindesttiefe Balkon",
     "terraceDepth": "Tiefe EG-Terrasse"
+  },
+  "roof": {
+    "title": "Dach",
+    "kind": "Form",
+    "kinds": {
+      "flat": "Flachdach",
+      "shed": "Pultdach",
+      "gable": "Satteldach",
+      "hip": "Walmdach"
+    },
+    "pitch": "Neigung",
+    "slope": "Gefälle",
+    "ridge": "First",
+    "alongLength": "in Längsrichtung",
+    "alongDepth": "in Querrichtung",
+    "flip": "Gefälle umkehren",
+    "note": "Dachgeschossflächen werden nicht als Geschossfläche gezählt. Gesamthöhe = First."
+  },
+  "terrace": {
+    "title": "Terrassierung",
+    "from": "Ab Geschoss",
+    "side": "Seite",
+    "distance": "Rücksprung",
+    "remove": "Stufe löschen",
+    "add": "Stufe hinzufügen",
+    "regular": "Gleichmäßige Terrassierung (pro Geschoss ein Rücksprung mehr)",
+    "step": "Rücksprung je Geschoss",
+    "generate": "Erzeugen",
+    "sides": {
+      "all": "Alle Seiten",
+      "front": "Vorne",
+      "back": "Hinten",
+      "left": "Links",
+      "right": "Rechts"
+    }
+  },
+  "green": {
+    "title": "Vegetationszone",
+    "kind": "Art",
+    "kinds": {
+      "pleineTerre": "Unversiegelt (pleine terre)",
+      "pelouse": "Rasen",
+      "arbustes": "Strauchpflanzung",
+      "boise": "Baumbestand",
+      "surDalle": "Garten auf Decke"
+    },
+    "trees": "Bäume",
+    "treeSpacing": "Abstand",
+    "treeHeight": "Höhe",
+    "treeNote": "Abstand 0 = keine Bäume. Die Bäume werden versetzt verteilt.",
+    "delete": "Zone löschen"
+  },
+  "align": {
+    "mode": "Modus",
+    "facade": "Fassade",
+    "volume": "Ganzes Volumen"
   }
 }

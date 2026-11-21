@@ -32,6 +32,16 @@
     "array": {
       "first": "Array: click the base point",
       "second": "Click the point defining the spacing"
+    },
+    "green": {
+      "first": "Vegetation zone: click the first point of the outline"
+    },
+    "align": {
+      "first": "Align: click the reference (façade, site boundary, building, zone)",
+      "facade": "Click the façade to align (Shift+click: move the whole volume)",
+      "volume": "Click the façade of the volume to align",
+      "impossible": "This façade cannot be aligned (staggered sections) — use a parallel reference or the whole volume"
     }
-  }
+  },
+  "greenPrefix": "Green"
 }

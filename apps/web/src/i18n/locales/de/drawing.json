@@ -74,5 +74,6 @@
     "outdoor": "Außenbereich (Balkon, Loggia, Terrasse)",
     "outdoorFail": "{{count}} Außenbereich(e) unter dem Minimum (4 m², Tiefe) oder nicht am Wohnraum",
     "outdoorNone": "{{count}} Wohnung(en) ohne Außenbereich"
-  }
+  },
+  "ridge": "First"
 }

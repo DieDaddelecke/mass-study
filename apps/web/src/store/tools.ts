@@ -1,4 +1,4 @@
-import type { TemplateId, Typology, TypologyKind, Usage } from '@kubatur/core';
+import type { PlantingKind, TemplateId, Typology, TypologyKind, Usage } from '@kubatur/core';
 
 /**
  * Active tool (Revit-like). The ribbon / shortcuts set it, the options bar edits its parameters,
@@ -19,7 +19,10 @@ export type ToolState =
   | { kind: 'copy' }
   | { kind: 'mirror' }
   | { kind: 'array'; count: number }
-  | { kind: 'align' }
+  /** Align a façade (or the whole volume) on a reference edge. */
+  | { kind: 'align'; mode?: 'facade' | 'volume' }
+  /** Draw a vegetation zone. */
+  | { kind: 'drawGreen'; plantingKind: PlantingKind }
   /** Draw the site boundary in the model (used when no cadastre is available). */
   | { kind: 'drawSite' }
   /** Draw a context building footprint. */
@@ -56,4 +59,6 @@ export interface SnapSettings {
   grid: boolean;
   /** Grid size, m. */
   gridSize: number;
+  /** Magnetic snapping of whole volumes and façades (hold Alt to suspend). */
+  magnet: boolean;
 }

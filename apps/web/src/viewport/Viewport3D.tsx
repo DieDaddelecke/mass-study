@@ -114,6 +114,7 @@ export function Viewport3D() {
         <SceneContent
           project={project}
           solids={solids}
+          roofs={analysis?.result.roofs}
           style={style}
           shadows={shadows}
           layouts={layouts}

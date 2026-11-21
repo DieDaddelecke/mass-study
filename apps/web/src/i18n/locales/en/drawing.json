@@ -74,5 +74,6 @@
     "outdoor": "Outdoor space (balcony, loggia, terrace)",
     "outdoorFail": "{{count}} outdoor space(s) below the minimum (4 m², depth) or away from the living room",
     "outdoorNone": "{{count}} dwelling(s) without outdoor space"
-  }
+  },
+  "ridge": "ridge"
 }

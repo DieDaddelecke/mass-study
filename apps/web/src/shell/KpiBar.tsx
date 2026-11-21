@@ -71,6 +71,15 @@ export function KpiBar() {
         value: `${n(fr.surfaceHabitable, 0)} m²`,
       },
     ];
+    const g = analysis.green;
+    if (g.espacesVerts > 0 || row('pleineTerre')?.target !== undefined)
+      kpis.push({
+        key: 'pleineTerre',
+        label: t('common:kpi.pleineTerre'),
+        value: `${n(g.pleineTerreRatio * 100, 0)} %`,
+        ...st('pleineTerre'),
+        title: `${t('common:kpi.pleineTerre')} ${n(g.pleineTerre, 0)} m² · ${t('common:kpi.espacesVerts')} ${n(g.espacesVerts, 0)} m² (${n(g.espacesVertsRatio * 100, 0)} %)`,
+      });
   } else {
     const de = analysis.de;
     kpis = [

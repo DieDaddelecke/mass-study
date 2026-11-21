@@ -33,7 +33,8 @@
     "isolate": "Isolate / hide",
     "soon": "coming soon",
     "persp": "Perspective",
-    "ortho": "Ortho"
+    "ortho": "Ortho",
+    "magnet": "Magnetic snapping (hold Alt: off)"
   },
   "legend": {
     "title": "Uses",

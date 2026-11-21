@@ -65,7 +65,10 @@ export function DrawingView({ view }: { view: DrawingViewId }) {
         ? typicalStorey(layouts)
         : 0;
 
-  const texts = useMemo(() => ({ parapet: t('parapet'), datum: t('datum') }), [t]);
+  const texts = useMemo(
+    () => ({ parapet: t('parapet'), ridge: t('ridge'), datum: t('datum') }),
+    [t],
+  );
   const model = useMemo(() => {
     if (!project || !analysis) return null;
     try {

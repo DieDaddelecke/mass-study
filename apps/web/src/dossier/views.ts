@@ -96,6 +96,7 @@ function model(
     // Neighbours widen elevations/sections to the whole context area (→ 1:2000 on A3); site plan only.
     neighbours: id === 'site',
     masses: input.masses,
+    roofs: input.roofs,
     levels: input.levels,
     ...(opts.texts ? { texts: opts.texts } : {}),
   };

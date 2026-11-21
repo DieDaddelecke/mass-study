@@ -40,6 +40,7 @@ export function buildDrawing(
     scheme: s.scheme,
     neighbours: s.neighbours,
     masses: input.masses,
+    roofs: input.roofs,
     levels: input.levels,
     ...(s.texts ? { texts: s.texts } : {}),
   };

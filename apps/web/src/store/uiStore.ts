@@ -49,6 +49,7 @@ export const useUiStore = create<UiState>()((set) => ({
     angleStep: 15,
     grid: true,
     gridSize: 0.5,
+    magnet: true,
   },
   hint: '',
   cursor: null,

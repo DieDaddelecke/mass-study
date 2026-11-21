@@ -32,6 +32,16 @@
     "array": {
       "first": "Réseau : cliquez le point de base",
       "second": "Cliquez le point définissant l'espacement"
+    },
+    "green": {
+      "first": "Zone végétale : cliquez le premier point du contour"
+    },
+    "align": {
+      "first": "Aligner : cliquez la référence (façade, limite de parcelle, bâtiment, zone)",
+      "facade": "Cliquez la façade à aligner (Maj+clic : déplacer le volume entier)",
+      "volume": "Cliquez la façade du volume à aligner",
+      "impossible": "Cette façade ne peut pas être alignée (sections décalées) — utilisez une référence parallèle ou le volume entier"
     }
-  }
+  },
+  "greenPrefix": "Espace vert"
 }

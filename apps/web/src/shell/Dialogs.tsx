@@ -343,6 +343,8 @@ function ConstraintsDialog({ project }: { project: Project }) {
       <h3>{t('rules.fr')}</h3>
       {field('empriseMax', t('rules.empriseMax'), { factor: 100, suffix: '%' })}
       {field('hauteurMax', t('rules.hauteurMax'), { suffix: 'm' })}
+      {field('espacesVertsMin', t('rules.espacesVertsMin'), { factor: 100, suffix: '%' })}
+      {field('pleineTerreMin', t('rules.pleineTerreMin'), { factor: 100, suffix: '%' })}
       {de && (
         <>
           <h3>{t('rules.de')}</h3>
@@ -363,6 +365,7 @@ export const WARNING_CODES: WarningCode[] = [
   'outsideSite',
   'outsideBuildable',
   'constraintExceeded',
+  'constraintBelow',
   'depthOutOfRange',
   'lightDepth',
   'mixPlausibility',
@@ -378,7 +381,10 @@ export function warningMessage(w: ModelWarning, names: Record<string, string>): 
     const integer = ['count', 'min', 'max'].includes(k) || w.code === 'mixPlausibility';
     data[k] = typeof v === 'number' ? formatNumber(v, integer ? 0 : 2, lng) : v;
   }
-  if (w.code === 'constraintExceeded' && typeof w.data?.key === 'string')
+  if (
+    (w.code === 'constraintExceeded' || w.code === 'constraintBelow') &&
+    typeof w.data?.key === 'string'
+  )
     data.key = i18n.t(`common:kpi.${w.data.key}`);
   data.masses = w.massIds.map((id) => names[id] ?? id).join(', ');
   return i18n.t(`shell:warnings.${w.code}`, data);
