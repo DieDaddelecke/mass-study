@@ -8,6 +8,7 @@ import {
   union,
   type LayoutArea,
   type LayoutRoom,
+  type OutdoorType,
   type RoomKind,
   type MassLayout,
   type Polygon,
@@ -41,6 +42,9 @@ export const FLOOR_PLAN_COLORS = {
   wall: '#2a2a2a',
   /** Façade pieces of the dwellings (subtle). */
   facade: '#5b8fc7',
+  /** Outdoor spaces (balcons, loggias, terrasses). */
+  outdoor: '#f4f3ef',
+  outdoorLine: '#6b6862',
   /** Dwellings below the minimum façade length. */
   facadeFail: '#d0342c',
 };
@@ -71,6 +75,13 @@ export const ROOM_LABELS: Record<RoomKind, string> = {
   chambre: 'ch.',
 };
 
+/** Short outdoor space labels (French plan convention). */
+export const OUTDOOR_LABELS: Record<OutdoorType, string> = {
+  balcon: 'bal.',
+  loggia: 'log.',
+  terrasse: 'terr.',
+};
+
 /** Colour of a unit type (by its position in the mix). */
 export function unitColor(typeId: string, mix: readonly UnitType[]): string {
   const i = mix.findIndex((t) => t.id === typeId);
@@ -90,6 +101,10 @@ export interface FloorPlanOptions extends CommonOptions {
   rooms?: boolean;
   /** Short room labels inside the rectangles, default true. */
   roomLabels?: boolean;
+  /** Outdoor spaces (balcons, loggias, terrasses), default true. */
+  outdoor?: boolean;
+  /** Outdoor space names (default: French short labels). */
+  outdoorText?: (kind: OutdoorType) => string;
   /** Room names for tooltips and labels (default: French short labels). */
   roomText?: (kind: RoomKind) => string;
 }
@@ -355,6 +370,33 @@ export function floorPlan(
         });
       }
   }
+  // outdoor spaces: balconies and terraces outside the outline, loggias cut into the dwelling
+  if (opts.outdoor !== false)
+    for (const st of storeys)
+      for (const u of st.units) {
+        const o = u.outdoor;
+        if (!o) continue;
+        const name = (opts.outdoorText ?? ((k: OutdoorType) => OUTDOOR_LABELS[k]))(o.kind);
+        items.push({
+          kind: 'fill',
+          rings: rings(o.polygon),
+          fill: FLOOR_PLAN_COLORS.outdoor,
+          pen: 2,
+          stroke: o.ok ? FLOOR_PLAN_COLORS.outdoorLine : FLOOR_PLAN_COLORS.facadeFail,
+          title: `${u.label} · ${name} · ${fmtArea(o.area)} · ${fmtM(o.depth)}${o.ok ? '' : ' !'}`,
+          hatch: { angle: 45, spacingMm: 1.6, pen: 1, color: '#c9c5bb' },
+        });
+        if (opts.labels !== false && opts.roomLabels !== false && o.area >= 3)
+          labels.push({
+            kind: 'text',
+            at: labelPoint(o.polygon),
+            text: name,
+            sizeMm: 1.3,
+            anchor: 'middle',
+            baseline: 'middle',
+            color: o.ok ? '#4a4843' : FLOOR_PLAN_COLORS.facadeFail,
+          });
+      }
   // footprint outline of this storey (pen 5)
   for (const p of here) for (const r of rings(p)) items.push(line(r, 5, 'solid', COLORS.ink, true));
   // façade pieces of each dwelling: a band just inside the outline (so the black wall line

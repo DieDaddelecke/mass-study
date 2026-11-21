@@ -76,16 +76,16 @@ export function Viewport3D() {
   const sun = useViewportStore((s) => s.sunEnabled);
   const solids = analysis?.result.solids ?? EMPTY;
   const shadows = (style === 'realistic' || style === 'shaded') && sun;
-  // dwelling layouts for the granulometry style: recomputed with every change of the project
+  // dwelling layouts (outdoor spaces, granulometry): recomputed with every change of the project
   const layouts = useMemo(() => {
-    if (style !== 'granulometry' || !project || !analysis) return null;
+    if (!project || !analysis) return null;
     try {
       return massLayouts(analysis.result, project.settings);
     } catch (e) {
       console.error('layout failed', e);
       return null;
     }
-  }, [style, project, analysis]);
+  }, [project, analysis]);
   if (!project) return null;
   const ortho = projection === 'orthographic';
   return (

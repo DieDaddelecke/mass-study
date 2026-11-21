@@ -65,6 +65,14 @@
       "chambre": "Chambre (≥ {{min}} m)"
     },
     "rooms": "Pièces principales",
-    "roomFail": "{{count}} pièce(s) sous la façade minimale (contour rouge)"
+    "roomFail": "{{count}} pièce(s) sous la façade minimale (contour rouge)",
+    "outdoorShort": {
+      "balcon": "bal.",
+      "loggia": "log.",
+      "terrasse": "terr."
+    },
+    "outdoor": "Espace extérieur (balcon, loggia, terrasse)",
+    "outdoorFail": "{{count}} espace(s) extérieur(s) sous le minimum (4 m², profondeur) ou éloigné(s) du séjour",
+    "outdoorNone": "{{count}} logement(s) sans espace extérieur"
   }
 }

@@ -57,6 +57,7 @@ export function buildDrawing(
         facadeText: (f, r) =>
           i18n.t('drawing:fp.facadeTip', { facade: formatNumber(f), min: formatNumber(r) }),
         roomText: (k) => i18n.t(`drawing:fp.roomShort.${k}`),
+        outdoorText: (k) => i18n.t(`drawing:fp.outdoorShort.${k}`),
       });
     }
     case 'elevN':

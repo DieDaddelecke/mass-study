@@ -400,5 +400,29 @@
     "siteArea": "Site area",
     "constraints": "Planning rules",
     "editRules": "Edit rules…"
+  },
+  "outdoor": {
+    "title": "Outdoor spaces",
+    "all": "All façades",
+    "depth": "Depth",
+    "inherit": "Same as all",
+    "groundTerrace": "Ground-floor terraces",
+    "note": "In front of the living room, else next to it. Min. {{area}} m², depth loggia ≥ {{loggia}} m, balcony ≥ {{balcon}} m.",
+    "kind": {
+      "none": "None",
+      "balcon": "Balcony",
+      "loggia": "Loggia"
+    },
+    "side": {
+      "N": "North façade",
+      "E": "East façade",
+      "S": "South façade",
+      "W": "West façade"
+    },
+    "rules": "Outdoor spaces (minimums)",
+    "minArea": "Minimum area",
+    "loggiaMinDepth": "Min. loggia depth",
+    "balconMinDepth": "Min. balcony depth",
+    "terraceDepth": "Ground terrace depth"
   }
 }

@@ -18,6 +18,7 @@ import { actions, activeVariant, useProjectStore } from '../store/projectStore';
 import type { VisualStyle } from '../store/tools';
 import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
+import { OutdoorFields } from './OutdoorFields';
 import { TypologyInputs } from './TypologyInputs';
 import { useShellStore } from './shellStore';
 import { Group, NumField, Row, Segmented, TrafficDot } from './ui';
@@ -314,6 +315,9 @@ function MassProperties({ mass }: { mass: Mass }) {
           </select>
         </Row>
       </Group>
+      {(mass.usage ?? 'wohnen') === 'wohnen' && (
+        <OutdoorFields mass={mass} settings={project.settings} update={update} />
+      )}
       {res && (
         <Group title={t('props.group.results')}>
           <Row label={t('common:kpi.emprise')}>

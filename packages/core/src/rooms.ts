@@ -39,6 +39,8 @@ interface Run {
   depth: number;
   used: number;
   rooms: { i: number; width: number }[];
+  /** Preference of this piece for the séjour (e.g. outer façade with a balcony). */
+  pref: number;
 }
 
 /** Preferred façade widths (grown up to these when the façade allows), m. */
@@ -79,7 +81,7 @@ function makeRun(unit: Polygon, [a, b]: Seg): Run | undefined {
       if (t < -0.05 || t > len + 0.05) continue;
       depth = Math.max(depth, (p[0] - a[0]) * n[0] + (p[1] - a[1]) * n[1]);
     }
-  return { o: a, u, n, length: len, depth, used: 0, rooms: [] };
+  return { o: a, u, n, length: len, depth, used: 0, rooms: [], pref: 0 };
 }
 
 const at = (r: Run, s: number, t: number): Vec2 => [
@@ -124,10 +126,16 @@ export function unitRoomLayout(
   facadeSegments: readonly Seg[],
   rooms: number,
   rules: UnitRules,
+  /** Preference of a façade piece for the séjour (higher first), e.g. where a balcony goes. */
+  preferSejour?: (seg: Seg) => number,
 ): LayoutRoom[] {
   const wall = rules.interiorWall;
   const runs = facadeSegments
-    .map((s) => makeRun(unit, s))
+    .map((s) => {
+      const r = makeRun(unit, s);
+      if (r && preferSejour) r.pref = preferSejour(s);
+      return r;
+    })
     .filter((r): r is Run => !!r && r.depth > 1.5)
     .sort((a, b) => b.length - a.length);
   if (!runs.length) return [];
@@ -138,7 +146,9 @@ export function unitRoomLayout(
   const placed: { i: number; run: Run }[] = [];
   program.forEach((room, i) => {
     const fits = runs.filter((r) => free(r) >= room.min - 1e-6);
-    const run = (fits.length ? fits : runs).reduce((x, y) => (free(y) > free(x) ? y : x));
+    const better = (x: Run, y: Run) =>
+      i === 0 && y.pref !== x.pref ? y.pref > x.pref : free(y) > free(x);
+    const run = (fits.length ? fits : runs).reduce((x, y) => (better(x, y) ? y : x));
     const w = Math.min(room.min, free(run));
     if (w < MIN_RUN) return;
     run.used += w + (run.rooms.length ? wall : 0);

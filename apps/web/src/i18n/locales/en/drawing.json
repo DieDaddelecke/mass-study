@@ -65,6 +65,14 @@
       "chambre": "Bedroom (≥ {{min}} m)"
     },
     "rooms": "Main rooms",
-    "roomFail": "{{count}} room(s) below the minimum façade (red outline)"
+    "roomFail": "{{count}} room(s) below the minimum façade (red outline)",
+    "outdoorShort": {
+      "balcon": "balc.",
+      "loggia": "logg.",
+      "terrasse": "terr."
+    },
+    "outdoor": "Outdoor space (balcony, loggia, terrace)",
+    "outdoorFail": "{{count}} outdoor space(s) below the minimum (4 m², depth) or away from the living room",
+    "outdoorNone": "{{count}} dwelling(s) without outdoor space"
   }
 }

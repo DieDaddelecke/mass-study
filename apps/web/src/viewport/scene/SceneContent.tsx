@@ -1,4 +1,12 @@
-import type { ContextBuilding, MassLayout, Project, SolidResult } from '@kubatur/core';
+import {
+  difference,
+  type ContextBuilding,
+  type MassLayout,
+  type Polygon,
+  type Project,
+  type SolidResult,
+} from '@kubatur/core';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import { BufferGeometry, DoubleSide, LineDashedMaterial, LineSegments, Material } from 'three';
@@ -12,7 +20,7 @@ import { COLORS, usageColor } from './colors';
 import { useLayers } from './sceneLayers';
 import { Surroundings, Z } from './Surroundings';
 import { FatSegments } from './FatSegments';
-import { buildGranulometry, storeyKey } from './granulometry';
+import { buildGranulometry, buildOutdoor, storeyKey, type OutdoorScene } from './granulometry';
 import {
   contextRange,
   buildContextGeometry,
@@ -30,7 +38,7 @@ interface Props {
   solids: readonly SolidResult[];
   style: VisualStyle;
   shadows: boolean;
-  /** Dwelling layouts (granulometry style only). */
+  /** Dwelling layouts (outdoor spaces; dwellings in the granulometry style). */
   layouts?: readonly MassLayout[] | null;
 }
 
@@ -237,10 +245,20 @@ interface MassEdges {
   thin: number[];
 }
 
+/** Prisms of several polygons as one geometry. */
+function extrudeAll(polys: readonly Polygon[], z0: number, z1: number): BufferGeometry | null {
+  const gs = polys.map((p) => extrudePolygon(p, z0, z1)).filter((g): g is BufferGeometry => !!g);
+  if (gs.length <= 1) return gs[0] ?? null;
+  const out = mergeGeometries(gs, false);
+  for (const g of gs) g.dispose();
+  return out;
+}
+
 function buildMasses(
   project: Project,
   solids: readonly SolidResult[],
   covered: ReadonlySet<string> = new Set(),
+  cuts: ReadonlyMap<string, Polygon[]> = new Map(),
 ) {
   const parapetOf = new Map(activeVariant(project).masses.map((m) => [m.id, m.storeys.parapet]));
   const out: MassSolidGeo[] = [];
@@ -257,7 +275,9 @@ function buildMasses(
   }
   for (const { solid: s } of solids) {
     const z1 = zTop(s);
-    const g = extrudePolygon(s.footprint, s.z0, z1);
+    const cut = cuts.get(storeyKey(s));
+    const polys = cut ? difference([s.footprint], cut) : [s.footprint];
+    const g = extrudeAll(polys, s.z0, z1);
     if (!g) continue;
     const face = covered.has(storeyKey(s))
       ? z1 > s.z1
@@ -270,7 +290,14 @@ function buildMasses(
     const f = footprintKey(s.footprint);
     const coveredBelow = tops.has(k(s.massId, s.z0, f));
     const coveredAbove = bottoms.has(k(s.massId, z1, f));
-    prismEdges(s.footprint, s.z0, z1, { bottom: !coveredBelow, top: !coveredAbove }, e.thick);
+    for (const p of polys)
+      prismEdges(
+        p,
+        s.z0,
+        z1,
+        { bottom: !coveredBelow || !!cut, top: !coveredAbove || !!cut },
+        e.thick,
+      );
     if (coveredBelow) prismEdges(s.footprint, s.z0, z1, { top: false, vertical: false }, e.thin);
     if (s.top && z1 > s.z1)
       prismEdges(s.footprint, s.z1, s.z1, { top: false, vertical: false }, e.thin);
@@ -291,9 +318,17 @@ function Masses({ project, solids, style, shadows, pal, layouts }: Props & { pal
     [style, layouts, solids, project.settings.unitMix],
   );
   useEffect(() => () => granulo?.masses.forEach((m) => m.geometry.dispose()), [granulo]);
+  const outdoor = useMemo(() => (layouts ? buildOutdoor(layouts) : null), [layouts]);
+  useEffect(
+    () => () => {
+      outdoor?.slabs?.dispose();
+      outdoor?.rails?.dispose();
+    },
+    [outdoor],
+  );
   const built = useMemo(
-    () => buildMasses(project, solids, granulo?.covered),
-    [project, solids, granulo],
+    () => buildMasses(project, solids, granulo?.covered, outdoor?.loggias),
+    [project, solids, granulo, outdoor],
   );
   useEffect(
     () => () =>
@@ -366,6 +401,9 @@ function Masses({ project, solids, style, shadows, pal, layouts }: Props & { pal
           <ThinLines segments={g.edges} color={pal.contextEdge} />
         </group>
       ))}
+      {outdoor && style !== 'wireframe' && (
+        <OutdoorMeshes o={outdoor} style={style} shadows={shadows} pal={pal} />
+      )}
       {[...built.edges].map(([id, e]) => {
         const hot = hover === id || selection.includes(id);
         return (
@@ -379,6 +417,40 @@ function Masses({ project, solids, style, shadows, pal, layouts }: Props & { pal
           </group>
         );
       })}
+    </group>
+  );
+}
+
+function OutdoorMeshes({
+  o,
+  style,
+  shadows,
+  pal,
+}: {
+  o: OutdoorScene;
+  style: VisualStyle;
+  shadows: boolean;
+  pal: ScenePalette;
+}) {
+  return (
+    <group>
+      {o.slabs && (
+        <mesh geometry={o.slabs} castShadow={shadows} receiveShadow={shadows} raycast={() => null}>
+          <FaceMaterial style={style} color={pal.mass} />
+        </mesh>
+      )}
+      {o.rails && (
+        <mesh geometry={o.rails} raycast={() => null} renderOrder={3}>
+          <meshBasicMaterial
+            color="#9fb4c4"
+            transparent
+            opacity={0.22}
+            depthWrite={false}
+            side={DoubleSide}
+          />
+        </mesh>
+      )}
+      <ThinLines segments={o.edges} color={pal.massEdge} />
     </group>
   );
 }

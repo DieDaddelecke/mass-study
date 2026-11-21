@@ -117,6 +117,38 @@ export interface Mass {
   usage?: Usage;
   usageByStorey?: Record<number, Usage>;
   access?: AccessType | 'auto';
+  /** Outdoor spaces of the dwellings (balcons, loggias, terrasses); default: settings. */
+  outdoor?: OutdoorConfig;
+}
+
+export type OutdoorKind = 'none' | 'balcon' | 'loggia';
+/** Façade orientation (outward normal). */
+export type FacadeSide = 'N' | 'E' | 'S' | 'W';
+
+export interface OutdoorSideConfig {
+  kind: OutdoorKind;
+  /** Depth, m (raised to the minimum of the kind). */
+  depth: number;
+}
+
+/** Outdoor spaces of a building: for all façades, optionally per side. */
+export interface OutdoorConfig extends OutdoorSideConfig {
+  /** Ground-floor dwellings get a terrace (outside the footprint) instead. */
+  groundTerrace: boolean;
+  /** Per-side overrides (orientation of the façade). */
+  sides?: Partial<Record<FacadeSide, OutdoorSideConfig>>;
+}
+
+/** Office minimums of outdoor spaces. */
+export interface OutdoorRules {
+  /** Minimum area, m² (4). */
+  minArea: number;
+  /** Minimum depth of a loggia, m (1.80). */
+  loggiaMinDepth: number;
+  /** Minimum depth of a balcony, m (1.40). */
+  balconMinDepth: number;
+  /** Depth of ground-floor terraces, m (3.00). */
+  terraceDepth: number;
 }
 
 /** Central derived structure. 3D, areas, drawings, IFC and Archicad are generated from it. */
@@ -341,6 +373,9 @@ export interface Settings {
   unitMix: UnitType[];
   /** Office façade rules for dwellings (defaults when missing). */
   unitRules?: UnitRules;
+  /** Outdoor spaces: minimums and the default configuration of new buildings. */
+  outdoorRules?: OutdoorRules;
+  outdoor?: OutdoorConfig;
   workplaceArea: number;
   parking: {
     perDwelling: number;

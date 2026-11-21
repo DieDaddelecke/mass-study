@@ -62,7 +62,9 @@ describe('floorPlan', () => {
         expect(fills.some((f) => f.kind === 'fill' && f.fill === serviceColor(c))).toBe(true);
       const texts = model.items.filter((i) => i.kind === 'text');
       const roomLabels = st.units.flatMap((u) => u.rooms).filter((r) => r.area >= 7).length;
-      expect(texts.length).toBe(st.units.length * 2 + roomLabels);
+      const outdoorLabels = st.units.filter((u) => u.outdoor && u.outdoor.area >= 3).length;
+      expect(outdoorLabels).toBe(st.units.length);
+      expect(texts.length).toBe(st.units.length * 2 + roomLabels + outdoorLabels);
       // rooms as rectangles in a darker tint of the dwelling colour
       const rooms = st.units.flatMap((u) =>
         u.rooms.map((r) => roomColor(unitColor(u.typeId, p.settings.unitMix), r.kind)),
@@ -70,7 +72,7 @@ describe('floorPlan', () => {
       expect(rooms.length).toBeGreaterThanOrEqual(st.units.length);
       for (const c of rooms)
         expect(fills.some((f) => f.kind === 'fill' && f.fill === c)).toBe(true);
-      const plain = floorPlan(p, solids, 1, layouts, { rooms: false });
+      const plain = floorPlan(p, solids, 1, layouts, { rooms: false, outdoor: false });
       expect(plain.items.filter((i) => i.kind === 'text')).toHaveLength(st.units.length * 2);
       const scale = chooseScale(model, 380, 250, [200, 250, 500]);
       const svg = renderSvg(model, { scale });

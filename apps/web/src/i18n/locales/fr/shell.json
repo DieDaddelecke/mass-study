@@ -400,5 +400,29 @@
     "siteArea": "Surface du terrain",
     "constraints": "Règles d'urbanisme",
     "editRules": "Modifier les règles…"
+  },
+  "outdoor": {
+    "title": "Espaces extérieurs",
+    "all": "Toutes les façades",
+    "depth": "Profondeur",
+    "inherit": "Comme toutes",
+    "groundTerrace": "Terrasses au RDC",
+    "note": "Devant le séjour, sinon accolé. Min. {{area}} m², profondeur loggia ≥ {{loggia}} m, balcon ≥ {{balcon}} m.",
+    "kind": {
+      "none": "Aucun",
+      "balcon": "Balcon",
+      "loggia": "Loggia"
+    },
+    "side": {
+      "N": "Façade nord",
+      "E": "Façade est",
+      "S": "Façade sud",
+      "W": "Façade ouest"
+    },
+    "rules": "Espaces extérieurs (minimums)",
+    "minArea": "Surface min.",
+    "loggiaMinDepth": "Profondeur min. loggia",
+    "balconMinDepth": "Profondeur min. balcon",
+    "terraceDepth": "Profondeur terrasse RDC"
   }
 }

@@ -65,6 +65,14 @@
       "chambre": "Zimmer (≥ {{min}} m)"
     },
     "rooms": "Wohnräume",
-    "roomFail": "{{count}} Raum/Räume unter der Mindestfassade (roter Rand)"
+    "roomFail": "{{count}} Raum/Räume unter der Mindestfassade (roter Rand)",
+    "outdoorShort": {
+      "balcon": "Balk.",
+      "loggia": "Logg.",
+      "terrasse": "Terr."
+    },
+    "outdoor": "Außenbereich (Balkon, Loggia, Terrasse)",
+    "outdoorFail": "{{count}} Außenbereich(e) unter dem Minimum (4 m², Tiefe) oder nicht am Wohnraum",
+    "outdoorNone": "{{count}} Wohnung(en) ohne Außenbereich"
   }
 }

@@ -15,3 +15,4 @@ export * from './schedules.js';
 export * from './layout.js';
 export * from './unitRules.js';
 export * from './rooms.js';
+export * from './outdoor.js';

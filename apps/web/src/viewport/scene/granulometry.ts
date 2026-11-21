@@ -1,4 +1,10 @@
-import type { MassLayout, Polygon, StoreySolid, UnitType } from '@kubatur/core';
+import {
+  difference,
+  type MassLayout,
+  type Polygon,
+  type StoreySolid,
+  type UnitType,
+} from '@kubatur/core';
 import { unitColor } from '@kubatur/drawing';
 import { BufferGeometry, Color, Float32BufferAttribute } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -76,7 +82,11 @@ export function buildGranulometry(
         if (g) parts.push(g);
         if (outline) prismEdges(p, st.z0, z1, { bottom: false }, edges);
       };
-      for (const u of st.units) add(u.polygon, unitColor(u.typeId, mix), true);
+      for (const u of st.units) {
+        const parts =
+          u.outdoor?.kind === 'loggia' ? difference([u.polygon], [u.outdoor.polygon]) : [u.polygon];
+        for (const p of parts) add(p, unitColor(u.typeId, mix), true);
+      }
       for (const c of st.cores) add(c.polygon, GRANULO_COLORS.core, true);
       for (const c of st.circulation) add(c.polygon, GRANULO_COLORS.circulation, false);
       for (const o of st.open) add(o.polygon, GRANULO_COLORS.circulation, false);
@@ -90,4 +100,63 @@ export function buildGranulometry(
     if (geometry) masses.push({ massId: m.massId, geometry, edges });
   }
   return { masses, covered };
+}
+
+// ---------------------------------------------------------------------------
+// Outdoor spaces (all styles)
+
+export interface OutdoorScene {
+  /** Balcony slabs and terraces. */
+  slabs: BufferGeometry | null;
+  /** Balcony railings (glass), translucent. */
+  rails: BufferGeometry | null;
+  /** Top edge of the railings and slab outlines, flat xyz pairs. */
+  edges: number[];
+  /** Loggias cut out of the storey volumes, per `massId#storeyIndex`. */
+  loggias: Map<string, Polygon[]>;
+}
+
+const SLAB = 0.2;
+const RAIL = 1.05;
+
+/** Balconies (slab + railing), terraces (paving) and loggias (cut-outs) of all dwellings. */
+export function buildOutdoor(layouts: readonly MassLayout[]): OutdoorScene {
+  const slabs: BufferGeometry[] = [];
+  const rails: BufferGeometry[] = [];
+  const edges: number[] = [];
+  const loggias = new Map<string, Polygon[]>();
+  for (const m of layouts)
+    for (const st of m.storeys)
+      for (const u of st.units) {
+        const o = u.outdoor;
+        if (!o) continue;
+        const z = st.z0;
+        if (o.kind === 'loggia') {
+          const k = `${m.massId}#${st.storeyIndex}`;
+          loggias.set(k, [...(loggias.get(k) ?? []), o.polygon]);
+          continue;
+        }
+        if (o.kind === 'terrasse') {
+          const g = extrudePolygon(o.polygon, z, z + 0.06);
+          if (g) slabs.push(g);
+          prismEdges(o.polygon, z + 0.06, z + 0.06, { bottom: false, vertical: false }, edges);
+          continue;
+        }
+        const g = extrudePolygon(o.polygon, z - SLAB, z);
+        if (g) slabs.push(g);
+        const r = extrudePolygon(o.polygon, z, z + RAIL);
+        if (r) rails.push(r);
+        prismEdges(o.polygon, z - SLAB, z + RAIL, { vertical: false }, edges);
+        prismEdges(o.polygon, z, z, { top: false, vertical: false }, edges);
+      }
+  const merge = (gs: BufferGeometry[]) => {
+    if (!gs.length) return null;
+    const out = mergeGeometries(
+      gs.map((g) => (g.index ? g.toNonIndexed() : g)),
+      false,
+    );
+    for (const g of gs) g.dispose();
+    return out;
+  };
+  return { slabs: merge(slabs), rails: merge(rails), edges, loggias };
 }

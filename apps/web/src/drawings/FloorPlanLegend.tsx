@@ -50,6 +50,11 @@ export function FloorPlanLegend({
     chambrePmr: rules.pmrBedroomMinFacade,
     chambre: rules.bedroomMinFacade,
   };
+  const units = here.flatMap(({ s }) => s.units);
+  const outdoor = units.filter((u) => u.outdoor);
+  const outdoorFail = outdoor.filter((u) => !u.outdoor!.ok).length;
+  const outdoorNone = units.length - outdoor.length;
+  const outdoorArea = outdoor.reduce((a, u) => a + u.outdoor!.area, 0);
   const neutral = unitColor(mix[0]?.id ?? '', mix);
   const hasOpen = here.some(({ s }) => s.open.length > 0);
   const differs = layouts.filter(
@@ -132,6 +137,18 @@ export function FloorPlanLegend({
           />
           {t('fp.facadeMark')}
         </li>
+        {outdoor.length > 0 && (
+          <li>
+            <span
+              className="dv-legend-sw"
+              style={{
+                background: FLOOR_PLAN_COLORS.outdoor,
+                outline: `1px solid ${FLOOR_PLAN_COLORS.outdoorLine}`,
+              }}
+            />
+            {t('fp.outdoor')} · {fmt(outdoorArea)} m²
+          </li>
+        )}
         {hasOpen && (
           <li>
             <span className="dv-legend-sw" style={{ background: FLOOR_PLAN_COLORS.open }} />
@@ -148,6 +165,14 @@ export function FloorPlanLegend({
       )}
       {roomFail > 0 && (
         <p className="dv-legend-note dv-legend-warn">{t('fp.roomFail', { count: roomFail })}</p>
+      )}
+      {outdoorFail > 0 && (
+        <p className="dv-legend-note dv-legend-warn">
+          {t('fp.outdoorFail', { count: outdoorFail })}
+        </p>
+      )}
+      {outdoorNone > 0 && outdoor.length > 0 && (
+        <p className="dv-legend-note">{t('fp.outdoorNone', { count: outdoorNone })}</p>
       )}
       {outOfRange && <p className="dv-legend-note">{t('fp.outOfRange')}</p>}
       {differs.map((m) => (
