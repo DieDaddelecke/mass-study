@@ -1,1 +1,317 @@
-{}
+{
+  "app": {
+    "title": "Kubatur – Massenstudien"
+  },
+  "qat": {
+    "save": "Speichern (Strg+S)",
+    "undo": "Rückgängig (Strg+Z)",
+    "redo": "Wiederholen (Strg+Y)"
+  },
+  "tabs": {
+    "file": "Datei",
+    "site": "Grundstück",
+    "volume": "Volumen",
+    "modify": "Ändern",
+    "view": "Ansicht",
+    "analysis": "Analyse",
+    "output": "Ausgabe",
+    "archicad": "Archicad",
+    "context": "Ändern | Baukörper"
+  },
+  "backstage": {
+    "back": "Zurück"
+  },
+  "file": {
+    "new": "Neu",
+    "open": "Öffnen…",
+    "save": "Speichern",
+    "saveAs": "Speichern unter…",
+    "saveAsPrompt": "Dateiname",
+    "export": "Exportieren",
+    "exportFormat": {
+      "ifc": "IFC",
+      "xlsx": "Tabelle XLSX",
+      "csv": "CSV",
+      "pdf": "PDF",
+      "dxf": "DXF"
+    },
+    "projectInfo": "Projektinformationen",
+    "settings": "Einstellungen",
+    "close": "Projekt schließen"
+  },
+  "info": {
+    "name": "Projektname",
+    "address": "Adresse",
+    "client": "Bauherr",
+    "author": "Verfasser",
+    "office": "Büro",
+    "date": "Datum",
+    "revision": "Revision",
+    "phase": "Leistungsphase",
+    "crs": "Koordinatensystem",
+    "saved": "Projekt gespeichert",
+    "contextLoaded": "{{count}} Umgebungsgebäude geladen"
+  },
+  "errors": {
+    "openFile": "Datei kann nicht geöffnet werden: {{message}}",
+    "context": "Umgebung konnte nicht geladen werden: {{message}}",
+    "autosave": "Automatisches Speichern fehlgeschlagen"
+  },
+  "ribbon": {
+    "noProject": "Kein Projekt geöffnet",
+    "newSite": "Neues Grundstück",
+    "drawSite": "Flurstück zeichnen",
+    "importSite": "Importieren",
+    "reloadContext": "Umgebung neu laden",
+    "contextRadius": "Umgebungsradius",
+    "drawContext": "Gebäude zeichnen",
+    "loading": "Wird geladen…",
+    "constraints": "Baurechtliche Vorgaben",
+    "buildable": "Baufenster",
+    "buildingLines": "Baulinien / Baugrenzen",
+    "variants": "Varianten",
+    "selectFirst": "Zuerst einen Baukörper wählen",
+    "selected": "{{count}} Element(e) ausgewählt",
+    "zoomExtents": "Zoom Grenzen",
+    "areaTable": "Flächenaufstellung",
+    "kpis": "Kennzahlen",
+    "unitMix": "Wohnungsmix",
+    "variantCompare": "Variantenvergleich",
+    "warnings": "Warnungen",
+    "dossier": "Dossier erstellen",
+    "connect": "Verbinden",
+    "transfer": "Übertragen",
+    "update": "Aktualisieren",
+    "exportScript": "Skript exportieren",
+    "tool": {
+      "select": "Ändern",
+      "place": "Platzieren",
+      "move": "Verschieben",
+      "rotate": "Drehen",
+      "copy": "Kopieren",
+      "mirror": "Spiegeln",
+      "array": "Reihe",
+      "align": "Ausrichten",
+      "drawSite": "Flurstück zeichnen",
+      "drawContext": "Gebäude zeichnen"
+    },
+    "panel": {
+      "site": "Grundstück",
+      "context": "Umgebung",
+      "rules": "Baurecht",
+      "typologies": "Bauformen",
+      "templates": "Vorlagen",
+      "variants": "Varianten",
+      "modify": "Ändern",
+      "delete": "Löschen",
+      "selection": "Auswahl",
+      "views": "Ansichten",
+      "navigate": "Navigation",
+      "graphics": "Grafik",
+      "tables": "Listen",
+      "checks": "Prüfungen",
+      "output": "Ausgabe",
+      "archicad": "Archicad"
+    }
+  },
+  "options": {
+    "place": "Platzieren: {{name}}",
+    "selection": "Auswahl: {{count}}",
+    "contextBuildings": "{{count}} Umgebungsgebäude",
+    "modify": "Ändern"
+  },
+  "param": {
+    "length": "Länge",
+    "depth": "Bautiefe",
+    "sections": "Abschnitte",
+    "sectionOffset": "Versatz",
+    "count": "Anzahl",
+    "unitWidth": "Hausbreite",
+    "alternatingOffset": "Wechselversatz",
+    "alignment": "Ausrichtung",
+    "closed": "Geschlossen",
+    "align": {
+      "center": "Mitte",
+      "left": "Links",
+      "right": "Rechts"
+    }
+  },
+  "props": {
+    "title": "Eigenschaften",
+    "noProject": "Kein Projekt",
+    "multi": "{{count}} Baukörper",
+    "contextBuilding": "Umgebungsgebäude",
+    "view3d": "3D-Ansicht: {3D}",
+    "group": {
+      "identity": "Identitätsdaten",
+      "dimensions": "Abmessungen",
+      "position": "Lage",
+      "storeys": "Geschosse",
+      "usage": "Nutzung",
+      "results": "Kennwerte (schreibgeschützt)",
+      "context": "Bestandsgebäude",
+      "graphics": "Grafik",
+      "project": "Projekt"
+    },
+    "name": "Name",
+    "area": "Fläche",
+    "rotation": "Drehung",
+    "storeys": {
+      "basementCount": "Untergeschosse",
+      "basementHeight": "Höhe UG",
+      "groundHeight": "Höhe EG",
+      "upperCount": "Obergeschosse",
+      "upperHeight": "Geschosshöhe OG",
+      "setbackCount": "Staffelgeschosse",
+      "setbackDistance": "Rücksprung",
+      "parapet": "Attika",
+      "slab": "Deckenstärke"
+    },
+    "mixed": "<variiert>",
+    "usage": "Nutzung",
+    "defaultUsage": "(Standard)",
+    "presetRetail": "EG Gewerbe, OG Wohnen",
+    "access": "Erschließung",
+    "bgf": "BGF",
+    "depth": "Bautiefe",
+    "resolvedAccess": "Erschließung (ermittelt)",
+    "suitability": {
+      "zweispaenner": "Zweispänner",
+      "dreispaenner": "Dreispänner",
+      "laubengang": "Laubengang",
+      "mittelflur": "Mittelflur",
+      "punkthaus": "Punkthaus",
+      "reihenhaus": "Reihenhaus",
+      "buero": "Büro",
+      "zellenbuero": "Zellenbüro",
+      "kombibuero": "Kombibüro",
+      "openSpace": "Open Space",
+      "atrium": "Atrium"
+    },
+    "height": "Höhe",
+    "levels": "Geschosse",
+    "estimated": "Höhe geschätzt",
+    "hidden": "Ausgeblendet",
+    "demolished": "Abriss",
+    "source": "Quelle",
+    "yes": "ja",
+    "no": "nein"
+  },
+  "browser": {
+    "title": "Projektbrowser",
+    "views": "Ansichten",
+    "views3d": "3D-Ansichten",
+    "schedules": "Listen",
+    "variants": "Varianten",
+    "site": "Grundstück und Umgebung",
+    "parcels": "Flurstücke ({{count}})",
+    "context": "Nachbargebäude ({{count}})",
+    "building": "Gebäude {{n}}",
+    "hide": "Ausblenden",
+    "show": "Einblenden",
+    "doubleClick": "Doppelklick zum Öffnen"
+  },
+  "views": {
+    "3d": "3D",
+    "axo": "Axonometrie",
+    "axoSW": "Axonometrie SW",
+    "axoNE": "Axonometrie NO",
+    "site": "Lageplan",
+    "elevations": "Ansichten",
+    "elevN": "Ansicht Nord",
+    "elevE": "Ansicht Ost",
+    "elevS": "Ansicht Süd",
+    "elevW": "Ansicht West",
+    "sections": "Schnitte",
+    "sectionA": "Schnitt A",
+    "sectionB": "Schnitt B",
+    "areas": "Flächen",
+    "none": "Keine Ansicht geöffnet – Doppelklick auf {3D} im Projektbrowser"
+  },
+  "view": {
+    "style": "Visueller Stil",
+    "projection": "Projektion",
+    "perspective": "Perspektive",
+    "orthographic": "Orthogonal",
+    "styles": {
+      "wireframe": "Drahtmodell",
+      "hiddenLine": "Verdeckte Linien",
+      "shaded": "Schattiert",
+      "consistentColors": "Einheitliche Farben",
+      "realistic": "Realistisch"
+    }
+  },
+  "status": {
+    "ready": "Bereit",
+    "snap": "Fang",
+    "snapTitle": "Fang ein/aus",
+    "warningsTitle": "Warnungen",
+    "archicad": "Archicad: nicht verbunden"
+  },
+  "kpi": {
+    "title": "Kennzahlen",
+    "target": "{{status}} (Vorgabe ≤ {{target}})"
+  },
+  "start": {
+    "subtitle": "Städtebauliche Massenstudien",
+    "new": "Neues Projekt",
+    "open": "Datei öffnen (.massing.json)",
+    "demo": "Demoprojekt (Palaiseau)",
+    "recent": "Zuletzt bearbeitet (automatisch gespeichert)",
+    "noRecent": "Noch keine gespeicherten Projekte."
+  },
+  "settings": {
+    "general": "Allgemein",
+    "profile": "Regelwerk",
+    "profiles": {
+      "FR": "Frankreich (CES, surface de plancher, R+n)",
+      "DE": "Deutschland (GRZ, GFZ, BauNVO)"
+    },
+    "notation": "Geschossbezeichnung",
+    "notations": {
+      "fr": "RDC, R+1 …",
+      "de": "EG, 1.OG …",
+      "roman": "I, II, III …"
+    },
+    "language": "Sprache",
+    "languages": {
+      "fr": "Français",
+      "de": "Deutsch",
+      "en": "English"
+    },
+    "ratios": "Wichtige Kennwerte",
+    "wallThickness": "Außenwanddicke",
+    "technicalShare": "Anteil Technikfläche",
+    "interiorShare": "Anteil Innenwände",
+    "parkingArea": "Fläche je Stellplatz",
+    "parkingPerDwelling": "Stellplätze je Wohnung",
+    "workplaceArea": "Fläche je Arbeitsplatz",
+    "circulation": "Verkehrsflächenanteil je Erschließung"
+  },
+  "rules": {
+    "fr": "Frankreich (PLU)",
+    "de": "Bebauungsplan",
+    "empriseMax": "CES max.",
+    "hauteurMax": "Max. Höhe (FR)",
+    "clear": "Entfernen",
+    "note": "Leere Felder = keine Vorgabe. Die Werte steuern die Ampeln der Kennzahlenleiste."
+  },
+  "warnings": {
+    "none": "Keine Warnungen.",
+    "severity": "Schwere",
+    "message": "Meldung",
+    "select": "Auswählen",
+    "sev": {
+      "warning": "Warnung",
+      "error": "Fehler"
+    },
+    "massOverlap": "Die Baukörper {{masses}} überschneiden sich ({{area}} m²).",
+    "outsideSite": "Der Baukörper {{masses}} liegt außerhalb des Grundstücks ({{area}} m²).",
+    "outsideBuildable": "Der Baukörper {{masses}} liegt außerhalb des Baufensters ({{area}} m²).",
+    "constraintExceeded": "{{key}} überschreitet die Vorgabe: {{actual}} statt max. {{target}}.",
+    "depthOutOfRange": "Bautiefe von {{masses}} ({{depth}} m) passt zu keiner Erschließungsart.",
+    "lightDepth": "Bautiefe von {{masses}} ({{depth}} m): Belichtung kritisch.",
+    "mixPlausibility": "{{masses}}: {{actual}} Wohnungen je Geschoss und Kern (erwartet {{min}}–{{max}}).",
+    "estimatedContextHeights": "Höhe von {{count}} Umgebungsgebäude(n) geschätzt."
+  }
+}
