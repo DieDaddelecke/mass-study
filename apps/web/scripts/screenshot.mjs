@@ -1,5 +1,6 @@
 // Screenshot helper for development (uses the pre-installed Playwright + Chromium).
-// Usage: node apps/web/scripts/screenshot.mjs <url> <out.png> [width] [height]
+// Usage: node apps/web/scripts/screenshot.mjs <url> <out.png> [width] [height] [theme]
+// theme (optional): light | dark | system – stored as localStorage 'kubatur.theme' before load.
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 let pw;
@@ -8,7 +9,7 @@ try {
 } catch {
   pw = require('/opt/node-tools/node_modules/playwright');
 }
-const [url, out, w = '1600', h = '900'] = process.argv.slice(2);
+const [url, out, w = '1600', h = '900', theme] = process.argv.slice(2);
 const browser = await pw.chromium.launch({
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
 });
@@ -16,6 +17,7 @@ const page = await browser.newPage({
   viewport: { width: Number(w), height: Number(h) },
   deviceScaleFactor: 1,
 });
+if (theme) await page.addInitScript((t) => localStorage.setItem('kubatur.theme', t), theme);
 const errors = [];
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 page.on('pageerror', (e) => errors.push(String(e)));
