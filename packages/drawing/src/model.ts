@@ -36,6 +36,8 @@ export interface DFill {
   pen?: Pen;
   stroke?: string;
   type?: LineType;
+  /** Tooltip (rendered as SVG <title>). */
+  title?: string;
 }
 
 export interface DText {
@@ -88,7 +90,7 @@ export interface Bounds {
   maxY: number;
 }
 
-export type DrawingKind = 'site' | 'elevation' | 'section' | 'axonometry';
+export type DrawingKind = 'site' | 'elevation' | 'section' | 'axonometry' | 'floorPlan';
 
 /**
  * Neutral 2D drawing (SPEC §11). Model coordinates are metres (plan: x east / y north; elevation

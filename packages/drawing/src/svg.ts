@@ -220,7 +220,11 @@ export function renderSvg(model: DrawingModel, opts: SvgOptions): string {
             ? ` stroke="${ink(it.stroke)}" stroke-width="${pw(it.pen)}" stroke-linejoin="round"${dash(it.type ?? 'solid')}`
             : // hairline in the fill colour hides anti-aliasing seams between adjacent faces
               ` stroke="${it.fill}" stroke-width="0.06" stroke-linejoin="round"`;
-        body.push(`<path d="${d}" fill="${it.fill}" fill-rule="evenodd"${stroke}/>`);
+        body.push(
+          it.title
+            ? `<path d="${d}" fill="${it.fill}" fill-rule="evenodd"${stroke}><title>${esc(it.title)}</title></path>`
+            : `<path d="${d}" fill="${it.fill}" fill-rule="evenodd"${stroke}/>`,
+        );
         if (it.hatch)
           body.push(`<path d="${d}" fill="url(#${hatchId(it.hatch)})" fill-rule="evenodd"/>`);
         break;
