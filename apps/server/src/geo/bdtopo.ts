@@ -6,14 +6,19 @@ import type { ContextProvider } from './providers.js';
 
 export const IGN_WFS_URL = 'https://data.geopf.fr/wfs/ows';
 
-/** WFS 2.0 GetFeature URL for BDTOPO_V3:batiment (BBOX in lat,lon axis order). */
-export function bdTopoUrl(b: BBox, base = IGN_WFS_URL): string {
+/** IGN WFS 2.0 GetFeature URL (GeoJSON, EPSG:4326, BBOX in lat,lon axis order). */
+export function ignWfsUrl(typeName: string, b: BBox, count = 1000, base = IGN_WFS_URL): string {
   const [minLon, minLat, maxLon, maxLat] = b;
   return (
-    `${base}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=BDTOPO_V3:batiment` +
-    `&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326&COUNT=1000` +
+    `${base}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=${typeName}` +
+    `&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326&COUNT=${count}` +
     `&BBOX=${minLat},${minLon},${maxLat},${maxLon},urn:ogc:def:crs:EPSG::4326`
   );
+}
+
+/** WFS 2.0 GetFeature URL for BDTOPO_V3:batiment. */
+export function bdTopoUrl(b: BBox, base = IGN_WFS_URL): string {
+  return ignWfsUrl('BDTOPO_V3:batiment', b, 1000, base);
 }
 
 /** Maps a BD TOPO GeoJSON FeatureCollection to context buildings (z values ignored). */

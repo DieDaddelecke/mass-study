@@ -1,0 +1,233 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.7 (synthetic)",
+  "osm3s": {
+    "timestamp_osm_base": "2026-11-21T12:00:00Z",
+    "copyright": "SYNTHETIC fixture, hand-made in the Overpass out geom format; not OSM data."
+  },
+  "elements": [
+    {
+      "type": "node",
+      "id": 9100000001,
+      "lat": 48.713,
+      "lon": 2.197,
+      "tags": {
+        "natural": "tree",
+        "height": "14",
+        "diameter_crown": "9",
+        "leaf_type": "broadleaved",
+        "genus": "Platanus"
+      }
+    },
+    {
+      "type": "node",
+      "id": 9100000002,
+      "lat": 48.7131,
+      "lon": 2.1972,
+      "tags": {
+        "natural": "tree",
+        "leaf_type": "needleleaved"
+      }
+    },
+    {
+      "type": "node",
+      "id": 9100000003,
+      "lat": 48.7132,
+      "lon": 2.1974,
+      "tags": {
+        "natural": "tree",
+        "est_height": "6 m"
+      }
+    },
+    {
+      "type": "node",
+      "id": 9100000004,
+      "lat": 48.7128,
+      "lon": 2.199,
+      "tags": {
+        "natural": "tree"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9200000001,
+      "bounds": {
+        "minlat": 48.7117,
+        "minlon": 2.1975,
+        "maxlat": 48.7117,
+        "maxlon": 2.1985
+      },
+      "nodes": [9000000100, 9000000101],
+      "geometry": [
+        {
+          "lat": 48.7117,
+          "lon": 2.1975
+        },
+        {
+          "lat": 48.7117,
+          "lon": 2.1985
+        }
+      ],
+      "tags": {
+        "natural": "tree_row",
+        "height": "8",
+        "leaf_type": "broadleaved"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9200000002,
+      "bounds": {
+        "minlat": 48.7119,
+        "minlon": 2.1966,
+        "maxlat": 48.7123,
+        "maxlon": 2.1972
+      },
+      "nodes": [9000000200, 9000000201, 9000000202, 9000000203, 9000000204],
+      "geometry": [
+        {
+          "lat": 48.7119,
+          "lon": 2.1966
+        },
+        {
+          "lat": 48.7119,
+          "lon": 2.1972
+        },
+        {
+          "lat": 48.7123,
+          "lon": 2.1972
+        },
+        {
+          "lat": 48.7123,
+          "lon": 2.1966
+        },
+        {
+          "lat": 48.7119,
+          "lon": 2.1966
+        }
+      ],
+      "tags": {
+        "leisure": "park",
+        "name": "Parc synthétique"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9200000003,
+      "bounds": {
+        "minlat": 48.7136,
+        "minlon": 2.199,
+        "maxlat": 48.7139,
+        "maxlon": 2.1995
+      },
+      "nodes": [9000000300, 9000000301, 9000000302, 9000000303, 9000000304],
+      "geometry": [
+        {
+          "lat": 48.7136,
+          "lon": 2.199
+        },
+        {
+          "lat": 48.7136,
+          "lon": 2.1995
+        },
+        {
+          "lat": 48.7139,
+          "lon": 2.1995
+        },
+        {
+          "lat": 48.7139,
+          "lon": 2.199
+        },
+        {
+          "lat": 48.7136,
+          "lon": 2.199
+        }
+      ],
+      "tags": {
+        "landuse": "grass"
+      }
+    },
+    {
+      "type": "relation",
+      "id": 9300000001,
+      "bounds": {
+        "minlat": 48.7117,
+        "minlon": 2.1996,
+        "maxlat": 48.7124,
+        "maxlon": 2.2002
+      },
+      "members": [
+        {
+          "type": "way",
+          "ref": 9200000011,
+          "role": "outer",
+          "geometry": [
+            {
+              "lat": 48.7117,
+              "lon": 2.1996
+            },
+            {
+              "lat": 48.7117,
+              "lon": 2.2002
+            },
+            {
+              "lat": 48.7124,
+              "lon": 2.2002
+            }
+          ]
+        },
+        {
+          "type": "way",
+          "ref": 9200000012,
+          "role": "outer",
+          "geometry": [
+            {
+              "lat": 48.7124,
+              "lon": 2.2002
+            },
+            {
+              "lat": 48.7124,
+              "lon": 2.1996
+            },
+            {
+              "lat": 48.7117,
+              "lon": 2.1996
+            }
+          ]
+        },
+        {
+          "type": "way",
+          "ref": 9200000013,
+          "role": "inner",
+          "geometry": [
+            {
+              "lat": 48.7119,
+              "lon": 2.1998
+            },
+            {
+              "lat": 48.7119,
+              "lon": 2.2
+            },
+            {
+              "lat": 48.7121,
+              "lon": 2.2
+            },
+            {
+              "lat": 48.7121,
+              "lon": 2.1998
+            },
+            {
+              "lat": 48.7119,
+              "lon": 2.1998
+            }
+          ]
+        }
+      ],
+      "tags": {
+        "type": "multipolygon",
+        "natural": "wood",
+        "leaf_type": "mixed"
+      }
+    }
+  ]
+}

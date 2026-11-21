@@ -3,6 +3,7 @@ import parcel from '../../../server/test/fixtures/palaiseau/parcel-0518.json';
 import bdtopo from '../../../server/test/fixtures/palaiseau/bdtopo-batiment.json';
 import type { ContextBuildingLonLat, LonLat } from '../api/contract';
 import { toContextBuildings } from '../geo/context';
+import { palaiseauSurroundings } from './palaiseauSurroundings';
 
 /**
  * Offline demo project built from recorded real data (parcel 0H 0518 in Palaiseau + BD TOPO
@@ -27,6 +28,8 @@ export function palaiseauDemo(withMass = true): Project {
     source: 'ign',
   }));
   p.context = toContextBuildings({ buildings }, p.geo, p.site.boundary);
+  // Real streets / vegetation / parcels (+ synthetic trees), generated from the raw fixtures.
+  p.surroundings = structuredClone(palaiseauSurroundings);
   if (withMass) {
     const m = createMass('zeile', { position: [-25, -6], rotation: 0.12, name: 'BK1' });
     m.typology = { kind: 'zeile', length: 50, depth: 13, sections: 3, sectionOffset: 0 };

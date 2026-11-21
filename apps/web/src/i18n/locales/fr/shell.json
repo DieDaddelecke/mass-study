@@ -118,7 +118,9 @@
     "place": "Placer : {{name}}",
     "selection": "Sélection : {{count}}",
     "contextBuildings": "{{count}} bâtiment(s) de contexte",
-    "modify": "Modifier"
+    "modify": "Modifier",
+    "label": "Options de l'outil",
+    "cancel": "Terminer l'outil"
   },
   "param": {
     "length": "Longueur",
@@ -250,15 +252,17 @@
   },
   "kpi": {
     "title": "Indicateurs",
-    "target": "{{status}} (objectif ≤ {{target}})"
+    "target": "{{status}} (objectif ≤ {{target}})",
+    "open": "Ouvrir l'analyse réglementaire"
   },
   "start": {
-    "subtitle": "Études de capacité et de volumétrie urbaine",
+    "subtitle": "Esquissez, comparez et vérifiez vos volumétries sur le terrain réel – en quelques minutes.",
     "new": "Nouveau projet",
-    "open": "Ouvrir un fichier (.massing.json)",
-    "demo": "Projet de démonstration (Palaiseau)",
-    "recent": "Projets récents (enregistrement automatique)",
-    "noRecent": "Aucun projet enregistré pour le moment."
+    "open": "Ouvrir un fichier",
+    "demo": "Projet de démonstration",
+    "recent": "Projets récents",
+    "noRecent": "Aucun projet enregistré pour le moment.",
+    "eyebrow": "Études de capacité · Volumétrie urbaine"
   },
   "settings": {
     "general": "Général",
@@ -313,5 +317,78 @@
     "lightDepth": "Épaisseur de {{masses}} ({{depth}} m) : éclairement naturel critique.",
     "mixPlausibility": "{{masses}} : {{actual}} logements par palier et noyau (attendu {{min}}–{{max}}).",
     "estimatedContextHeights": "Hauteur estimée pour {{count}} bâtiment(s) de contexte."
+  },
+  "cmd": {
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "select": "Sélectionner"
+  },
+  "topbar": {
+    "rename": "Cliquer pour renommer"
+  },
+  "theme": {
+    "label": "Thème",
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Système"
+  },
+  "palette": {
+    "open": "Rechercher…",
+    "title": "Palette de commandes",
+    "placeholder": "Rechercher une commande, un outil, une vue…",
+    "empty": "Aucune commande trouvée",
+    "navigate": "naviguer",
+    "run": "exécuter",
+    "groups": {
+      "file": "Fichier",
+      "edit": "Édition",
+      "volume": "Volumes",
+      "modify": "Modifier",
+      "site": "Terrain",
+      "view": "Vue",
+      "analysis": "Analyse",
+      "output": "Sortie",
+      "archicad": "Archicad",
+      "theme": "Apparence"
+    }
+  },
+  "dock": {
+    "label": "Outils",
+    "volumes": "Volumes"
+  },
+  "panel": {
+    "label": "Projet",
+    "project": "Projet",
+    "masses": "Volumes",
+    "noMasses": "Aucun volume – choisissez une forme dans « Volumes ».",
+    "renameHint": "Double-clic pour renommer",
+    "parcels": "Parcelles",
+    "context": "Bâtiments voisins",
+    "collapse": "Replier le panneau",
+    "expand": "Afficher le panneau"
+  },
+  "layers": {
+    "title": "Calques",
+    "context": "Contexte",
+    "buildings": "Bâtiments",
+    "roads": "Routes",
+    "green": "Espaces verts",
+    "trees": "Arbres",
+    "water": "Eau",
+    "parcels": "Parcelles",
+    "basemap": "Fond de plan",
+    "basemaps": {
+      "none": "Aucun",
+      "plan": "Plan IGN",
+      "ortho": "Photo aérienne"
+    }
+  },
+  "inspector": {
+    "title": "Inspecteur",
+    "noSelection": "Aucune sélection",
+    "site": "Terrain",
+    "siteArea": "Surface du terrain",
+    "constraints": "Règles d'urbanisme",
+    "editRules": "Modifier les règles…"
   }
 }

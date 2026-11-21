@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../i18n';
 import { useProjectStore } from '../store/projectStore';
 import { useAnalysis } from '../store/useAnalysis';
+import { CircleCheck, TriangleAlert } from 'lucide-react';
+import { useShellStore } from './shellStore';
 import { TrafficDot, type TrafficStatus } from './ui';
 
 interface Kpi {
@@ -11,22 +13,26 @@ interface Kpi {
   value: string;
   status?: TrafficStatus;
   title?: string;
+  /** 0…1+ share of the constraint, shown as a thin progress bar. */
+  progress?: number;
 }
 
 export function KpiBar() {
   const { t, i18n } = useTranslation('shell');
   const profile = useProjectStore((s) => s.project?.settings.profile);
   const analysis = useAnalysis();
-  if (!analysis || !profile) return <div className="kpibar" />;
+  const setDialog = useShellStore((s) => s.setDialog);
+  if (!analysis || !profile) return null;
   const lng = i18n.language;
   const n = (v: number, d = 2) => formatNumber(v, d, lng);
   const row = (key: string): ConstraintRow | undefined =>
     analysis.constraints.find((r) => r.key === key);
-  const st = (key: string): Pick<Kpi, 'status' | 'title'> => {
+  const st = (key: string): Pick<Kpi, 'status' | 'title' | 'progress'> => {
     const r = row(key);
     if (!r) return {};
     return {
       status: r.status,
+      progress: r.target ? r.actual / r.target : undefined,
       title:
         r.target !== undefined
           ? t('kpi.target', { status: t(`common:status.${r.status}`), target: n(r.target) })
@@ -88,14 +94,55 @@ export function KpiBar() {
     ];
   }
   return (
-    <div className="kpibar" aria-label={t('kpi.title')}>
+    <div className="glass kpibar" role="group" aria-label={t('kpi.title')}>
       {kpis.map((k) => (
-        <span key={k.key} className="kpi" data-kpi={k.key} title={k.title}>
-          <span className="kpi-label">{k.label}</span>
+        <button
+          type="button"
+          key={k.key}
+          className="kpi"
+          data-kpi={k.key}
+          title={k.title ?? t('kpi.open')}
+          onClick={() => setDialog('constraints')}
+        >
+          <span className="kpi-label">
+            {k.label}
+            {k.status && k.status !== 'none' && <TrafficDot status={k.status} title={k.title} />}
+          </span>
           <span className="kpi-value">{k.value}</span>
-          {k.status && k.status !== 'none' && <TrafficDot status={k.status} title={k.title} />}
-        </span>
+          {k.progress !== undefined && (
+            <span className={`kpi-bar kpi-bar-${k.status ?? 'none'}`} aria-hidden>
+              <span style={{ width: `${Math.min(100, k.progress * 100)}%` }} />
+            </span>
+          )}
+        </button>
       ))}
     </div>
+  );
+}
+
+/** Small pill with the number of warnings; opens the warnings dialog. */
+export function WarningsPill() {
+  const { t } = useTranslation('shell');
+  const analysis = useAnalysis();
+  const setDialog = useShellStore((s) => s.setDialog);
+  if (!analysis) return null;
+  const warnings = analysis.warnings;
+  const errors = warnings.filter((w) => w.severity === 'error').length;
+  const cls = errors ? 'is-error' : warnings.length ? 'is-warning' : 'is-ok';
+  return (
+    <button
+      type="button"
+      className={`glass warn-pill ${cls}`}
+      title={t('status.warningsTitle')}
+      aria-label={`${t('status.warningsTitle')} : ${warnings.length}`}
+      onClick={() => setDialog('warnings')}
+    >
+      {warnings.length ? (
+        <TriangleAlert size={15} strokeWidth={1.75} />
+      ) : (
+        <CircleCheck size={15} strokeWidth={1.75} />
+      )}
+      <span className="num">{warnings.length}</span>
+    </button>
   );
 }

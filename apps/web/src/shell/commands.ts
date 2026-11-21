@@ -1,6 +1,6 @@
 import { defaultTypology, TEMPLATES, type TemplateId, type TypologyKind } from '@kubatur/core';
 import i18n from '../i18n';
-import { loadContextForProject } from '../newProject/loadContext';
+import { loadAllContextForProject } from '../newProject/loadContext';
 import { downloadProject, pickFile, readProjectFile } from '../persistence/file';
 import { loadRecent } from '../persistence/autosave';
 import { actions, redo, undo, useProjectStore } from '../store/projectStore';
@@ -31,7 +31,6 @@ export function closeProject(): void {
 }
 
 export function newProject(): void {
-  useShellStore.getState().setTab('volume');
   useUiStore.getState().setNewProjectOpen(true);
 }
 
@@ -73,9 +72,11 @@ export async function reloadContext(): Promise<void> {
   const shell = useShellStore.getState();
   shell.setBusy(true);
   try {
-    const buildings = await loadContextForProject(p, useUiStore.getState().contextRadius);
-    actions.setContext(buildings);
-    shell.setInfo(t('info.contextLoaded', { count: buildings.length }));
+    const r = await loadAllContextForProject(p, useUiStore.getState().contextRadius);
+    if (r.surroundings) actions.setSurroundings(r.surroundings);
+    if (!r.buildings) throw r.buildingsError;
+    actions.setContext(r.buildings);
+    shell.setInfo(t('info.contextLoaded', { count: r.buildings.length }));
   } catch (e) {
     shell.setError(t('errors.context', { message: (e as Error).message }));
   } finally {

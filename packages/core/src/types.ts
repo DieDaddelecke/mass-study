@@ -172,6 +172,78 @@ export interface ContextBuilding {
   demolished?: boolean;
 }
 
+export type ContextRoadKind =
+  | 'motorway'
+  | 'primary'
+  | 'secondary'
+  | 'tertiary'
+  | 'residential'
+  | 'service'
+  | 'track'
+  | 'cycleway'
+  | 'footway'
+  | 'path'
+  | 'rail'
+  | 'tram';
+
+export interface ContextRoad {
+  id: string;
+  /** Centre line in local coordinates. */
+  centerline: Vec2[];
+  /** Carriageway width, m. */
+  width: number;
+  widthEstimated: boolean;
+  kind: ContextRoadKind;
+  name?: string;
+  /** -1 below ground, 0 at grade, 1 bridge. */
+  level: -1 | 0 | 1;
+  source: 'osm' | 'ign' | 'import' | 'manual';
+}
+
+export type ContextGreenKind =
+  'wood' | 'park' | 'grass' | 'garden' | 'pitch' | 'scrub' | 'hedge' | 'other';
+
+export interface ContextGreen {
+  id: string;
+  footprint: Polygon;
+  kind: ContextGreenKind;
+  source: 'osm' | 'ign' | 'import' | 'manual';
+}
+
+export interface ContextTree {
+  id: string;
+  position: Vec2;
+  height: number;
+  /** Crown diameter, m. */
+  crown: number;
+  heightEstimated: boolean;
+  leafType?: 'broadleaved' | 'needleleaved';
+  source: 'osm' | 'ign' | 'import' | 'manual';
+}
+
+export interface ContextWater {
+  id: string;
+  footprint: Polygon;
+  source: 'osm' | 'ign' | 'import' | 'manual';
+}
+
+/** Neighbouring cadastral parcel (context only; the site parcels live in Site.parcels). */
+export interface ContextParcel {
+  id: string;
+  ref?: string;
+  label?: string;
+  polygon: Polygon;
+}
+
+/** Surroundings beyond buildings: streets, vegetation, water, neighbouring parcels. */
+export interface Surroundings {
+  roads: ContextRoad[];
+  green: ContextGreen[];
+  trees: ContextTree[];
+  water: ContextWater[];
+  parcels: ContextParcel[];
+}
+
 export interface Variant {
   id: string;
   name: string;
@@ -291,6 +363,8 @@ export interface Project {
   geo: GeoReference;
   site: Site;
   context: ContextBuilding[];
+  /** Optional (added after schema v1 shipped; absent = not loaded yet). */
+  surroundings?: Surroundings;
   variants: Variant[];
   activeVariantId: string;
   /** View and sheet definitions are owned by the drawing package (added in a later phase). */

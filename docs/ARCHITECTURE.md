@@ -50,14 +50,15 @@ Lokales metrisches System (x Ost, y Nord, z oben), Ursprung im Schwerpunkt des G
 
 ## Web-App (`apps/web/src`)
 
-| Ordner            | Inhalt                                                                                                                                      |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `store/`          | `projectStore` (Projekt, immer-Rezepte, Undo/Redo via zundo), `uiStore` (Auswahl, Werkzeug, Ansicht, Fang), `useAnalysis` (Live-Berechnung) |
-| `shell/`          | Ribbon, Optionsleiste, Eigenschaften, Projektbrowser, Ansichts-Tabs, Kennzahlen- und Statusleiste, Dialoge, Tastenkürzel                    |
-| `persistence/`    | Autosave (IndexedDB), Öffnen/Speichern `.massing.json`                                                                                      |
-| `viewport/`       | 3D-Szene (R3F, z oben), visuelle Stile, Navigationswürfel, Ansichtssteuerleiste                                                             |
-| `viewport/tools/` | Platzieren, Fangen, MV/RO/CO/MM/AR, Griffe; `capabilities.ts` steuert, welche Ribbon-Befehle aktiv sind                                     |
-| `newProject/`     | Dialog „Nouveau projet“: Adresse, Karte (MapLibre), Parzellen, Zeichnen, Import GeoJSON/DXF, Kontext laden                                  |
-| `api/`            | HTTP-Vertrag mit dem Server (`contract.ts`) und Client                                                                                      |
-| `i18n/`           | i18next, Französisch Standard; ein Namespace je Modul                                                                                       |
-| `demo/`           | Offline-Demoprojekt `?demo=palaiseau` aus aufgezeichneten echten Daten                                                                      |
+| Ordner            | Inhalt                                                                                                                                                                                          |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `store/`          | `projectStore` (Projekt, immer-Rezepte, Undo/Redo via zundo), `uiStore` (Auswahl, Werkzeug, Ansicht, Fang), `useAnalysis` (Live-Berechnung)                                                     |
+| `shell/`          | Moderne Web-App-Oberfläche: Kopfleiste, Werkzeugleiste, linkes Panel (Projekt/Calques/Vues), Inspektor, Werkzeug-Pille, Kennzahlen-Karten, Befehlssuche (Strg+K), Toasts, Dialoge, Tastenkürzel |
+| `persistence/`    | Autosave (IndexedDB), Öffnen/Speichern `.massing.json`                                                                                                                                          |
+| `viewport/`       | 3D-Szene (R3F, z oben), visuelle Stile, Navigationswürfel, Ansichtssteuerleiste; `scene/Surroundings` (Straßen, Grün, Bäume, Wasser, Nachbarparzellen), `scene/Basemap` (IGN-Kacheln am Boden)  |
+| `viewport/tools/` | Platzieren, Fangen, MV/RO/CO/MM/AR, Griffe; `capabilities.ts` steuert, welche Ribbon-Befehle aktiv sind                                                                                         |
+| `newProject/`     | Dialog „Nouveau projet“: Adresse, Karte (MapLibre), Parzellen, Zeichnen, Import GeoJSON/DXF, Kontext laden                                                                                      |
+| `api/`            | HTTP-Vertrag mit dem Server (`contract.ts`) und Client                                                                                                                                          |
+| `i18n/`           | i18next, Französisch Standard; ein Namespace je Modul                                                                                                                                           |
+| `theme/`          | Design-Tokens (`tokens.css`), Szenenpalette (`palette.ts`), hell/dunkel/System (`themeStore.ts`)                                                                                                |
+| `demo/`           | Offline-Demoprojekt `?demo=palaiseau` aus aufgezeichneten echten Daten                                                                                                                          |

@@ -1,79 +1,107 @@
-/* "Nouveau projet" dialog – dense, follows the tokens in styles.css */
+/* "Nouveau projet" dialog – large glass sheet, tokens from theme/tokens.css */
 .np-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 0.35);
   z-index: 100;
+  background: var(--overlay);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  animation: fade-in 200ms var(--ease);
 }
 .np-dialog {
   position: fixed;
-  z-index: 101;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(1100px, calc(100vw - 32px));
-  height: min(720px, calc(100vh - 32px));
+  z-index: 101;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 8px 32px rgb(0 0 0 / 0.25);
+  width: min(1180px, calc(100vw - 48px));
+  height: min(760px, calc(100vh - 48px));
+  overflow: hidden;
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--r-xl);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  box-shadow:
+    inset 0 1px 0 var(--glass-border),
+    var(--shadow-lg);
+  transform: translate(-50%, -50%);
   outline: none;
+  animation: dlg-in 220ms var(--ease);
 }
 .np-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
-  background: var(--panel-header);
-  border-bottom: 1px solid var(--border);
+  padding: 18px 18px 14px 28px;
 }
 .np-title {
   margin: 0;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
 }
 .np-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border: none;
-  background: none;
-  font-size: 18px;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 20px;
   line-height: 1;
   cursor: pointer;
-  padding: 0 4px;
+}
+.np-close:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
 }
 .np-body {
   display: grid;
-  grid-template-columns: 360px 1fr;
+  grid-template-columns: 380px 1fr;
+  gap: 16px;
   min-height: 0;
+  padding: 0 18px;
 }
 .np-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 2px 4px 12px 10px;
   overflow-y: auto;
-  border-right: 1px solid var(--border);
+  scrollbar-width: thin;
 }
 .np-step {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: var(--field);
 }
 .np-step h3 {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 0 0 8px;
-  font-size: 12px;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 14px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
 }
 .np-num {
   display: inline-grid;
   place-items: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--accent);
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--accent-grad);
   color: #fff;
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 650;
+  box-shadow: 0 2px 8px rgb(99 102 241 / 0.35);
 }
 .np-search {
   position: relative;
@@ -82,128 +110,157 @@
 .np-steps input[type='text'],
 .np-steps select {
   width: 100%;
-  height: 24px;
-  padding: 2px 6px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: #fff;
+  height: 34px;
+  background-color: var(--bg-solid);
+  border-color: var(--hairline-strong);
 }
-.np-steps input:focus,
-.np-steps select:focus {
-  outline: 1px solid var(--accent);
-  border-color: var(--accent);
+.np-steps input[type='search'] {
+  padding-left: 12px;
 }
 .np-search .np-spinner {
   position: absolute;
-  right: 22px;
-  top: 6px;
+  top: 10px;
+  right: 30px;
 }
 .np-suggest {
   position: absolute;
-  z-index: 5;
-  left: 0;
-  right: 0;
   top: 100%;
-  margin: 1px 0 0;
-  padding: 0;
-  list-style: none;
-  background: #fff;
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
-  max-height: 240px;
+  right: 0;
+  left: 0;
+  z-index: 5;
+  max-height: 260px;
+  margin: 6px 0 0;
+  padding: 6px;
   overflow-y: auto;
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--r-md);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  box-shadow: var(--shadow-lg);
+  list-style: none;
 }
 .np-suggest li {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  padding: 4px 6px;
+  padding: 7px 8px;
+  border-radius: var(--r-sm);
   cursor: pointer;
 }
 .np-suggest li small {
-  color: var(--text-muted);
+  color: var(--text-3);
   white-space: nowrap;
 }
 .np-suggest li.active,
 .np-suggest li:hover {
-  background: var(--hover);
+  background: var(--accent-soft);
 }
 .np-tabs {
   display: flex;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 8px;
+  gap: 2px;
+  margin-bottom: 12px;
+  padding: 3px;
+  border-radius: var(--r-md);
+  background: var(--field);
 }
 .np-tabs button {
   flex: 1;
-  border: 1px solid transparent;
-  border-bottom: none;
+  height: 28px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 7px;
   background: none;
-  padding: 4px 6px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: 500;
   cursor: pointer;
-  color: var(--text-muted);
-  margin-bottom: -1px;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+.np-tabs button:hover {
+  color: var(--text);
 }
 .np-tabs button.active {
-  background: var(--panel);
-  border-color: var(--border);
+  background: var(--bg-solid);
   color: var(--text);
-  font-weight: 600;
+  box-shadow: var(--shadow-sm);
 }
 .np-pane button:not(.np-link),
 .np-btn {
-  height: 24px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: #f7f7f7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-md);
+  background: var(--bg-solid);
+  color: var(--text);
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
+  transition: background var(--dur) var(--ease);
 }
 .np-pane button:not(.np-link):hover:not(:disabled),
 .np-btn:hover:not(:disabled) {
-  background: var(--hover);
+  background: var(--field-hover);
 }
-button:disabled {
+.np-dialog button:disabled {
   opacity: 0.5;
   cursor: default;
 }
 .np-row {
   display: flex;
-  gap: 6px;
   flex-wrap: wrap;
+  gap: 6px;
 }
 .np-help {
-  margin: 0 0 6px;
-  color: var(--text-muted);
+  margin: 0 0 8px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.np-area {
+  margin-top: 10px;
+  color: var(--text);
+  font-weight: 550;
 }
 .np-msg {
-  margin: 6px 0;
-  padding: 4px 6px;
-  border-left: 3px solid var(--warning);
-  background: #fff8e1;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--warning-soft);
+  color: var(--warning-text);
+  font-size: var(--fs-sm);
 }
 .np-msg.np-error {
-  border-color: var(--error);
-  background: #fdecea;
+  background: var(--error-soft);
 }
 .np-error {
-  color: var(--error);
+  color: var(--error-text);
 }
 .np-muted {
-  color: var(--text-muted);
+  color: var(--text-3);
 }
 .np-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: var(--fs-sm);
 }
 .np-table th,
 .np-table td {
-  padding: 3px 4px;
-  border-bottom: 1px solid #e6e6e6;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--hairline);
   text-align: left;
 }
 .np-table th {
+  font-size: var(--fs-xs);
   font-weight: 600;
-  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-3);
 }
 .np-table .num {
   text-align: right;
@@ -211,40 +268,46 @@ button:disabled {
   white-space: nowrap;
 }
 .np-table tfoot td {
-  font-weight: 600;
   border-bottom: none;
+  font-weight: 600;
 }
 .np-link {
+  padding: 0 2px;
   border: none;
   background: none;
-  color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 500;
   cursor: pointer;
-  padding: 0 2px;
+}
+.np-link:hover {
+  text-decoration: underline;
 }
 .np-field {
   display: grid;
-  grid-template-columns: 110px 1fr;
+  grid-template-columns: 120px 1fr;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--text-2);
 }
 .np-slider {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 .np-slider input {
   flex: 1;
 }
 .np-slider output {
-  width: 48px;
-  text-align: right;
+  width: 52px;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 .np-file {
-  display: inline-block;
   position: relative;
-  margin-bottom: 6px;
+  display: inline-block;
+  margin-bottom: 8px;
 }
 .np-file input {
   position: absolute;
@@ -253,34 +316,43 @@ button:disabled {
   cursor: pointer;
 }
 .np-file span {
-  display: inline-block;
-  padding: 3px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: #f7f7f7;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--r-md);
+  background: var(--bg-solid);
+  font-weight: 500;
 }
 .np-file-name {
+  margin-bottom: 8px;
   font-weight: 600;
-  margin-bottom: 6px;
 }
 .np-radio {
-  border: none;
+  margin: 0 0 8px;
   padding: 0;
-  margin: 0 0 6px;
+  border: none;
 }
 .np-radio legend {
+  margin-bottom: 4px;
   padding: 0;
-  margin-bottom: 2px;
+  color: var(--text-2);
 }
 .np-radio label {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 .np-mapwrap {
   position: relative;
   min-width: 0;
+  margin-bottom: 4px;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
   background: #eceae4;
+  box-shadow: var(--shadow-sm);
 }
 .np-map {
   position: absolute;
@@ -288,41 +360,51 @@ button:disabled {
 }
 .np-maphint {
   position: absolute;
-  left: 8px;
-  top: 8px;
+  top: 12px;
+  left: 12px;
   max-width: 70%;
-  padding: 3px 8px;
-  background: rgb(255 255 255 / 0.9);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  padding: 6px 12px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  box-shadow: var(--shadow-md);
+  font-size: var(--fs-sm);
   pointer-events: none;
 }
 .np-footer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-top: 1px solid var(--border);
-  background: var(--panel-header);
+  gap: 10px;
+  padding: 14px 18px 16px 28px;
 }
 .np-status {
-  flex: 1;
   display: flex;
+  flex: 1;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
+  font-size: var(--fs-sm);
 }
-.np-primary {
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
+.np-btn.np-primary {
+  border-color: transparent;
+  background: var(--accent-grad);
   color: #fff;
   font-weight: 600;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.25) inset,
+    0 4px 14px rgb(99 102 241 / 0.35);
+}
+.np-btn.np-primary:hover:not(:disabled) {
+  background: var(--accent-grad);
+  filter: brightness(1.06);
 }
 .np-spinner {
   display: inline-block;
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--border);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--track);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: np-spin 0.8s linear infinite;

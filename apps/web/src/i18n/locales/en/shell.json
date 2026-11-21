@@ -118,7 +118,9 @@
     "place": "Place: {{name}}",
     "selection": "Selection: {{count}}",
     "contextBuildings": "{{count}} context building(s)",
-    "modify": "Modify"
+    "modify": "Modify",
+    "label": "Tool options",
+    "cancel": "Finish tool"
   },
   "param": {
     "length": "Length",
@@ -250,15 +252,17 @@
   },
   "kpi": {
     "title": "Key figures",
-    "target": "{{status}} (target ≤ {{target}})"
+    "target": "{{status}} (target ≤ {{target}})",
+    "open": "Open rules analysis"
   },
   "start": {
-    "subtitle": "Urban massing studies",
+    "subtitle": "Sketch, compare and check massing on the real site – in minutes.",
     "new": "New project",
-    "open": "Open a file (.massing.json)",
-    "demo": "Demo project (Palaiseau)",
-    "recent": "Recent projects (autosaved)",
-    "noRecent": "No saved projects yet."
+    "open": "Open a file",
+    "demo": "Demo project",
+    "recent": "Recent projects",
+    "noRecent": "No saved projects yet.",
+    "eyebrow": "Capacity studies · Urban massing"
   },
   "settings": {
     "general": "General",
@@ -313,5 +317,78 @@
     "lightDepth": "Depth of {{masses}} ({{depth}} m): daylight critical.",
     "mixPlausibility": "{{masses}}: {{actual}} units per storey and core (expected {{min}}–{{max}}).",
     "estimatedContextHeights": "Estimated height for {{count}} context building(s)."
+  },
+  "cmd": {
+    "undo": "Undo",
+    "redo": "Redo",
+    "select": "Select"
+  },
+  "topbar": {
+    "rename": "Click to rename"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "palette": {
+    "open": "Search…",
+    "title": "Command palette",
+    "placeholder": "Search a command, tool or view…",
+    "empty": "No commands found",
+    "navigate": "navigate",
+    "run": "run",
+    "groups": {
+      "file": "File",
+      "edit": "Edit",
+      "volume": "Volumes",
+      "modify": "Modify",
+      "site": "Site",
+      "view": "View",
+      "analysis": "Analysis",
+      "output": "Output",
+      "archicad": "Archicad",
+      "theme": "Appearance"
+    }
+  },
+  "dock": {
+    "label": "Tools",
+    "volumes": "Volumes"
+  },
+  "panel": {
+    "label": "Project",
+    "project": "Project",
+    "masses": "Volumes",
+    "noMasses": "No volumes yet – pick a form under “Volumes”.",
+    "renameHint": "Double-click to rename",
+    "parcels": "Parcels",
+    "context": "Neighbouring buildings",
+    "collapse": "Collapse panel",
+    "expand": "Show panel"
+  },
+  "layers": {
+    "title": "Layers",
+    "context": "Context",
+    "buildings": "Buildings",
+    "roads": "Roads",
+    "green": "Green spaces",
+    "trees": "Trees",
+    "water": "Water",
+    "parcels": "Parcels",
+    "basemap": "Basemap",
+    "basemaps": {
+      "none": "None",
+      "plan": "IGN map",
+      "ortho": "Aerial photo"
+    }
+  },
+  "inspector": {
+    "title": "Inspector",
+    "noSelection": "No selection",
+    "site": "Site",
+    "siteArea": "Site area",
+    "constraints": "Planning rules",
+    "editRules": "Edit rules…"
   }
 }

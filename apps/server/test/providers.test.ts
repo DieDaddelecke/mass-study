@@ -5,6 +5,7 @@ import { GeoHttp, Throttle } from '../src/geo/http.js';
 import { IgnGeocodeProvider } from '../src/geo/ign-geocode.js';
 import { NominatimGeocodeProvider } from '../src/geo/nominatim.js';
 import { OverpassContextProvider, mapOverpass, overpassQuery } from '../src/geo/overpass.js';
+import { OverpassClient } from '../src/geo/osm.js';
 import { parseMeters } from '../src/geo/height.js';
 import { WfsParcelProvider } from '../src/geo/wfs-parcel.js';
 import { fakeFetch, fixture } from './helpers.js';
@@ -237,9 +238,9 @@ describe('Overpass context', () => {
 
   it('posts the query with UA', async () => {
     const f = fakeFetch([['overpass-api.de', 'palaiseau/overpass.json']]);
-    const r = await new OverpassContextProvider(http(f), new Throttle(0)).buildings([
-      2.19, 48.71, 2.2, 48.72,
-    ]);
+    const r = await new OverpassContextProvider(
+      new OverpassClient(http(f), undefined, new Throttle(0)),
+    ).buildings([2.19, 48.71, 2.2, 48.72]);
     expect(r.length).toBeGreaterThan(0);
     expect(f.calls[0]?.url).toBe('https://overpass-api.de/api/interpreter');
     expect(f.calls[0]?.init?.method).toBe('POST');

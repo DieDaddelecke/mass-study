@@ -18,8 +18,9 @@ import { actions, activeVariant, useProjectStore } from '../store/projectStore';
 import type { VisualStyle } from '../store/tools';
 import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
-import { TypologyInputs } from './OptionsBar';
-import { Group, NumField, Row, TrafficDot } from './ui';
+import { TypologyInputs } from './TypologyInputs';
+import { useShellStore } from './shellStore';
+import { Group, NumField, Row, Segmented, TrafficDot } from './ui';
 
 export const ACCESS_TYPES: AccessType[] = [
   'zweispaenner',
@@ -40,7 +41,6 @@ export function PropertiesPalette() {
   if (!project) {
     return (
       <div className="palette">
-        <div className="palette-head">{t('props.title')}</div>
         <div className="palette-empty">{t('props.noProject')}</div>
       </div>
     );
@@ -49,23 +49,30 @@ export function PropertiesPalette() {
   const ctx = project.context.filter((c) => selection.includes(c.id));
   let body;
   let type: string;
+  let title: string;
   if (masses.length === 1) {
     body = <MassProperties mass={masses[0]!} />;
+    title = masses[0]!.name;
     type = t(`common:typology.${masses[0]!.typology.kind}`);
   } else if (masses.length > 1) {
     body = <MultiMassProperties masses={masses} />;
-    type = t('props.multi', { count: masses.length });
+    title = t('props.multi', { count: masses.length });
+    type = t('props.title');
   } else if (ctx.length === 1) {
     body = <ContextProperties c={ctx[0]!} />;
-    type = t('props.contextBuilding');
+    title = t('props.contextBuilding');
+    type = t('props.group.context');
   } else {
     body = <ViewProperties />;
-    type = t('props.view3d');
+    title = project.name;
+    type = t('inspector.noSelection');
   }
   return (
     <div className="palette">
-      <div className="palette-head">{t('props.title')}</div>
-      <div className="palette-type">{type}</div>
+      <div className="palette-type">
+        <span className="palette-kicker">{type}</span>
+        <span className="palette-title">{title}</span>
+      </div>
       <div className="palette-body">{body}</div>
     </div>
   );
@@ -444,14 +451,59 @@ const STYLES: VisualStyle[] = [
 ];
 
 function ViewProperties() {
-  const { t } = useTranslation('shell');
+  const { t, i18n } = useTranslation('shell');
   const project = useProjectStore((s) => s.project)!;
   const style = useUiStore((s) => s.visualStyle);
   const setStyle = useUiStore((s) => s.setVisualStyle);
   const projection = useUiStore((s) => s.projection);
   const setProjection = useUiStore((s) => s.setProjection);
+  const setDialog = useShellStore((s) => s.setDialog);
+  const n = (v: number, d = 0) => formatNumber(v, d, i18n.language);
+  const siteArea = polygonsArea(project.site.parcels.map((p) => p.polygon));
+  const c = project.constraints;
+  const fr = project.settings.profile === 'FR';
+  const rules: [string, string][] = fr
+    ? [
+        [t('rules.empriseMax'), c.empriseMax != null ? `${n(c.empriseMax * 100, 0)} %` : '—'],
+        [t('rules.hauteurMax'), c.hauteurMax != null ? `${n(c.hauteurMax, 1)} m` : '—'],
+      ]
+    : [
+        ['GRZ', c.grz != null ? n(c.grz, 2) : '—'],
+        ['GFZ', c.gfz != null ? n(c.gfz, 2) : '—'],
+        [t('rules.hauteurMax'), c.maxHeight != null ? `${n(c.maxHeight, 1)} m` : '—'],
+      ];
   return (
     <>
+      <Group title={t('inspector.site')}>
+        <Row label={t('info.address')}>
+          <span className="ro">{project.info.address ?? '—'}</span>
+        </Row>
+        <Row label={t('panel.parcels')}>
+          <span className="ro">
+            {project.site.parcels.map((p) => p.ref ?? p.id).join(', ') || '—'}
+          </span>
+        </Row>
+        <Row label={t('inspector.siteArea')}>
+          <span className="ro num">{n(siteArea)} m²</span>
+        </Row>
+        <Row label={t('settings.profile')}>
+          <span className="ro">{t(`settings.profiles.${project.settings.profile}`)}</span>
+        </Row>
+      </Group>
+      <Group title={t('inspector.constraints')}>
+        {rules.map(([k, v]) => (
+          <Row key={k} label={k}>
+            <span className="ro num">{v}</span>
+          </Row>
+        ))}
+        <button
+          type="button"
+          className="btn btn-sm btn-block"
+          onClick={() => setDialog('constraints')}
+        >
+          {t('inspector.editRules')}
+        </button>
+      </Group>
       <Group title={t('props.group.graphics')}>
         <Row label={t('view.style')}>
           <select value={style} onChange={(e) => setStyle(e.target.value as VisualStyle)}>
@@ -463,30 +515,23 @@ function ViewProperties() {
           </select>
         </Row>
         <Row label={t('view.projection')}>
-          <select
+          <Segmented
+            ariaLabel={t('view.projection')}
             value={projection}
-            onChange={(e) => setProjection(e.target.value as 'perspective' | 'orthographic')}
-          >
-            <option value="perspective">{t('view.perspective')}</option>
-            <option value="orthographic">{t('view.orthographic')}</option>
-          </select>
+            onChange={setProjection}
+            options={[
+              { value: 'perspective', label: t('viewport:bar.persp') },
+              { value: 'orthographic', label: t('viewport:bar.ortho') },
+            ]}
+          />
         </Row>
       </Group>
       <Group title={t('props.group.project')}>
-        <Row label={t('info.name')}>
-          <span>{project.name}</span>
-        </Row>
-        <Row label={t('info.address')}>
-          <span>{project.info.address ?? '—'}</span>
-        </Row>
-        <Row label={t('settings.profile')}>
-          <span>{t(`settings.profiles.${project.settings.profile}`)}</span>
-        </Row>
         <Row label={t('info.crs')}>
-          <span>{project.geo.crs}</span>
+          <span className="ro">{project.geo.crs}</span>
         </Row>
         <Row label={t('info.phase')}>
-          <span>{project.info.phase || '—'}</span>
+          <span className="ro">{project.info.phase || '—'}</span>
         </Row>
       </Group>
     </>

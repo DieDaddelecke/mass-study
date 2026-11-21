@@ -1,3 +1,4 @@
+import { OVERPASS_URLS } from './geo/osm.js';
 import type { WfsParcelConfig } from './geo/wfs-parcel.js';
 
 /** Runtime configuration from environment variables (see README / docker-compose.yml). */
@@ -12,6 +13,8 @@ export interface ServerConfig {
   allowedOrigins: string[];
   /** Generic WFS cadastre providers (JSON array in PARCEL_WFS), none by default. */
   wfsParcelProviders: WfsParcelConfig[];
+  /** Overpass endpoints tried in order on 429/5xx (OVERPASS_URLS, comma separated). */
+  overpassUrls: string[];
 }
 
 /** Default port outside Docker; 8080 is often taken (Docker Desktop, WSL). The image sets PORT=8080. */
@@ -29,7 +32,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       .map((s) => s.trim())
       .filter(Boolean),
     wfsParcelProviders: parseWfsConfig(env.PARCEL_WFS),
+    overpassUrls: parseList(env.OVERPASS_URLS, OVERPASS_URLS),
   };
+}
+
+function parseList(raw: string | undefined, def: string[]): string[] {
+  const list = (raw ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return list.length ? list : def;
 }
 
 function parseWfsConfig(raw: string | undefined): WfsParcelConfig[] {

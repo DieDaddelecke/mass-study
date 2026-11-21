@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber';
-import { Object3D } from 'three';
+import { DirectionalLight, Object3D } from 'three';
 import { useProjectStore } from '../store/projectStore';
 import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
@@ -10,7 +10,7 @@ import { SceneContent } from './scene/SceneContent';
 import { ToolLayer } from './tools/ToolLayer';
 import { ViewControlBar } from './ViewControlBar';
 import { useViewportStore } from './viewportStore';
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import type { Project, SolidResult } from '@kubatur/core';
 import type { VisualStyle } from '../store/tools';
 import './viewport.css';
@@ -36,11 +36,18 @@ function Lights({
   const cy = (box.min[1] + box.max[1]) / 2 || 0;
   const r = Math.max(60, Math.hypot(box.max[0] - box.min[0], box.max[1] - box.min[1]) / 2 + 20);
   const realistic = style === 'realistic';
+  // three does not refresh the shadow camera's projection when its bounds change; without this the
+  // default 10 m frustum stays active and almost no shadows appear.
+  const sunRef = useRef<DirectionalLight>(null);
+  useLayoutEffect(() => {
+    sunRef.current?.shadow.camera.updateProjectionMatrix();
+  }, [r, shadows]);
   return (
     <>
       <hemisphereLight args={['#ffffff', '#d8d4cc', realistic ? 0.9 : 1.1]} />
       <ambientLight intensity={realistic ? 0.35 : 0.45} />
       <directionalLight
+        ref={sunRef}
         position={[cx - 0.45 * r * 2, cy - 0.9 * r * 2, r * 2]}
         intensity={realistic ? 2.2 : 1.3}
         castShadow={shadows}
@@ -68,7 +75,7 @@ export function Viewport3D() {
   const projection = useUiStore((s) => s.projection);
   const sun = useViewportStore((s) => s.sunEnabled);
   const solids = analysis?.result.solids ?? EMPTY;
-  const shadows = style === 'realistic' && sun;
+  const shadows = (style === 'realistic' || style === 'shaded') && sun;
   if (!project) return null;
   const ortho = projection === 'orthographic';
   return (

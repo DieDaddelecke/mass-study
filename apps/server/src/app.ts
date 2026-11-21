@@ -6,6 +6,7 @@ import { ApiCartoParcelProvider } from './geo/apicarto.js';
 import { BdTopoContextProvider } from './geo/bdtopo.js';
 import type {
   ApiError,
+  ContextLayersResponse,
   ContextResponse,
   GeocodeResponse,
   LonLat,
@@ -15,8 +16,11 @@ import { type BBox, bboxCenter, bboxSizeMeters } from './geo/geometry.js';
 import { FileCache, type FetchLike, GeoHttp, UpstreamError } from './geo/http.js';
 import { IgnGeocodeProvider } from './geo/ign-geocode.js';
 import { NominatimGeocodeProvider } from './geo/nominatim.js';
+import { ContextLayersService } from './geo/layers.js';
+import { OverpassClient } from './geo/osm.js';
 import { OverpassContextProvider } from './geo/overpass.js';
 import { ProviderRegistry } from './geo/providers.js';
+import { TileProxy, isBasemap, tileCovered, validateTile } from './geo/tiles.js';
 import { WfsParcelProvider } from './geo/wfs-parcel.js';
 
 export const VERSION = '0.1.0';
@@ -32,22 +36,37 @@ export interface ApiDeps {
   cache?: boolean;
 }
 
-export function createRegistry(config: ServerConfig, fetchFn: FetchLike, cache = true) {
-  const http = new GeoHttp(
+function createHttp(config: ServerConfig, fetchFn: FetchLike, cache: boolean): GeoHttp {
+  return new GeoHttp(
     fetchFn,
     config.userAgent,
     cache
       ? new FileCache(join(config.dataDir, 'cache'), config.cacheTtlDays * 86_400_000)
       : undefined,
   );
-  return new ProviderRegistry(
+}
+
+function createServices(config: ServerConfig, fetchFn: FetchLike, cache: boolean) {
+  const http = createHttp(config, fetchFn, cache);
+  const overpass = new OverpassClient(http, config.overpassUrls);
+  const apicarto = new ApiCartoParcelProvider(http);
+  const wfs = config.wfsParcelProviders.map((c) => new WfsParcelProvider(http, c));
+  const registry = new ProviderRegistry(
     [new IgnGeocodeProvider(http), new NominatimGeocodeProvider(http)],
-    [
-      new ApiCartoParcelProvider(http),
-      ...config.wfsParcelProviders.map((c) => new WfsParcelProvider(http, c)),
-    ],
-    [new BdTopoContextProvider(http), new OverpassContextProvider(http)],
+    [apicarto, ...wfs],
+    [new BdTopoContextProvider(http), new OverpassContextProvider(overpass)],
   );
+  const layers = new ContextLayersService({ http, overpass, apicarto, parcelProviders: wfs });
+  const tiles = new TileProxy(
+    http,
+    cache ? join(config.dataDir, 'tiles') : undefined,
+    config.cacheTtlDays * 86_400_000,
+  );
+  return { registry, layers, tiles };
+}
+
+export function createRegistry(config: ServerConfig, fetchFn: FetchLike, cache = true) {
+  return createServices(config, fetchFn, cache).registry;
 }
 
 class BadRequest extends Error {}
@@ -91,9 +110,12 @@ function parseBbox(raw: string | undefined): BBox {
 /** HTTP app without the static file handler (testable without a file system). */
 export function createApi(config: ServerConfig, deps: ApiDeps = {}): Hono {
   const app = new Hono();
-  const registry =
-    deps.registry ??
-    createRegistry(config, deps.fetch ?? ((u, i) => fetch(u, i)), deps.cache ?? true);
+  const services = createServices(
+    config,
+    deps.fetch ?? ((u, i) => fetch(u, i)),
+    deps.cache ?? true,
+  );
+  const registry = deps.registry ?? services.registry;
   if (config.allowedOrigins.length) app.use('/api/*', cors({ origin: config.allowedOrigins }));
   app.get('/api/health', (c) => c.json({ ok: true, version: VERSION }));
 
@@ -125,6 +147,37 @@ export function createApi(config: ServerConfig, deps: ApiDeps = {}): Hono {
     const r = await registry.contextAt(bbox, bboxCenter(bbox));
     const body: ContextResponse = { buildings: r.buildings, provider: r.provider };
     return c.json(body);
+  });
+
+  app.get('/api/context/layers', async (c) => {
+    const bbox = parseBbox(c.req.query('bbox'));
+    const body: ContextLayersResponse = await services.layers.layers(bbox);
+    return c.json(body);
+  });
+
+  app.get('/api/tiles/:basemap/:z/:x/:y', async (c) => {
+    const basemap = c.req.param('basemap');
+    if (!isBasemap(basemap)) throw new BadRequest('basemap must be plan or ortho');
+    const int = (v: string) => (/^\d+$/.test(v) ? Number(v) : NaN);
+    const z = int(c.req.param('z'));
+    const x = int(c.req.param('x'));
+    const y = int(c.req.param('y').replace(/\.(png|jpe?g)$/, ''));
+    const invalid = validateTile(z, x, y);
+    if (invalid) throw new BadRequest(invalid);
+    if (!tileCovered(z, x, y))
+      return c.json<ApiError>({ error: 'not_found', message: 'tile outside coverage' }, 404);
+    try {
+      const t = await services.tiles.tile({ basemap, z, x, y });
+      return c.body(t.bytes as Uint8Array<ArrayBuffer>, 200, {
+        'Content-Type': t.contentType,
+        'Cache-Control': 'public, max-age=604800',
+        'X-Cache': t.cached ? 'HIT' : 'MISS',
+      });
+    } catch (err) {
+      if (err instanceof UpstreamError && err.status === 404)
+        return c.json<ApiError>({ error: 'not_found', message: 'tile not available' }, 404);
+      throw err;
+    }
   });
 
   app.onError((err, c) => {

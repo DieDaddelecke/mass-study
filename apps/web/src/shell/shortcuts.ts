@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useShellStore } from './shellStore';
 import { escape, redo, save, TWO_LETTER, undo, deleteSelection } from './commands';
 
 export const SEQUENCE_TIMEOUT = 1000;
@@ -40,12 +41,18 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   );
 }
 
-/** Install the global keyboard shortcuts (Ctrl+Z/Y/S, Delete, Esc, two-letter commands). */
+/** Install the global keyboard shortcuts (Ctrl+K/Z/Y/S, Delete, Esc, two-letter commands). */
 export function useShortcuts(): void {
   useEffect(() => {
     const parser = createSequenceParser(Object.keys(TWO_LETTER));
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const st = useShellStore.getState();
+        st.setPaletteOpen(!st.paletteOpen);
+        return;
+      }
       if (mod && e.key.toLowerCase() === 's') {
         e.preventDefault();
         save();

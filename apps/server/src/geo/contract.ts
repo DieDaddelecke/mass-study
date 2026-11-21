@@ -64,6 +64,87 @@ export interface ContextResponse {
   provider: 'ign' | 'osm';
 }
 
+// ---------------------------------------------------------------------------
+// Context layers (streets, vegetation, trees, water, neighbouring parcels)
+// ---------------------------------------------------------------------------
+
+export type RoadKind =
+  | 'motorway'
+  | 'primary'
+  | 'secondary'
+  | 'tertiary'
+  | 'residential'
+  | 'service'
+  | 'track'
+  | 'cycleway'
+  | 'footway'
+  | 'path'
+  | 'rail'
+  | 'tram';
+
+export interface ContextRoadLonLat {
+  id: string;
+  /** Centre line. */
+  line: LonLat[];
+  /** Carriageway / track width in m (BD TOPO largeur_de_chaussee, OSM width or lanes, else by kind). */
+  width: number;
+  widthEstimated: boolean;
+  kind: RoadKind;
+  name?: string;
+  /** -1 tunnel / below ground, 0 at grade, 1 bridge. */
+  level: -1 | 0 | 1;
+  source: 'ign' | 'osm';
+}
+
+export type GreenKind =
+  'wood' | 'park' | 'grass' | 'garden' | 'pitch' | 'scrub' | 'hedge' | 'other';
+
+export interface ContextGreenLonLat {
+  id: string;
+  polygons: LonLatRings[];
+  kind: GreenKind;
+  source: 'ign' | 'osm';
+}
+
+export interface ContextTreeLonLat {
+  id: string;
+  lonLat: LonLat;
+  /** Tree height in m (OSM height, else default 10 m → heightEstimated). */
+  height: number;
+  /** Crown diameter in m (OSM diameter_crown, else 0.6 × height). */
+  crown: number;
+  heightEstimated: boolean;
+  leafType?: 'broadleaved' | 'needleleaved';
+  source: 'osm';
+}
+
+export interface ContextWaterLonLat {
+  id: string;
+  polygons: LonLatRings[];
+  source: 'ign' | 'osm';
+}
+
+/**
+ * GET /api/context/layers?bbox=minLon,minLat,maxLon,maxLat
+ * Each layer is fetched independently; a failing upstream leaves its layer empty and adds an entry
+ * to `errors` instead of failing the whole request.
+ */
+export interface ContextLayersResponse {
+  roads: ContextRoadLonLat[];
+  green: ContextGreenLonLat[];
+  trees: ContextTreeLonLat[];
+  water: ContextWaterLonLat[];
+  /** Cadastral parcels intersecting the bbox (neighbours; the site parcels are included too). */
+  parcels: ParcelResult[];
+  providers: Partial<
+    Record<'roads' | 'green' | 'trees' | 'water' | 'parcels', 'ign' | 'osm' | 'apicarto'>
+  >;
+  errors?: { layer: 'roads' | 'green' | 'trees' | 'water' | 'parcels'; message: string }[];
+}
+
+/** Base map for the ground texture: GET /api/tiles/{basemap}/{z}/{x}/{y} (web mercator, 256 px). */
+export type Basemap = 'plan' | 'ortho';
+
 export interface ApiError {
   error: 'bad_request' | 'not_found' | 'upstream_error' | 'rate_limited';
   message: string;
@@ -74,5 +155,7 @@ export const API = {
   geocodeComplete: '/api/geocode/complete',
   parcels: '/api/parcels',
   context: '/api/context',
+  contextLayers: '/api/context/layers',
+  tiles: '/api/tiles',
   health: '/api/health',
 } as const;

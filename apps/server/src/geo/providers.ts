@@ -12,6 +12,8 @@ export interface ParcelProvider {
   id: string;
   covers(lonLat: LonLat): boolean;
   parcelsAt(lonLat: LonLat): Promise<ParcelResult[]>;
+  /** Parcels intersecting a bbox (neighbourhood layer); optional. */
+  parcelsInBBox?(bbox: BBox): Promise<ParcelResult[]>;
 }
 
 export interface ContextProvider {

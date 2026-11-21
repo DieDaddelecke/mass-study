@@ -1,4 +1,4 @@
-import type { LonLat, ParcelResult } from './contract.js';
+import type { LonLat, LonLatRings, ParcelResult } from './contract.js';
 import { type BBox, geoJsonPolygons, inBBox, isRecord, pointInPolygon } from './geometry.js';
 import type { GeoHttp } from './http.js';
 import type { ParcelProvider } from './providers.js';
@@ -37,12 +37,15 @@ export class WfsParcelProvider implements ParcelProvider {
 
   buildUrl(lonLat: LonLat): string {
     const r = this.cfg.searchRadiusDeg ?? 0.0002;
-    const srs = this.cfg.srsName ?? 'EPSG:4326';
     const [lon, lat] = lonLat;
-    const box =
-      (this.cfg.bboxAxisOrder ?? 'latlon') === 'latlon'
-        ? [lat - r, lon - r, lat + r, lon + r]
-        : [lon - r, lat - r, lon + r, lat + r];
+    return this.bboxUrl([lon - r, lat - r, lon + r, lat + r]);
+  }
+
+  /** GetFeature URL for a [minLon, minLat, maxLon, maxLat] box. */
+  bboxUrl(b: BBox): string {
+    const srs = this.cfg.srsName ?? 'EPSG:4326';
+    const [w, s, e, n] = b;
+    const box = (this.cfg.bboxAxisOrder ?? 'latlon') === 'latlon' ? [s, w, n, e] : [w, s, e, n];
     const crsUrn = `urn:ogc:def:crs:${srs.replace(':', '::')}`;
     const params = [
       'SERVICE=WFS',
@@ -59,6 +62,16 @@ export class WfsParcelProvider implements ParcelProvider {
 
   async parcelsAt(lonLat: LonLat): Promise<ParcelResult[]> {
     const data = await this.http.getJson(this.buildUrl(lonLat), { upstream: `wfs:${this.id}` });
+    return this.map(data, (polygons) => polygons.some((poly) => pointInPolygon(lonLat, poly)));
+  }
+
+  /** All parcels intersecting the bbox. */
+  async parcelsInBBox(bbox: BBox): Promise<ParcelResult[]> {
+    const data = await this.http.getJson(this.bboxUrl(bbox), { upstream: `wfs:${this.id}` });
+    return this.map(data, () => true);
+  }
+
+  private map(data: unknown, keep: (polygons: LonLatRings[]) => boolean): ParcelResult[] {
     const features = isRecord(data) && Array.isArray(data.features) ? data.features : [];
     const { fields } = this.cfg;
     return features.flatMap((f: unknown): ParcelResult[] => {
@@ -67,7 +80,7 @@ export class WfsParcelProvider implements ParcelProvider {
       const ref = p[fields.ref];
       if (typeof ref !== 'string' && typeof ref !== 'number') return [];
       const polygons = geoJsonPolygons(f.geometry);
-      if (!polygons.some((poly) => pointInPolygon(lonLat, poly))) return [];
+      if (!keep(polygons)) return [];
       const label = (fields.label ?? [])
         .map((k) => p[k])
         .filter((v) => (typeof v === 'string' && v) || typeof v === 'number')
