@@ -6,6 +6,8 @@ import {
   rect,
   ringCentroid,
   union,
+  zoneTrees,
+  type PlantingZone,
   type Polygon,
   type Project,
   type StoreySolid,
@@ -27,6 +29,37 @@ export interface SitePlanOptions extends CommonOptions {
   sections?: SectionLine[];
   /** Show roads, green, water, trees and neighbouring parcels (default true). */
   surroundings?: boolean;
+  /** Vegetation zones (default: the active variant's plantings). */
+  plantings?: PlantingZone[];
+}
+
+/** Tree symbol: crown circle + centre cross. */
+function treeItems(x: number, y: number, r: number): DItem[] {
+  const n = 16;
+  const ring: Vec2[] = [];
+  for (let i = 0; i < n; i++)
+    ring.push([x + r * Math.cos((i / n) * 2 * Math.PI), y + r * Math.sin((i / n) * 2 * Math.PI)]);
+  return [
+    { kind: 'fill', rings: [ring], fill: 'rgba(127,158,108,0.18)', pen: 1, stroke: COLORS.tree },
+    line(
+      [
+        [x - 0.4, y],
+        [x + 0.4, y],
+      ],
+      1,
+      'solid',
+      COLORS.tree,
+    ),
+    line(
+      [
+        [x, y - 0.4],
+        [x, y + 0.4],
+      ],
+      1,
+      'solid',
+      COLORS.tree,
+    ),
+  ];
 }
 
 const rings = (p: Polygon): Vec2[][] => [p.outer, ...(p.holes ?? [])];
@@ -117,43 +150,7 @@ export function sitePlan(
     for (const t of sur.trees) {
       const [x, y] = t.position;
       if (x < ext.minX || x > ext.maxX || y < ext.minY || y > ext.maxY) continue;
-      const r = Math.max(1.5, t.crown / 2);
-      const n = 16;
-      const ring: Vec2[] = [];
-      for (let i = 0; i < n; i++)
-        ring.push([
-          x + r * Math.cos((i / n) * 2 * Math.PI),
-          y + r * Math.sin((i / n) * 2 * Math.PI),
-        ]);
-      items.push({
-        kind: 'fill',
-        rings: [ring],
-        fill: 'rgba(127,158,108,0.18)',
-        pen: 1,
-        stroke: COLORS.tree,
-      });
-      items.push(
-        line(
-          [
-            [x - 0.4, y],
-            [x + 0.4, y],
-          ],
-          1,
-          'solid',
-          COLORS.tree,
-        ),
-      );
-      items.push(
-        line(
-          [
-            [x, y - 0.4],
-            [x, y + 0.4],
-          ],
-          1,
-          'solid',
-          COLORS.tree,
-        ),
-      );
+      items.push(...treeItems(x, y, Math.max(1.5, t.crown / 2)));
     }
   }
   if (showN) {
@@ -194,6 +191,31 @@ export function sitePlan(
     }
   }
 
+  // vegetation zones of the variant (below the masses)
+  const plantings =
+    opts.plantings ??
+    project.variants?.find((v) => v.id === project.activeVariantId)?.plantings ??
+    [];
+  for (const z of plantings) {
+    if (z.polygon.outer.length < 3) continue;
+    for (const p of intersection([z.polygon], clip)) {
+      const f: DItem = {
+        kind: 'fill',
+        rings: rings(p),
+        fill: z.kind === 'surDalle' ? '#f1f6ec' : COLORS.green,
+        pen: 1,
+        stroke: COLORS.greenLine,
+      };
+      if (z.kind === 'surDalle')
+        f.hatch = { angle: 45, spacingMm: 1.6, pen: 1, color: COLORS.greenLine };
+      items.push(f);
+    }
+  }
+  for (const z of plantings) {
+    const crown = z.treeHeight ? 0.6 * z.treeHeight : 5;
+    for (const [x, y] of zoneTrees(z)) items.push(...treeItems(x, y, Math.max(1.5, crown / 2)));
+  }
+
   // buildable area / building lines
   const buildable = project.constraints.buildable ?? project.site.buildable;
   for (const b of buildable ?? [])
@@ -231,6 +253,15 @@ export function sitePlan(
       if (!diff.length) continue;
       for (const p of at)
         for (const r of rings(p)) items.push(line(r, 1, 'solid', 'rgba(255,255,255,0.7)', true));
+    }
+    // ridge / hip lines of pitched roofs
+    for (const rf of opts.roofs ?? []) {
+      if (rf.massId !== massId) continue;
+      const o = rf.polygon.outer;
+      o.forEach((a, i) => {
+        if (rf.seams[i])
+          items.push(line([a, o[(i + 1) % o.length]!], 1, 'solid', 'rgba(255,255,255,0.7)'));
+      });
     }
     for (const p of all)
       for (const r of rings(p)) items.push(line(r, 4, 'solid', sc.outline, true));

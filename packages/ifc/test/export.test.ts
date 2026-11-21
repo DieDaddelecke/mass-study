@@ -196,3 +196,50 @@ describe('exportIfc', () => {
     }
   });
 });
+
+describe('exportIfc – pitched roofs and plantings', () => {
+  const project = testProject();
+  const bar = project.variants[0]!.masses[1]!;
+  bar.roof = { kind: 'gable', pitch: 35, ridge: 'length' };
+  project.variants[0]!.plantings = [
+    {
+      id: 'z1',
+      name: 'Jardin',
+      kind: 'pleineTerre',
+      polygon: rect(-50, -35, -20, -20),
+      treeSpacing: 6,
+    },
+  ];
+  const { result } = analyzeProject(project);
+  const text = exportIfc(project, result, FIXED);
+
+  it('writes roofs as IfcRoof with a faceted B-rep and the planting', async () => {
+    const pieces = result.masses.find((m) => m.mass.id === 'm2')!.roofs;
+    expect(pieces.length).toBeGreaterThanOrEqual(2);
+    expect(text.match(/=IFCROOF\(/g)?.length).toBe(pieces.length);
+    expect(text).toContain('.GABLE_ROOF.');
+    expect(text).toContain('IFCFACETEDBREP');
+    expect(text).toContain('IFCGEOGRAPHICELEMENT');
+    expect(text).toContain(str('Jardin'));
+
+    const require = createRequire(import.meta.url);
+    const api = new WebIFC.IfcAPI();
+    api.SetWasmPath(dirname(require.resolve('web-ifc')) + '/', true);
+    await api.Init();
+    const model = api.OpenModel(new TextEncoder().encode(text));
+    try {
+      expect(api.GetLineIDsWithType(model, WebIFC.IFCROOF).size()).toBe(pieces.length);
+      expect(api.GetLineIDsWithType(model, WebIFC.IFCGEOGRAPHICELEMENT).size()).toBe(1);
+      const ids = new Set<number>();
+      const roofIds = api.GetLineIDsWithType(model, WebIFC.IFCROOF);
+      for (let i = 0; i < roofIds.size(); i++) ids.add(roofIds.get(i));
+      let roofMeshes = 0;
+      api.StreamAllMeshes(model, (m) => {
+        if (ids.has(m.expressID)) roofMeshes++;
+      });
+      expect(roofMeshes).toBe(pieces.length);
+    } finally {
+      api.CloseModel(model);
+    }
+  });
+});

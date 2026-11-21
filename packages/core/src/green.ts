@@ -1,4 +1,11 @@
-import { difference, intersection, pointInPolygon, polygonsArea, ringBBox, union } from './geometry.js';
+import {
+  difference,
+  intersection,
+  pointInPolygon,
+  polygonsArea,
+  ringBBox,
+  union,
+} from './geometry.js';
 import type { VariantResult } from './analysis.js';
 import type { PlantingKind, PlantingZone, Polygon, Vec2 } from './types.js';
 
@@ -107,7 +114,8 @@ function edgeDistance(p: Vec2, poly: Polygon): number {
       const dx = b[0] - a[0];
       const dy = b[1] - a[1];
       const l2 = dx * dx + dy * dy;
-      const t = l2 > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
+      const t =
+        l2 > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
       d = Math.min(d, Math.hypot(a[0] + t * dx - p[0], a[1] + t * dy - p[1]));
     }
   return d;

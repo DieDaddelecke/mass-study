@@ -5,6 +5,7 @@ import {
   contextPrisms,
   line,
   massPrisms,
+  roofPrisms,
   schemeColors,
   siteBox,
   visibleContext,
@@ -72,7 +73,7 @@ export function axonometry(
 ): DrawingModel {
   const P = axoProjection(dir, kind);
   const sc = schemeColors(opts.scheme);
-  const masses = massPrisms(solids, opts.masses);
+  const masses = [...massPrisms(solids, opts.masses), ...roofPrisms(opts.roofs)];
   const box = siteBox(project, solids);
   const m = opts.contextMargin ?? 30;
   const region = { minX: box.minX - m, minY: box.minY - m, maxX: box.maxX + m, maxY: box.maxY + m };

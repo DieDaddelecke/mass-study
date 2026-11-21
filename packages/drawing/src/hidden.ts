@@ -28,7 +28,30 @@ export interface Prism {
   id: string;
   /** Index into the caller's data. */
   ref?: number;
+  /**
+   * Sloped top (pitched roof piece): z = a + b·x + c·y over the outline. `z1` is then the
+   * maximum of the plane over the outline (used for bounding boxes).
+   */
+  top?: [number, number, number];
+  /**
+   * Per edge of `outer` (i → i+1): true for an internal edge between two roof faces (ridge,
+   * hip). No wall face there; the sloped top edge is drawn as ridge / hip line.
+   */
+  seams?: boolean[];
 }
+
+/** Height of the top of the prism at the plan point q. */
+export function topZ(pr: Prism, q: Vec2): number {
+  return pr.top ? pr.top[0] + pr.top[1] * q[0] + pr.top[2] * q[1] : pr.z1;
+}
+
+/** Is the top face front-facing (its upward normal points towards the viewer)? */
+export function topFront(pr: Prism, v: Vec3): boolean {
+  if (!pr.top) return v[2] > 1e-9;
+  return -pr.top[1] * v[0] - pr.top[2] * v[1] + v[2] > 1e-9;
+}
+
+const isSeam = (pr: Prism, ring: Vec2[], i: number) => ring === pr.outer && !!pr.seams?.[i];
 
 /** Parallel projection: screen x = right·p, screen y = up·p; `v` points towards the viewer. */
 export interface Projection {
@@ -86,7 +109,13 @@ export function projectPoint(P: Projection, p: Vec3): Vec2 {
 export function orientPrism(p: Prism): Prism {
   const outer = signedRingArea(p.outer) < 0 ? [...p.outer].reverse() : p.outer;
   const holes = p.holes.map((h) => (signedRingArea(h) > 0 ? [...h].reverse() : h));
-  return { ...p, outer, holes };
+  const out: Prism = { ...p, outer, holes };
+  if (p.seams && outer !== p.outer) {
+    // reversed ring: edge j of the new ring is edge n-2-j of the old one
+    const n = p.outer.length;
+    out.seams = outer.map((_, j) => !!p.seams![(((n - 2 - j) % n) + n) % n]);
+  }
+  return out;
 }
 
 export function prismFromPolygon(
@@ -274,7 +303,7 @@ class Occluders {
         d.pminY = Math.min(d.pminY, q[1]);
         d.pmaxX = Math.max(d.pmaxX, q[0]);
         d.pmaxY = Math.max(d.pmaxY, q[1]);
-        for (const z of [prism.z0, prism.z1]) {
+        for (const z of [prism.z0, topZ(prism, q)]) {
           const p3: Vec3 = [q[0], q[1], z];
           const s = projectPoint(P, p3);
           d.minX = Math.min(d.minX, s[0]);
@@ -335,22 +364,25 @@ class Occluders {
   hidden(p: Vec3, cands: PrismData[]): boolean {
     const v = this.P.v;
     for (const d of cands) {
-      const { z1 } = d.prism;
+      const pr = d.prism;
       // prisms standing on the ground also hide points on the ground plane behind them
-      const z0 = d.prism.z0 <= 1e-9 ? d.prism.z0 - 2 * EPS_Z : d.prism.z0;
-      let t1: number;
-      let t2: number;
-      if (Math.abs(v[2]) < 1e-12) {
-        if (!(p[2] > z0 + EPS_Z && p[2] < z1 - EPS_Z)) continue;
-        t1 = 1e-6;
-        t2 = this.far;
-      } else {
-        const ta = (z0 + EPS_Z - p[2]) / v[2];
-        const tb = (z1 - EPS_Z - p[2]) / v[2];
-        t1 = Math.max(Math.min(ta, tb), 1e-6);
-        t2 = Math.min(Math.max(ta, tb), this.far);
-        if (t2 <= t1) continue;
+      const z0 = pr.z0 <= 1e-9 ? pr.z0 - 2 * EPS_Z : pr.z0;
+      const [ta0, tb, tc] = pr.top ?? [pr.z1, 0, 0];
+      let t1 = 1e-6;
+      let t2 = this.far;
+      // linear constraints α + β·t ≥ 0 on the ray p + t·v
+      const cons: [number, number][] = [
+        [p[2] - z0 - EPS_Z, v[2]],
+        [ta0 + tb * p[0] + tc * p[1] - p[2] - EPS_Z, tb * v[0] + tc * v[1] - v[2]],
+      ];
+      let empty = false;
+      for (const [al, be] of cons) {
+        if (Math.abs(be) < 1e-12) {
+          if (al <= 0) empty = true;
+        } else if (be > 0) t1 = Math.max(t1, -al / be);
+        else t2 = Math.min(t2, -al / be);
       }
+      if (empty || t2 <= t1) continue;
       const a: Vec2 = [p[0] + v[0] * t1, p[1] + v[1] * t1];
       const b: Vec2 = [p[0] + v[0] * t2, p[1] + v[1] * t2];
       if (segmentHitsInterior(a, b, d)) return true;
@@ -361,15 +393,16 @@ class Occluders {
   contour(d: PrismData): [Vec2, Vec2][] {
     if (d.contour) return d.contour;
     const out: [Vec2, Vec2][] = [];
-    const { z0, z1 } = d.prism;
+    const pr = d.prism;
+    const z0 = pr.z0;
     for (const ring of d.rings) {
       for (let i = 0; i < ring.length; i++) {
         const a = ring[i]!;
         const b = ring[(i + 1) % ring.length]!;
         const a0 = projectPoint(this.P, [a[0], a[1], z0]);
-        const a1 = projectPoint(this.P, [a[0], a[1], z1]);
+        const a1 = projectPoint(this.P, [a[0], a[1], topZ(pr, a)]);
         const b0 = projectPoint(this.P, [b[0], b[1], z0]);
-        const b1 = projectPoint(this.P, [b[0], b[1], z1]);
+        const b1 = projectPoint(this.P, [b[0], b[1], topZ(pr, b)]);
         out.push([a0, b0], [a1, b1], [a0, a1]);
       }
     }
@@ -385,68 +418,118 @@ interface Edge {
   tag?: string;
 }
 
-const edgeKey = (a: Vec2, b: Vec2, z: number) => {
+const edgeKey = (a: Vec2, b: Vec2, za: number, zb: number = za) => {
   const r = (x: number) => Math.round(x * 1000);
-  const ka = `${r(a[0])},${r(a[1])}`;
-  const kb = `${r(b[0])},${r(b[1])}`;
-  return (ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`) + `|${r(z)}`;
+  const ka = `${r(a[0])},${r(a[1])},${r(za)}`;
+  const kb = `${r(b[0])},${r(b[1])},${r(zb)}`;
+  return ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
 };
+
+/** Horizontal segments at one height, for coverage tests of partially shared edges. */
+type SegIndex = Map<number, [Vec2, Vec2][]>;
+
+function addSeg(ix: SegIndex, a: Vec2, b: Vec2, z: number) {
+  const k = Math.round(z * 1000);
+  let arr = ix.get(k);
+  if (!arr) ix.set(k, (arr = []));
+  arr.push([a, b]);
+}
+
+/** Is the plan segment a–b at height z covered by the union of collinear indexed segments? */
+function covered(ix: SegIndex, a: Vec2, b: Vec2, z: number): boolean {
+  const arr = ix.get(Math.round(z * 1000));
+  if (!arr) return false;
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const L = Math.hypot(dx, dy);
+  if (L < 1e-9) return false;
+  const ux = dx / L;
+  const uy = dy / L;
+  const iv: [number, number][] = [];
+  for (const [c, d] of arr) {
+    const off = (q: Vec2) => Math.abs((q[0] - a[0]) * -uy + (q[1] - a[1]) * ux);
+    if (off(c) > 1e-3 || off(d) > 1e-3) continue;
+    const t0 = (c[0] - a[0]) * ux + (c[1] - a[1]) * uy;
+    const t1 = (d[0] - a[0]) * ux + (d[1] - a[1]) * uy;
+    iv.push([Math.min(t0, t1), Math.max(t0, t1)]);
+  }
+  iv.sort((x, y) => x[0] - y[0]);
+  let reach = 0;
+  for (const [t0, t1] of iv) {
+    if (t0 > reach + 1e-3) break;
+    reach = Math.max(reach, t1);
+  }
+  return reach >= L - 1e-3;
+}
 
 function candidateEdges(prisms: Prism[], P: Projection, storeyLines: boolean): Edge[] {
   const v = P.v;
-  const roofFront = v[2] > 1e-9;
   const floorFront = v[2] < -1e-9;
-  // horizontal edges at the bottom of a prism, keyed (to detect stacked prisms)
+  const sloped = prisms.some((p) => p.top);
+  // horizontal edges at the bottom / top of a prism, keyed (to detect stacked prisms)
   const bottoms = new Set<string>();
-  for (const pr of prisms)
-    for (const ring of [pr.outer, ...pr.holes])
-      for (let i = 0; i < ring.length; i++)
-        bottoms.add(edgeKey(ring[i]!, ring[(i + 1) % ring.length]!, pr.z0));
   const tops = new Set<string>();
+  const botIx: SegIndex = new Map();
+  const topIx: SegIndex = new Map();
   for (const pr of prisms)
     for (const ring of [pr.outer, ...pr.holes])
-      for (let i = 0; i < ring.length; i++)
-        tops.add(edgeKey(ring[i]!, ring[(i + 1) % ring.length]!, pr.z1));
+      for (let i = 0; i < ring.length; i++) {
+        const a = ring[i]!;
+        const b = ring[(i + 1) % ring.length]!;
+        bottoms.add(edgeKey(a, b, pr.z0));
+        tops.add(edgeKey(a, b, topZ(pr, a), topZ(pr, b)));
+        if (sloped) {
+          if (!isSeam(pr, ring, i)) addSeg(botIx, a, b, pr.z0);
+          if (!pr.top) addSeg(topIx, a, b, pr.z1);
+        }
+      }
 
   const edges: Edge[] = [];
   for (const pr of prisms) {
+    const roofFront = topFront(pr, v);
     for (const ring of [pr.outer, ...pr.holes]) {
       const n = ring.length;
       const wallFront: boolean[] = [];
+      const seam: boolean[] = [];
       for (let i = 0; i < n; i++) {
         const a = ring[i]!;
         const b = ring[(i + 1) % n]!;
         // outward normal = right of a→b for CCW outer / CW holes
         const nx = b[1] - a[1];
         const ny = -(b[0] - a[0]);
-        wallFront.push(nx * v[0] + ny * v[1] > 1e-9 * Math.hypot(nx, ny));
+        seam.push(isSeam(pr, ring, i));
+        wallFront.push(!seam[i] && nx * v[0] + ny * v[1] > 1e-9 * Math.hypot(nx, ny));
       }
       for (let i = 0; i < n; i++) {
         const a = ring[i]!;
         const b = ring[(i + 1) % n]!;
+        const za = topZ(pr, a);
+        const zb = topZ(pr, b);
+        if (seam[i]) {
+          // ridge / hip line
+          if (roofFront)
+            edges.push({ p: [a[0], a[1], za], q: [b[0], b[1], zb], prism: pr, cls: 'edge' });
+          continue;
+        }
         const wf = wallFront[i]!;
-        const topKey = edgeKey(a, b, pr.z1);
-        const botKey = edgeKey(a, b, pr.z0);
-        const topShared = bottoms.has(topKey);
-        const botShared = tops.has(botKey);
+        const topShared =
+          bottoms.has(edgeKey(a, b, za, zb)) || (sloped && !pr.top && covered(botIx, a, b, pr.z1));
+        const botShared =
+          tops.has(edgeKey(a, b, pr.z0)) || (sloped && !!pr.top && covered(topIx, a, b, pr.z0));
         if (wf || roofFront) {
           if (!topShared)
-            edges.push({ p: [a[0], a[1], pr.z1], q: [b[0], b[1], pr.z1], prism: pr, cls: 'edge' });
+            edges.push({ p: [a[0], a[1], za], q: [b[0], b[1], zb], prism: pr, cls: 'edge' });
           else if (storeyLines && wf)
-            edges.push({
-              p: [a[0], a[1], pr.z1],
-              q: [b[0], b[1], pr.z1],
-              prism: pr,
-              cls: 'storey',
-            });
+            edges.push({ p: [a[0], a[1], za], q: [b[0], b[1], zb], prism: pr, cls: 'storey' });
         }
         if ((wf || floorFront) && !botShared)
           edges.push({ p: [a[0], a[1], pr.z0], q: [b[0], b[1], pr.z0], prism: pr, cls: 'edge' });
-        // vertical edge at vertex b (between wall i and wall i+1)
-        if (wf || wallFront[(i + 1) % n]!)
+        // vertical edge at vertex b (between wall i and wall i+1); none next to a seam
+        const j = (i + 1) % n;
+        if (!seam[j] && (wf || wallFront[j]!) && zb - pr.z0 > 1e-6)
           edges.push({
             p: [b[0], b[1], pr.z0],
-            q: [b[0], b[1], pr.z1],
+            q: [b[0], b[1], zb],
             prism: pr,
             cls: 'vertical',
           });
@@ -549,15 +632,18 @@ export function hiddenLine(
         const b = ring[(i + 1) % ring.length]!;
         const nx = b[1] - a[1];
         const ny = -(b[0] - a[0]);
+        if (isSeam(pr, ring, i)) continue;
         if (nx * v[0] + ny * v[1] <= 1e-9 * Math.hypot(nx, ny)) continue;
-        const zm = (pr.z0 + pr.z1) / 2;
+        const za = topZ(pr, a);
+        const zb = topZ(pr, b);
+        const zm = (2 * pr.z0 + za + zb) / 4;
         faces.push({
           rings: [
             [
               projectPoint(P, [a[0], a[1], pr.z0]),
               projectPoint(P, [b[0], b[1], pr.z0]),
-              projectPoint(P, [b[0], b[1], pr.z1]),
-              projectPoint(P, [a[0], a[1], pr.z1]),
+              projectPoint(P, [b[0], b[1], zb]),
+              projectPoint(P, [a[0], a[1], za]),
             ],
           ],
           depth: dot3(v, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, zm]),
@@ -566,10 +652,10 @@ export function hiddenLine(
         });
       }
     }
-    if (v[2] > 1e-9) {
+    if (topFront(pr, v)) {
       faces.push({
         rings: [pr.outer, ...pr.holes].map((r) =>
-          r.map((q) => projectPoint(P, [q[0], q[1], pr.z1])),
+          r.map((q) => projectPoint(P, [q[0], q[1], topZ(pr, q)])),
         ),
         depth: -Infinity,
         prism: pr,

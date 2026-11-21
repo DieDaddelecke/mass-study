@@ -241,30 +241,28 @@ export function roofPieces(
 }
 
 /**
- * Roof faces of a mass from its storey solids. Every top storey (per section) is roofed; the
- * footprints of one section are unioned first (attique parts stay separate if they are).
+ * Roof faces of a mass from its storey solids. Every top storey is roofed; top storeys of the
+ * same height (sections of a Zeile) are unioned first so that they share one roof.
  */
 export function massRoofPieces(mass: Mass, solids: readonly StoreySolid[]): RoofPiece[] {
   const roof = mass.roof;
   if (!isPitched(roof)) return [];
   const frame = roofFrame(mass);
-  const groups = new Map<string, { segment?: number; z0: number; polys: Polygon[] }>();
+  // sections of the same height share one roof (continuous ridge along a Zeile)
+  const groups = new Map<string, { segments: Set<number>; z0: number; polys: Polygon[] }>();
   for (const s of solids) {
     if (s.massId !== mass.id || !s.top || !s.aboveGround) continue;
-    const k = `${s.segment ?? -1}|${s.z1.toFixed(3)}`;
+    const k = s.z1.toFixed(3);
     let g = groups.get(k);
-    if (!g) {
-      g = { z0: s.z1, polys: [] };
-      if (s.segment !== undefined) g.segment = s.segment;
-      groups.set(k, g);
-    }
+    if (!g) groups.set(k, (g = { segments: new Set(), z0: s.z1, polys: [] }));
+    if (s.segment !== undefined) g.segments.add(s.segment);
     g.polys.push(s.footprint);
   }
   const out: RoofPiece[] = [];
   for (const g of groups.values()) {
     const polys = g.polys.length > 1 ? union(g.polys) : g.polys;
     const tag: { massId: string; segment?: number } = { massId: mass.id };
-    if (g.segment !== undefined) tag.segment = g.segment;
+    if (g.segments.size === 1) tag.segment = [...g.segments][0]!;
     for (const p of polys) out.push(...roofPieces(p, g.z0, roof, frame, tag));
   }
   return out;
