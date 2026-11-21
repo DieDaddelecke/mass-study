@@ -144,3 +144,21 @@
   border-radius: 3px;
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
 }
+
+.vp-legend-label {
+  flex: 1;
+  min-width: 48px;
+}
+.vp-legend-num {
+  min-width: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.vp-legend-num.muted {
+  color: var(--text-3);
+}
+.vp-legend-total {
+  border-top: 1px solid var(--border, rgb(0 0 0 / 0.08));
+  margin: 2px 0 4px;
+  font-weight: 600;
+}

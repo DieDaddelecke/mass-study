@@ -19,6 +19,7 @@
     "hiddenLine": "Lignes cachées",
     "shaded": "Ombré",
     "consistentColors": "Couleurs uniformes",
+    "granulometry": "Granulométrie",
     "realistic": "Réaliste"
   },
   "bar": {
@@ -35,6 +36,12 @@
     "ortho": "Ortho"
   },
   "legend": {
-    "title": "Affectations"
+    "title": "Affectations",
+    "granuloTitle": "Granulométrie",
+    "units": "logements",
+    "core": "Cage d'escalier",
+    "circulation": "Circulation",
+    "other": "Autres usages",
+    "none": "Aucun logement dans la variante"
   }
 }

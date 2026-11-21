@@ -16,6 +16,8 @@ import {
   drawingInput,
   floorPlan,
   renderSvg,
+  roomColor,
+  serviceColor,
   unitColor,
 } from '../src/index.js';
 
@@ -55,10 +57,21 @@ describe('floorPlan', () => {
       const st = layouts[0]!.storeys.find((s) => s.storeyIndex === 1)!;
       const fills = model.items.filter((i) => i.kind === 'fill');
       const colours = new Set(st.units.map((u) => unitColor(u.typeId, p.settings.unitMix)));
+      // dwellings in a pale tint of their type colour, their rooms in the colour itself
       for (const c of colours)
-        expect(fills.some((f) => f.kind === 'fill' && f.fill === c)).toBe(true);
+        expect(fills.some((f) => f.kind === 'fill' && f.fill === serviceColor(c))).toBe(true);
       const texts = model.items.filter((i) => i.kind === 'text');
-      expect(texts.length).toBe(st.units.length * 2);
+      const roomLabels = st.units.flatMap((u) => u.rooms).filter((r) => r.area >= 7).length;
+      expect(texts.length).toBe(st.units.length * 2 + roomLabels);
+      // rooms as rectangles in a darker tint of the dwelling colour
+      const rooms = st.units.flatMap((u) =>
+        u.rooms.map((r) => roomColor(unitColor(u.typeId, p.settings.unitMix), r.kind)),
+      );
+      expect(rooms.length).toBeGreaterThanOrEqual(st.units.length);
+      for (const c of rooms)
+        expect(fills.some((f) => f.kind === 'fill' && f.fill === c)).toBe(true);
+      const plain = floorPlan(p, solids, 1, layouts, { rooms: false });
+      expect(plain.items.filter((i) => i.kind === 'text')).toHaveLength(st.units.length * 2);
       const scale = chooseScale(model, 380, 250, [200, 250, 500]);
       const svg = renderSvg(model, { scale });
       expect(svg).toContain('<svg');

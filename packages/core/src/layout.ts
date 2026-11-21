@@ -30,6 +30,7 @@ import {
   resolveUnitRules,
   unitRooms,
 } from './unitRules.js';
+import { unitRoomLayout, type LayoutRoom } from './rooms.js';
 import type {
   AccessType,
   Mass,
@@ -69,6 +70,8 @@ export interface LayoutUnit {
   facadeOk: boolean;
   /** Façade pieces of the unit (world coordinates), for drawing. */
   facadeSegments: [Vec2, Vec2][];
+  /** Main rooms (séjour, chambre PMR, chambres) as rectangles along the façade. */
+  rooms: LayoutRoom[];
 }
 
 export interface LayoutTypeCount {
@@ -1047,6 +1050,7 @@ export function storeyLayout(
         facadeRequired: need,
         facadeOk: facade.length >= need - 1e-6,
         facadeSegments: facade.segments,
+        rooms: unitRoomLayout(polygon, facade.segments, unitRooms(choice.type), rules),
       });
     });
   }

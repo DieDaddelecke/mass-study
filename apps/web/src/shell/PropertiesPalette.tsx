@@ -447,6 +447,7 @@ const STYLES: VisualStyle[] = [
   'hiddenLine',
   'shaded',
   'consistentColors',
+  'granulometry',
   'realistic',
 ];
 

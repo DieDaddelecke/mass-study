@@ -56,6 +56,7 @@ export function buildDrawing(
         neighbours: s.neighbours,
         facadeText: (f, r) =>
           i18n.t('drawing:fp.facadeTip', { facade: formatNumber(f), min: formatNumber(r) }),
+        roomText: (k) => i18n.t(`drawing:fp.roomShort.${k}`),
       });
     }
     case 'elevN':

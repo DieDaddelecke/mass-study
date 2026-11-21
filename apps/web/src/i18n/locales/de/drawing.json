@@ -53,6 +53,18 @@
     "facadeTip": "Fassade {{facade}} m (min. {{min}} m)",
     "facadeRule": "Mindest-Fassadenlänge je Typ (Wohnraum, rollstuhlgerechtes Schlafzimmer, Zimmer, Innenwände)",
     "facadeMark": "Fassade der Wohnung",
-    "facadeFail": "{{count}} Wohnung(en) unter der Mindest-Fassadenlänge (!)"
+    "facadeFail": "{{count}} Wohnung(en) unter der Mindest-Fassadenlänge (!)",
+    "roomShort": {
+      "sejour": "Wohn.",
+      "chambrePmr": "PMR",
+      "chambre": "Zi."
+    },
+    "room": {
+      "sejour": "Wohnraum (Fassade ≥ {{min}} m)",
+      "chambrePmr": "Zimmer PMR (≥ {{min}} m)",
+      "chambre": "Zimmer (≥ {{min}} m)"
+    },
+    "rooms": "Wohnräume",
+    "roomFail": "{{count}} Raum/Räume unter der Mindestfassade (roter Rand)"
   }
 }
