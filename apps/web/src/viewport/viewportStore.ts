@@ -1,4 +1,27 @@
 import { create } from 'zustand';
+import type { Basemap } from '../api/contract';
+
+/** Visibility of context layers in the 3D view (per session; not stored in the project). */
+export interface ContextLayers {
+  buildings: boolean;
+  roads: boolean;
+  green: boolean;
+  trees: boolean;
+  water: boolean;
+  parcels: boolean;
+  /** Ground texture from IGN tiles, or none. */
+  basemap: Basemap | 'none';
+}
+
+export const DEFAULT_LAYERS: ContextLayers = {
+  buildings: true,
+  roads: true,
+  green: true,
+  trees: true,
+  water: true,
+  parcels: true,
+  basemap: 'none',
+};
 
 /**
  * Coordination between the 3D scene (viewport/*) and the modelling tools (viewport/tools/*).
@@ -17,6 +40,9 @@ export interface ViewportState {
   /** Sun light with shadows (used by the "realistic" visual style). */
   sunEnabled: boolean;
   setSunEnabled: (v: boolean) => void;
+  /** Context layer visibility (layers panel in the shell, rendering in viewport/scene). */
+  layers: ContextLayers;
+  setLayer: <K extends keyof ContextLayers>(key: K, value: ContextLayers[K]) => void;
 }
 
 export const useViewportStore = create<ViewportState>()((set) => ({
@@ -28,4 +54,6 @@ export const useViewportStore = create<ViewportState>()((set) => ({
   requestHome: () => set((s) => ({ homeRequest: s.homeRequest + 1 })),
   sunEnabled: true,
   setSunEnabled: (sunEnabled) => set({ sunEnabled }),
+  layers: DEFAULT_LAYERS,
+  setLayer: (key, value) => set((s) => ({ layers: { ...s.layers, [key]: value } })),
 }));
