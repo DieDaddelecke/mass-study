@@ -591,7 +591,12 @@ export class ContextLayersService {
     };
     const errors: NonNullable<ContextLayersResponse['errors']> = [];
     const fail = (layer: Layer, ...results: (Settled<unknown> | undefined)[]) => {
-      for (const r of results) if (r && !r.ok) errors.push({ layer, message: message(r.error) });
+      for (const r of results) {
+        if (!r || r.ok) continue;
+        const m = message(r.error);
+        if (!errors.some((e) => e.layer === layer && e.message === m))
+          errors.push({ layer, message: m });
+      }
     };
     const o = osm?.ok ? osm.value : undefined;
 

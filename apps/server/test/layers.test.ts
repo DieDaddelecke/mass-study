@@ -464,6 +464,7 @@ describe('GET /api/context/layers', () => {
       parcels: [],
       providers: {},
     });
+    expect(body.errors?.filter((e) => e.layer === 'green')).toHaveLength(2); // 2× ign-wfs merged
     expect(new Set(body.errors?.map((e) => e.layer))).toEqual(
       new Set(['roads', 'green', 'trees', 'water', 'parcels']),
     );
