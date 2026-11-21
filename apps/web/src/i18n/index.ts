@@ -5,7 +5,8 @@ import { initReactI18next } from 'react-i18next';
  * Namespaces (one JSON file per namespace and language, owned by one module):
  *   common     – shared words, units, usages, typologies, KPI names
  *   shell      – ribbon, palettes, browser, status bar, dialogs (apps/web/src/shell)
- *   viewport   – 3D view, nav cube, tools, snapping (apps/web/src/viewport)
+ *   viewport   – 3D scene, nav cube, visual styles (apps/web/src/viewport)
+ *   tools      – placement, snapping, modify tools, grips (apps/web/src/viewport/tools)
  *   newProject – "Nouveau projet" dialog, map, import (apps/web/src/newProject)
  * French is the default language.
  */
@@ -29,7 +30,7 @@ void i18n.use(initReactI18next).init({
   resources,
   lng: 'fr',
   fallbackLng: 'fr',
-  ns: ['common', 'shell', 'viewport', 'newProject'],
+  ns: ['common', 'shell', 'viewport', 'tools', 'newProject'],
   defaultNS: 'common',
   interpolation: { escapeValue: false },
   returnNull: false,
