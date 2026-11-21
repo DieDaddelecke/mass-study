@@ -3,7 +3,7 @@ import { DirectionalLight, Object3D } from 'three';
 import { useProjectStore } from '../store/projectStore';
 import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
-import { UsageLegend } from './Legend';
+import { GranulometryLegend, UsageLegend } from './Legend';
 import { NavCube } from './NavCube';
 import { CameraRig, FOV, modelBox } from './scene/CameraRig';
 import { SceneContent } from './scene/SceneContent';
@@ -11,7 +11,7 @@ import { ToolLayer } from './tools/ToolLayer';
 import { ViewControlBar } from './ViewControlBar';
 import { useViewportStore } from './viewportStore';
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import type { Project, SolidResult } from '@kubatur/core';
+import { massLayouts, type Project, type SolidResult } from '@kubatur/core';
 import type { VisualStyle } from '../store/tools';
 import './viewport.css';
 
@@ -76,6 +76,16 @@ export function Viewport3D() {
   const sun = useViewportStore((s) => s.sunEnabled);
   const solids = analysis?.result.solids ?? EMPTY;
   const shadows = (style === 'realistic' || style === 'shaded') && sun;
+  // dwelling layouts (outdoor spaces, granulometry): recomputed with every change of the project
+  const layouts = useMemo(() => {
+    if (!project || !analysis) return null;
+    try {
+      return massLayouts(analysis.result, project.settings);
+    } catch (e) {
+      console.error('layout failed', e);
+      return null;
+    }
+  }, [project, analysis]);
   if (!project) return null;
   const ortho = projection === 'orthographic';
   return (
@@ -101,13 +111,22 @@ export function Viewport3D() {
         onPointerLeave={() => useUiStore.getState().setHover(null)}
       >
         <Lights project={project} solids={solids} style={style} shadows={shadows} />
-        <SceneContent project={project} solids={solids} style={style} shadows={shadows} />
+        <SceneContent
+          project={project}
+          solids={solids}
+          style={style}
+          shadows={shadows}
+          layouts={layouts}
+        />
         <CameraRig project={project} solids={solids} projection={projection} />
         <ToolLayer />
       </Canvas>
       <NavCube />
       <ViewControlBar />
       {style === 'consistentColors' && <UsageLegend />}
+      {style === 'granulometry' && (
+        <GranulometryLegend layouts={layouts ?? []} mix={project.settings.unitMix} />
+      )}
     </div>
   );
 }

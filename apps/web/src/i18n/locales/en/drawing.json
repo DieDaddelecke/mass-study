@@ -53,6 +53,26 @@
     "facadeTip": "façade {{facade}} m (min {{min}} m)",
     "facadeRule": "Minimum façade length per type (living room, accessible bedroom, bedrooms, partitions)",
     "facadeMark": "Façade of the dwelling",
-    "facadeFail": "{{count}} dwelling(s) below the minimum façade length (!)"
+    "facadeFail": "{{count}} dwelling(s) below the minimum façade length (!)",
+    "roomShort": {
+      "sejour": "liv.",
+      "chambrePmr": "PMR",
+      "chambre": "bed"
+    },
+    "room": {
+      "sejour": "Living room (façade ≥ {{min}} m)",
+      "chambrePmr": "Accessible bedroom (≥ {{min}} m)",
+      "chambre": "Bedroom (≥ {{min}} m)"
+    },
+    "rooms": "Main rooms",
+    "roomFail": "{{count}} room(s) below the minimum façade (red outline)",
+    "outdoorShort": {
+      "balcon": "balc.",
+      "loggia": "logg.",
+      "terrasse": "terr."
+    },
+    "outdoor": "Outdoor space (balcony, loggia, terrace)",
+    "outdoorFail": "{{count}} outdoor space(s) below the minimum (4 m², depth) or away from the living room",
+    "outdoorNone": "{{count}} dwelling(s) without outdoor space"
   }
 }

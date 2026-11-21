@@ -19,6 +19,7 @@
     "hiddenLine": "Verdeckte Kanten",
     "shaded": "Schattiert",
     "consistentColors": "Konsistente Farben",
+    "granulometry": "Granulometrie",
     "realistic": "Realistisch"
   },
   "bar": {
@@ -35,6 +36,12 @@
     "ortho": "Ortho"
   },
   "legend": {
-    "title": "Nutzungen"
+    "title": "Nutzungen",
+    "granuloTitle": "Granulometrie",
+    "units": "Wohnungen",
+    "core": "Treppenhaus",
+    "circulation": "Erschließung",
+    "other": "Andere Nutzungen",
+    "none": "Keine Wohnungen in der Variante"
   }
 }

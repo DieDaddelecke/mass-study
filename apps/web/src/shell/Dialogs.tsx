@@ -1,5 +1,6 @@
 import {
   requiredFacade,
+  resolveOutdoorRules,
   resolveUnitRules,
   type AccessType,
   type Constraints,
@@ -268,6 +269,25 @@ function SettingsDialog({ project }: { project: Project }) {
             />
           </Row>
           <p className="muted">{t('settings.unitRulesNote', { list: facadeList })}</p>
+          <h3>{t('outdoor.rules')}</h3>
+          {(
+            [
+              ['minArea', 'm²'],
+              ['loggiaMinDepth', 'm'],
+              ['balconMinDepth', 'm'],
+              ['terraceDepth', 'm'],
+            ] as const
+          ).map(([k, suffix]) => (
+            <div key={k}>
+              {num(
+                t(`outdoor.${k}`),
+                resolveOutdoorRules(s)[k],
+                (v) =>
+                  patch((d) => ({ ...d, outdoorRules: { ...resolveOutdoorRules(d), [k]: v } })),
+                { suffix, digits: 2 },
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </Dialog>

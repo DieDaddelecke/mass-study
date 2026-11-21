@@ -241,6 +241,7 @@
       "hiddenLine": "Verdeckte Linien",
       "shaded": "Schattiert",
       "consistentColors": "Einheitliche Farben",
+      "granulometry": "Granulometrie",
       "realistic": "Realistisch"
     }
   },
@@ -399,5 +400,29 @@
     "siteArea": "Grundstücksfläche",
     "constraints": "Festsetzungen",
     "editRules": "Festsetzungen bearbeiten…"
+  },
+  "outdoor": {
+    "title": "Außenbereiche",
+    "all": "Alle Fassaden",
+    "depth": "Tiefe",
+    "inherit": "Wie alle",
+    "groundTerrace": "Terrassen im EG",
+    "note": "Vor dem Wohnraum, sonst seitlich anschließend. Min. {{area}} m², Tiefe Loggia ≥ {{loggia}} m, Balkon ≥ {{balcon}} m.",
+    "kind": {
+      "none": "Keiner",
+      "balcon": "Balkon",
+      "loggia": "Loggia"
+    },
+    "side": {
+      "N": "Nordfassade",
+      "E": "Ostfassade",
+      "S": "Südfassade",
+      "W": "Westfassade"
+    },
+    "rules": "Außenbereiche (Minima)",
+    "minArea": "Mindestfläche",
+    "loggiaMinDepth": "Mindesttiefe Loggia",
+    "balconMinDepth": "Mindesttiefe Balkon",
+    "terraceDepth": "Tiefe EG-Terrasse"
   }
 }

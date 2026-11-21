@@ -1,4 +1,5 @@
 import {
+  difference,
   intersection,
   pointInPolygon,
   polygonArea,
@@ -6,6 +7,9 @@ import {
   ringCentroid,
   union,
   type LayoutArea,
+  type LayoutRoom,
+  type OutdoorType,
+  type RoomKind,
   type MassLayout,
   type Polygon,
   type Project,
@@ -38,8 +42,44 @@ export const FLOOR_PLAN_COLORS = {
   wall: '#2a2a2a',
   /** Façade pieces of the dwellings (subtle). */
   facade: '#5b8fc7',
+  /** Outdoor spaces (balcons, loggias, terrasses). */
+  outdoor: '#f4f3ef',
+  outdoorLine: '#6b6862',
   /** Dwellings below the minimum façade length. */
   facadeFail: '#d0342c',
+};
+
+/** Hex colour mixed towards black (k > 0) or white (k < 0). */
+export function shade(hex: string, k: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1]!, 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) =>
+    Math.round(k >= 0 ? c * (1 - k) : c + (255 - c) * -k),
+  );
+  return `#${ch.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** Fill of a room inside a dwelling of colour `unit`: séjour a little darker. */
+export function roomColor(unit: string, kind: RoomKind): string {
+  return kind === 'sejour' ? shade(unit, 0.12) : unit;
+}
+
+/** Fill of the rest of a dwelling (entrance, kitchen, bathroom) when its rooms are drawn. */
+export const serviceColor = (unit: string): string => shade(unit, -0.5);
+
+/** Short room labels (French plan convention). */
+export const ROOM_LABELS: Record<RoomKind, string> = {
+  sejour: 'séj.',
+  chambrePmr: 'PMR',
+  chambre: 'ch.',
+};
+
+/** Short outdoor space labels (French plan convention). */
+export const OUTDOOR_LABELS: Record<OutdoorType, string> = {
+  balcon: 'bal.',
+  loggia: 'log.',
+  terrasse: 'terr.',
 };
 
 /** Colour of a unit type (by its position in the mix). */
@@ -57,6 +97,16 @@ export interface FloorPlanOptions extends CommonOptions {
   unitMix?: readonly UnitType[];
   /** Tooltip text of the façade check, default French ("façade 9,40 m (min 9,10 m)"). */
   facadeText?: (facade: number, required: number) => string;
+  /** Main rooms (séjour, chambre PMR, chambres) as rectangles, default true. */
+  rooms?: boolean;
+  /** Short room labels inside the rectangles, default true. */
+  roomLabels?: boolean;
+  /** Outdoor spaces (balcons, loggias, terrasses), default true. */
+  outdoor?: boolean;
+  /** Outdoor space names (default: French short labels). */
+  outdoorText?: (kind: OutdoorType) => string;
+  /** Room names for tooltips and labels (default: French short labels). */
+  roomText?: (kind: RoomKind) => string;
 }
 
 const fmtM = (v: number) => `${v.toFixed(2).replace('.', ',')} m`;
@@ -96,6 +146,18 @@ function labelPoint(p: Polygon): Vec2 {
     /* fall through */
   }
   return ringCentroid(p.outer);
+}
+
+/** Label point of a dwelling: in the part not covered by its rooms when that is large enough. */
+function unitLabelPoint(p: Polygon, rooms: readonly LayoutRoom[]): Vec2 {
+  if (rooms.length) {
+    const rest = difference(
+      [p],
+      rooms.map((r) => r.polygon),
+    ).sort((a, b) => polygonArea(b) - polygonArea(a))[0];
+    if (rest && polygonArea(rest) > 6) return labelPoint(rest);
+  }
+  return labelPoint(p);
 }
 
 const fmtArea = (a: number) => `${Math.round(a)} m²`;
@@ -221,12 +283,18 @@ export function floorPlan(
     for (const r of rings(p)) items.push(line(r, 1, 'dashed', COLORS.lightGrey, true));
 
   const labels: DItem[] = [];
+  const roomName = opts.roomText ?? ((k: RoomKind) => ROOM_LABELS[k]);
   for (const st of storeys) {
     for (const o of st.open) items.push(fill(o.polygon, FLOOR_PLAN_COLORS.open));
     for (const c of st.circulation) items.push(fill(c.polygon, FLOOR_PLAN_COLORS.circulation));
     for (const u of st.units)
       items.push({
-        ...fill(u.polygon, unitColor(u.typeId, mix)),
+        ...fill(
+          u.polygon,
+          opts.rooms !== false && u.rooms?.length
+            ? serviceColor(unitColor(u.typeId, mix))
+            : unitColor(u.typeId, mix),
+        ),
         title: `${u.label} · ${fmtArea(u.area)}${u.outOfRange ? ' *' : ''} · ${(
           opts.facadeText ?? defaultFacadeText
         )(u.facade, u.facadeRequired)}${u.facadeOk ? '' : ' !'}`,
@@ -236,6 +304,32 @@ export function floorPlan(
               hatch: { angle: 45, spacingMm: 1.2, pen: 1, color: FLOOR_PLAN_COLORS.facadeFail },
             }),
       } as DItem);
+    if (opts.rooms !== false)
+      for (const u of st.units) {
+        const base = unitColor(u.typeId, mix);
+        for (const r of u.rooms ?? []) {
+          items.push({
+            kind: 'fill',
+            rings: rings(r.polygon),
+            fill: roomColor(base, r.kind),
+            pen: 1,
+            stroke: r.facadeOk ? '#55534e' : FLOOR_PLAN_COLORS.facadeFail,
+            title: `${u.label} · ${roomName(r.kind)} · ${fmtArea(r.area)} · ${(
+              opts.facadeText ?? defaultFacadeText
+            )(r.facade, r.facadeRequired)}${r.facadeOk ? '' : ' !'}`,
+          });
+          if (opts.roomLabels !== false && opts.labels !== false && r.area >= 7)
+            labels.push({
+              kind: 'text',
+              at: labelPoint(r.polygon),
+              text: roomName(r.kind),
+              sizeMm: 1.3,
+              anchor: 'middle',
+              baseline: 'middle',
+              color: r.facadeOk ? '#4a4843' : FLOOR_PLAN_COLORS.facadeFail,
+            });
+        }
+      }
     for (const k of st.cores) {
       items.push(fill(k.polygon, FLOOR_PLAN_COLORS.core));
       items.push(...coreSymbol(k));
@@ -251,7 +345,7 @@ export function floorPlan(
       for (const r of rings(o.polygon)) items.push(line(r, 1, 'solid', COLORS.grey, true));
     if (opts.labels !== false)
       for (const u of st.units) {
-        const at = labelPoint(u.polygon);
+        const at = unitLabelPoint(u.polygon, opts.rooms === false ? [] : (u.rooms ?? []));
         const big = polygonArea(u.polygon) > 12;
         labels.push({
           kind: 'text',
@@ -276,6 +370,33 @@ export function floorPlan(
         });
       }
   }
+  // outdoor spaces: balconies and terraces outside the outline, loggias cut into the dwelling
+  if (opts.outdoor !== false)
+    for (const st of storeys)
+      for (const u of st.units) {
+        const o = u.outdoor;
+        if (!o) continue;
+        const name = (opts.outdoorText ?? ((k: OutdoorType) => OUTDOOR_LABELS[k]))(o.kind);
+        items.push({
+          kind: 'fill',
+          rings: rings(o.polygon),
+          fill: FLOOR_PLAN_COLORS.outdoor,
+          pen: 2,
+          stroke: o.ok ? FLOOR_PLAN_COLORS.outdoorLine : FLOOR_PLAN_COLORS.facadeFail,
+          title: `${u.label} · ${name} · ${fmtArea(o.area)} · ${fmtM(o.depth)}${o.ok ? '' : ' !'}`,
+          hatch: { angle: 45, spacingMm: 1.6, pen: 1, color: '#c9c5bb' },
+        });
+        if (opts.labels !== false && opts.roomLabels !== false && o.area >= 3)
+          labels.push({
+            kind: 'text',
+            at: labelPoint(o.polygon),
+            text: name,
+            sizeMm: 1.3,
+            anchor: 'middle',
+            baseline: 'middle',
+            color: o.ok ? '#4a4843' : FLOOR_PLAN_COLORS.facadeFail,
+          });
+      }
   // footprint outline of this storey (pen 5)
   for (const p of here) for (const r of rings(p)) items.push(line(r, 5, 'solid', COLORS.ink, true));
   // façade pieces of each dwelling: a band just inside the outline (so the black wall line

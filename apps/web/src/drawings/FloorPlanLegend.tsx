@@ -1,5 +1,5 @@
 import { requiredFacade, type MassLayout, type UnitRules, type UnitType } from '@kubatur/core';
-import { FLOOR_PLAN_COLORS, unitColor } from '@kubatur/drawing';
+import { FLOOR_PLAN_COLORS, roomColor, unitColor } from '@kubatur/drawing';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../i18n';
 import { useShellStore } from '../shell/shellStore';
@@ -40,6 +40,22 @@ export function FloorPlanLegend({
   const totalArea = counts.reduce((a, c) => a + c.area, 0);
   const outOfRange = here.some(({ s }) => s.units.some((u) => u.outOfRange));
   const failing = here.reduce((a, { s }) => a + s.summary.facadeViolations, 0);
+  const rooms = here.flatMap(({ s }) => s.units.flatMap((u) => u.rooms ?? []));
+  const roomFail = rooms.filter((r) => !r.facadeOk).length;
+  const roomKinds = (['sejour', 'chambrePmr', 'chambre'] as const).filter((k) =>
+    rooms.some((r) => r.kind === k),
+  );
+  const roomMin = {
+    sejour: rules.livingMinFacade,
+    chambrePmr: rules.pmrBedroomMinFacade,
+    chambre: rules.bedroomMinFacade,
+  };
+  const units = here.flatMap(({ s }) => s.units);
+  const outdoor = units.filter((u) => u.outdoor);
+  const outdoorFail = outdoor.filter((u) => !u.outdoor!.ok).length;
+  const outdoorNone = units.length - outdoor.length;
+  const outdoorArea = outdoor.reduce((a, u) => a + u.outdoor!.area, 0);
+  const neutral = unitColor(mix[0]?.id ?? '', mix);
   const hasOpen = here.some(({ s }) => s.open.length > 0);
   const differs = layouts.filter(
     (m) => m.areaBasedDwellings > 0 && m.totals.units !== m.areaBasedDwellings,
@@ -73,6 +89,7 @@ export function FloorPlanLegend({
                   {c.type.label}
                 </td>
                 <td className="num">{c.count}</td>
+                <td className="num muted">{Math.round((100 * c.count) / total)} %</td>
                 <td className="num muted">{fmt(c.area)} m²</td>
                 <td className="num muted" title={t('fp.facadeRule')}>
                   ≥ {formatNumber(requiredFacade(c.type, rules))} m
@@ -82,6 +99,7 @@ export function FloorPlanLegend({
             <tr className="dv-legend-total">
               <td>{t('fp.total')}</td>
               <td className="num">{total}</td>
+              <td />
               <td className="num muted">{fmt(totalArea)} m²</td>
               <td />
             </tr>
@@ -89,6 +107,19 @@ export function FloorPlanLegend({
         </table>
       ) : (
         <p className="dv-legend-note">{t('fp.noUnits')}</p>
+      )}
+      {roomKinds.length > 0 && (
+        <ul className="dv-legend-keys">
+          {roomKinds.map((k) => (
+            <li key={k}>
+              <span
+                className="dv-legend-sw"
+                style={{ background: roomColor(neutral, k), outline: '1px solid #55534e' }}
+              />
+              {t(`fp.room.${k}`, { min: formatNumber(roomMin[k]) })}
+            </li>
+          ))}
+        </ul>
       )}
       <ul className="dv-legend-keys">
         <li>
@@ -106,6 +137,18 @@ export function FloorPlanLegend({
           />
           {t('fp.facadeMark')}
         </li>
+        {outdoor.length > 0 && (
+          <li>
+            <span
+              className="dv-legend-sw"
+              style={{
+                background: FLOOR_PLAN_COLORS.outdoor,
+                outline: `1px solid ${FLOOR_PLAN_COLORS.outdoorLine}`,
+              }}
+            />
+            {t('fp.outdoor')} · {fmt(outdoorArea)} m²
+          </li>
+        )}
         {hasOpen && (
           <li>
             <span className="dv-legend-sw" style={{ background: FLOOR_PLAN_COLORS.open }} />
@@ -119,6 +162,17 @@ export function FloorPlanLegend({
       </p>
       {failing > 0 && (
         <p className="dv-legend-note dv-legend-warn">{t('fp.facadeFail', { count: failing })}</p>
+      )}
+      {roomFail > 0 && (
+        <p className="dv-legend-note dv-legend-warn">{t('fp.roomFail', { count: roomFail })}</p>
+      )}
+      {outdoorFail > 0 && (
+        <p className="dv-legend-note dv-legend-warn">
+          {t('fp.outdoorFail', { count: outdoorFail })}
+        </p>
+      )}
+      {outdoorNone > 0 && outdoor.length > 0 && (
+        <p className="dv-legend-note">{t('fp.outdoorNone', { count: outdoorNone })}</p>
       )}
       {outOfRange && <p className="dv-legend-note">{t('fp.outOfRange')}</p>}
       {differs.map((m) => (

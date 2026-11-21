@@ -19,6 +19,7 @@
     "hiddenLine": "Hidden line",
     "shaded": "Shaded",
     "consistentColors": "Consistent colours",
+    "granulometry": "Granulometry",
     "realistic": "Realistic"
   },
   "bar": {
@@ -35,6 +36,12 @@
     "ortho": "Ortho"
   },
   "legend": {
-    "title": "Uses"
+    "title": "Uses",
+    "granuloTitle": "Unit mix",
+    "units": "units",
+    "core": "Stair core",
+    "circulation": "Circulation",
+    "other": "Other uses",
+    "none": "No dwellings in this variant"
   }
 }

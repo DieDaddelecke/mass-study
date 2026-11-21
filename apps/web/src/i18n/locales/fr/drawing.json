@@ -53,6 +53,26 @@
     "facadeTip": "façade {{facade}} m (min {{min}} m)",
     "facadeRule": "Longueur de façade minimale par type (séjour, chambre PMR, chambres, cloisons)",
     "facadeMark": "Façade du logement",
-    "facadeFail": "{{count}} logement(s) sous la longueur de façade minimale (!)"
+    "facadeFail": "{{count}} logement(s) sous la longueur de façade minimale (!)",
+    "roomShort": {
+      "sejour": "séj.",
+      "chambrePmr": "PMR",
+      "chambre": "ch."
+    },
+    "room": {
+      "sejour": "Séjour (façade ≥ {{min}} m)",
+      "chambrePmr": "Chambre PMR (≥ {{min}} m)",
+      "chambre": "Chambre (≥ {{min}} m)"
+    },
+    "rooms": "Pièces principales",
+    "roomFail": "{{count}} pièce(s) sous la façade minimale (contour rouge)",
+    "outdoorShort": {
+      "balcon": "bal.",
+      "loggia": "log.",
+      "terrasse": "terr."
+    },
+    "outdoor": "Espace extérieur (balcon, loggia, terrasse)",
+    "outdoorFail": "{{count}} espace(s) extérieur(s) sous le minimum (4 m², profondeur) ou éloigné(s) du séjour",
+    "outdoorNone": "{{count}} logement(s) sans espace extérieur"
   }
 }

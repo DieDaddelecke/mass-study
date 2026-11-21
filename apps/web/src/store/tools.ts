@@ -27,7 +27,8 @@ export type ToolState =
 
 export type ToolKind = ToolState['kind'];
 
-export type VisualStyle = 'wireframe' | 'hiddenLine' | 'shaded' | 'consistentColors' | 'realistic';
+export type VisualStyle =
+  'wireframe' | 'hiddenLine' | 'shaded' | 'consistentColors' | 'granulometry' | 'realistic';
 
 /** Views. Only `3d` is implemented in phase 3; 2D views arrive with the drawing engine (P6). */
 export type ViewId =

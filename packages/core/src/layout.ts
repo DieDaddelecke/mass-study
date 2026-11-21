@@ -30,6 +30,15 @@ import {
   resolveUnitRules,
   unitRooms,
 } from './unitRules.js';
+import { unitRoomLayout, type LayoutRoom } from './rooms.js';
+import {
+  facadeSide,
+  placeOutdoor,
+  resolveOutdoor,
+  resolveOutdoorRules,
+  sideConfig,
+  type LayoutOutdoor,
+} from './outdoor.js';
 import type {
   AccessType,
   Mass,
@@ -69,6 +78,10 @@ export interface LayoutUnit {
   facadeOk: boolean;
   /** Façade pieces of the unit (world coordinates), for drawing. */
   facadeSegments: [Vec2, Vec2][];
+  /** Main rooms (séjour, chambre PMR, chambres) as rectangles along the façade. */
+  rooms: LayoutRoom[];
+  /** Outdoor space (balcon, loggia, terrasse), if the building has one on this façade. */
+  outdoor?: LayoutOutdoor;
 }
 
 export interface LayoutTypeCount {
@@ -990,6 +1003,10 @@ export function storeyLayout(
     // --- façade rules: measure, merge units without enough façade, downgrade types ----
     const outline = union(solids.map((x) => normalizePolygon(x.footprint)));
     const facadeSegs = polygonEdges(outline);
+    const outlineSegs = [...facadeSegs];
+    const outdoorCfg = resolveOutdoor(mass, settings);
+    const outdoorRules = resolveOutdoorRules(settings);
+    const ground = first.storeyIndex === 0;
     if (rules.galleryCountsAsFacade)
       facadeSegs.push(
         ...polygonEdges(circulation.filter((c) => c.kind === 'gallery').map((c) => c.polygon)),
@@ -1047,8 +1064,42 @@ export function storeyLayout(
         facadeRequired: need,
         facadeOk: facade.length >= need - 1e-6,
         facadeSegments: facade.segments,
+        rooms: unitRoomLayout(polygon, facade.segments, unitRooms(choice.type), rules, (seg) => {
+          // séjour preferably on the outer façade, where the outdoor space can go
+          const outer = onLine(seg, outlineSegs);
+          if (!outer) return 0;
+          return sideConfig(outdoorCfg, facadeSide(seg, polygon)).kind === 'none' ? 1 : 2;
+        }),
       });
     });
+    // outdoor spaces: one per dwelling, in front of (or next to) the séjour
+    const placedOutdoor: Polygon[] = [];
+    for (const u of units) {
+      const exterior = facadeOf(u.polygon, outlineSegs).segments;
+      const sejour = u.rooms.find((r) => r.kind === 'sejour');
+      const o = placeOutdoor(
+        u.polygon,
+        sejour?.polygon,
+        exterior,
+        outdoorCfg,
+        outdoorRules,
+        ground,
+        placedOutdoor,
+      );
+      if (!o) continue;
+      u.outdoor = o;
+      placedOutdoor.push(o.polygon);
+      if (o.kind === 'loggia' && sejour) {
+        // the loggia is cut out of the séjour
+        const rest = difference([sejour.polygon], [o.polygon]).sort(
+          (a, b) => polygonArea(b) - polygonArea(a),
+        )[0];
+        if (rest) {
+          sejour.polygon = rest;
+          sejour.area = polygonArea(rest);
+        }
+      }
+    }
   }
 
   const byType: LayoutTypeCount[] = mix
@@ -1100,6 +1151,20 @@ export function storeyLayout(
   if (cores.length && units.length)
     out.unitsPerCore = Math.round((units.length / cores.length) * 10) / 10;
   return out;
+}
+
+/** True when the midpoint of `seg` lies on one of `lines` (±2 cm). */
+function onLine([a, b]: [Vec2, Vec2], lines: readonly [Vec2, Vec2][]): boolean {
+  const m: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  return lines.some(([p, q]) => {
+    const dx = q[0] - p[0];
+    const dy = q[1] - p[1];
+    const l2 = dx * dx + dy * dy;
+    if (l2 < 1e-12) return false;
+    const t = ((m[0] - p[0]) * dx + (m[1] - p[1]) * dy) / l2;
+    if (t < -1e-6 || t > 1 + 1e-6) return false;
+    return Math.hypot(p[0] + dx * t - m[0], p[1] + dy * t - m[1]) < 0.02;
+  });
 }
 
 /** Drop vertices closer than `tol` to the line through their neighbours (clipping noise). */
