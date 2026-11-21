@@ -1,0 +1,317 @@
+{
+  "app": {
+    "title": "Kubatur – études de capacité"
+  },
+  "qat": {
+    "save": "Enregistrer (Ctrl+S)",
+    "undo": "Annuler (Ctrl+Z)",
+    "redo": "Rétablir (Ctrl+Y)"
+  },
+  "tabs": {
+    "file": "Fichier",
+    "site": "Terrain",
+    "volume": "Volume",
+    "modify": "Modifier",
+    "view": "Vue",
+    "analysis": "Analyse",
+    "output": "Sortie",
+    "archicad": "Archicad",
+    "context": "Modifier | Volumes"
+  },
+  "backstage": {
+    "back": "Retour"
+  },
+  "file": {
+    "new": "Nouveau",
+    "open": "Ouvrir…",
+    "save": "Enregistrer",
+    "saveAs": "Enregistrer sous…",
+    "saveAsPrompt": "Nom du fichier",
+    "export": "Exporter",
+    "exportFormat": {
+      "ifc": "IFC",
+      "xlsx": "Tableur XLSX",
+      "csv": "CSV",
+      "pdf": "PDF",
+      "dxf": "DXF"
+    },
+    "projectInfo": "Informations du projet",
+    "settings": "Paramètres",
+    "close": "Fermer le projet"
+  },
+  "info": {
+    "name": "Nom du projet",
+    "address": "Adresse",
+    "client": "Maître d'ouvrage",
+    "author": "Auteur",
+    "office": "Agence",
+    "date": "Date",
+    "revision": "Indice",
+    "phase": "Phase",
+    "crs": "Système de coordonnées",
+    "saved": "Projet enregistré",
+    "contextLoaded": "{{count}} bâtiments de contexte chargés"
+  },
+  "errors": {
+    "openFile": "Impossible d'ouvrir le fichier : {{message}}",
+    "context": "Échec du chargement du contexte : {{message}}",
+    "autosave": "L'enregistrement automatique a échoué"
+  },
+  "ribbon": {
+    "noProject": "Aucun projet ouvert",
+    "newSite": "Nouveau terrain",
+    "drawSite": "Dessiner la parcelle",
+    "importSite": "Importer",
+    "reloadContext": "Recharger le contexte",
+    "contextRadius": "Rayon du contexte",
+    "drawContext": "Dessiner un bâtiment",
+    "loading": "Chargement…",
+    "constraints": "Règles d'urbanisme",
+    "buildable": "Zone constructible",
+    "buildingLines": "Lignes d'implantation",
+    "variants": "Variantes",
+    "selectFirst": "Sélectionnez d'abord un volume",
+    "selected": "{{count}} élément(s) sélectionné(s)",
+    "zoomExtents": "Zoom étendu",
+    "areaTable": "Tableau des surfaces",
+    "kpis": "Indicateurs",
+    "unitMix": "Typologies de logements",
+    "variantCompare": "Comparaison des variantes",
+    "warnings": "Avertissements",
+    "dossier": "Créer le dossier",
+    "connect": "Connecter",
+    "transfer": "Transférer",
+    "update": "Mettre à jour",
+    "exportScript": "Exporter le script",
+    "tool": {
+      "select": "Modifier",
+      "place": "Placer",
+      "move": "Déplacer",
+      "rotate": "Rotation",
+      "copy": "Copier",
+      "mirror": "Miroir",
+      "array": "Réseau",
+      "align": "Aligner",
+      "drawSite": "Dessiner la parcelle",
+      "drawContext": "Dessiner un bâtiment"
+    },
+    "panel": {
+      "site": "Terrain",
+      "context": "Contexte",
+      "rules": "Urbanisme",
+      "typologies": "Formes bâties",
+      "templates": "Modèles",
+      "variants": "Variantes",
+      "modify": "Modifier",
+      "delete": "Supprimer",
+      "selection": "Sélection",
+      "views": "Vues",
+      "navigate": "Navigation",
+      "graphics": "Graphisme",
+      "tables": "Tableaux",
+      "checks": "Contrôles",
+      "output": "Sortie",
+      "archicad": "Archicad"
+    }
+  },
+  "options": {
+    "place": "Placer : {{name}}",
+    "selection": "Sélection : {{count}}",
+    "contextBuildings": "{{count}} bâtiment(s) de contexte",
+    "modify": "Modifier"
+  },
+  "param": {
+    "length": "Longueur",
+    "depth": "Épaisseur",
+    "sections": "Sections",
+    "sectionOffset": "Décalage",
+    "count": "Nombre",
+    "unitWidth": "Largeur de lot",
+    "alternatingOffset": "Décalage alterné",
+    "alignment": "Alignement",
+    "closed": "Fermé",
+    "align": {
+      "center": "Centre",
+      "left": "Gauche",
+      "right": "Droite"
+    }
+  },
+  "props": {
+    "title": "Propriétés",
+    "noProject": "Aucun projet",
+    "multi": "{{count}} volumes",
+    "contextBuilding": "Bâtiment de contexte",
+    "view3d": "Vue 3D : {3D}",
+    "group": {
+      "identity": "Identification",
+      "dimensions": "Dimensions",
+      "position": "Position",
+      "storeys": "Niveaux",
+      "usage": "Usage",
+      "results": "Résultats (lecture seule)",
+      "context": "Bâtiment existant",
+      "graphics": "Graphisme",
+      "project": "Projet"
+    },
+    "name": "Nom",
+    "area": "Surface",
+    "rotation": "Rotation",
+    "storeys": {
+      "basementCount": "Sous-sols",
+      "basementHeight": "Hauteur sous-sol",
+      "groundHeight": "Hauteur RDC",
+      "upperCount": "Étages",
+      "upperHeight": "Hauteur d'étage",
+      "setbackCount": "Attiques",
+      "setbackDistance": "Retrait d'attique",
+      "parapet": "Acrotère",
+      "slab": "Épaisseur dalle"
+    },
+    "mixed": "<varie>",
+    "usage": "Usage",
+    "defaultUsage": "(par défaut)",
+    "presetRetail": "RDC commerce, étages logement",
+    "access": "Distribution",
+    "bgf": "Surface brute (BGF)",
+    "depth": "Épaisseur",
+    "resolvedAccess": "Distribution retenue",
+    "suitability": {
+      "zweispaenner": "2 logts/palier",
+      "dreispaenner": "3 logts/palier",
+      "laubengang": "Coursive",
+      "mittelflur": "Couloir central",
+      "punkthaus": "Plot",
+      "reihenhaus": "Maison en bande",
+      "buero": "Bureaux",
+      "zellenbuero": "Bureaux cloisonnés",
+      "kombibuero": "Bureaux combinés",
+      "openSpace": "Plateau ouvert",
+      "atrium": "Atrium"
+    },
+    "height": "Hauteur",
+    "levels": "Niveaux",
+    "estimated": "Hauteur estimée",
+    "hidden": "Masqué",
+    "demolished": "À démolir",
+    "source": "Source",
+    "yes": "oui",
+    "no": "non"
+  },
+  "browser": {
+    "title": "Arborescence du projet",
+    "views": "Vues",
+    "views3d": "Vues 3D",
+    "schedules": "Nomenclatures",
+    "variants": "Variantes",
+    "site": "Terrain et contexte",
+    "parcels": "Parcelles ({{count}})",
+    "context": "Bâtiments de contexte ({{count}})",
+    "building": "Bâtiment {{n}}",
+    "hide": "Masquer",
+    "show": "Afficher",
+    "doubleClick": "Double-clic pour ouvrir"
+  },
+  "views": {
+    "3d": "3D",
+    "axo": "Axonométrie",
+    "axoSW": "Axonométrie SO",
+    "axoNE": "Axonométrie NE",
+    "site": "Plan masse",
+    "elevations": "Façades",
+    "elevN": "Façade nord",
+    "elevE": "Façade est",
+    "elevS": "Façade sud",
+    "elevW": "Façade ouest",
+    "sections": "Coupes",
+    "sectionA": "Coupe A",
+    "sectionB": "Coupe B",
+    "areas": "Surfaces",
+    "none": "Aucune vue ouverte – double-cliquez sur {3D} dans l'arborescence"
+  },
+  "view": {
+    "style": "Style visuel",
+    "projection": "Projection",
+    "perspective": "Perspective",
+    "orthographic": "Orthographique",
+    "styles": {
+      "wireframe": "Filaire",
+      "hiddenLine": "Lignes cachées",
+      "shaded": "Ombré",
+      "consistentColors": "Couleurs cohérentes",
+      "realistic": "Réaliste"
+    }
+  },
+  "status": {
+    "ready": "Prêt",
+    "snap": "Accrochage",
+    "snapTitle": "Activer / désactiver l'accrochage",
+    "warningsTitle": "Avertissements",
+    "archicad": "Archicad : non connecté"
+  },
+  "kpi": {
+    "title": "Indicateurs",
+    "target": "{{status}} (objectif ≤ {{target}})"
+  },
+  "start": {
+    "subtitle": "Études de capacité et de volumétrie urbaine",
+    "new": "Nouveau projet",
+    "open": "Ouvrir un fichier (.massing.json)",
+    "demo": "Projet de démonstration (Palaiseau)",
+    "recent": "Projets récents (enregistrement automatique)",
+    "noRecent": "Aucun projet enregistré pour le moment."
+  },
+  "settings": {
+    "general": "Général",
+    "profile": "Profil réglementaire",
+    "profiles": {
+      "FR": "France (CES, surface de plancher, R+n)",
+      "DE": "Allemagne (GRZ, GFZ, BauNVO)"
+    },
+    "notation": "Notation des niveaux",
+    "notations": {
+      "fr": "RDC, R+1 …",
+      "de": "EG, 1.OG …",
+      "roman": "I, II, III …"
+    },
+    "language": "Langue",
+    "languages": {
+      "fr": "Français",
+      "de": "Deutsch",
+      "en": "English"
+    },
+    "ratios": "Ratios principaux",
+    "wallThickness": "Épaisseur des murs extérieurs",
+    "technicalShare": "Part technique",
+    "interiorShare": "Part cloisons / structure",
+    "parkingArea": "Surface par place de stationnement",
+    "parkingPerDwelling": "Places par logement",
+    "workplaceArea": "Surface par poste de travail",
+    "circulation": "Part circulations par type de distribution"
+  },
+  "rules": {
+    "fr": "Plan local d'urbanisme (PLU)",
+    "de": "Allemagne (Bebauungsplan)",
+    "empriseMax": "CES maximal",
+    "hauteurMax": "Hauteur maximale",
+    "clear": "Effacer",
+    "note": "Champs vides = sans objectif. Les valeurs alimentent les voyants de la barre d'indicateurs."
+  },
+  "warnings": {
+    "none": "Aucun avertissement.",
+    "severity": "Gravité",
+    "message": "Message",
+    "select": "Sélectionner",
+    "sev": {
+      "warning": "Avertissement",
+      "error": "Erreur"
+    },
+    "massOverlap": "Les volumes {{masses}} se chevauchent ({{area}} m²).",
+    "outsideSite": "Le volume {{masses}} dépasse de la parcelle ({{area}} m²).",
+    "outsideBuildable": "Le volume {{masses}} sort de la zone constructible ({{area}} m²).",
+    "constraintExceeded": "{{key}} dépasse l'objectif : {{actual}} au lieu de {{target}} max.",
+    "depthOutOfRange": "Épaisseur de {{masses}} ({{depth}} m) hors des plages adaptées à l'usage.",
+    "lightDepth": "Épaisseur de {{masses}} ({{depth}} m) : éclairement naturel critique.",
+    "mixPlausibility": "{{masses}} : {{actual}} logements par palier et noyau (attendu {{min}}–{{max}}).",
+    "estimatedContextHeights": "Hauteur estimée pour {{count}} bâtiment(s) de contexte."
+  }
+}

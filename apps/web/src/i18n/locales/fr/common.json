@@ -1,0 +1,72 @@
+{
+  "appName": "Kubatur",
+  "inPreparation": "en préparation",
+  "units": {
+    "m": "m",
+    "m2": "m²",
+    "m3": "m³"
+  },
+  "usage": {
+    "wohnen": "Logement",
+    "buero": "Bureaux",
+    "gewerbe": "Commerce",
+    "gemeinbedarf": "Équipement",
+    "parken": "Stationnement",
+    "technik": "Technique"
+  },
+  "typology": {
+    "solitaer": "Plot",
+    "zeile": "Barre",
+    "reihe": "Maisons en bande",
+    "freeLine": "Forme libre (ligne)",
+    "freePolygon": "Forme libre (polygone)"
+  },
+  "template": {
+    "winkel": "Équerre",
+    "uForm": "Forme en U",
+    "blockrand": "Îlot",
+    "hofhaus": "Maison à patio"
+  },
+  "access": {
+    "auto": "Automatique",
+    "zweispaenner": "2 logements par palier",
+    "dreispaenner": "3 logements par palier",
+    "laubengang": "Coursive",
+    "mittelflur": "Couloir central",
+    "punkthaus": "Plot (noyau central)",
+    "reihenhaus": "Maison individuelle",
+    "buero": "Bureaux"
+  },
+  "kpi": {
+    "ces": "CES",
+    "emprise": "Emprise au sol",
+    "surfaceDePlancher": "Surface de plancher",
+    "hauteur": "Hauteur",
+    "hauteurEgout": "Hauteur à l'égout",
+    "hauteurAcrotere": "Hauteur à l'acrotère",
+    "niveaux": "Niveaux",
+    "logements": "Logements",
+    "surfaceHabitable": "Surface habitable",
+    "grz": "GRZ",
+    "gfz": "GFZ",
+    "bmz": "BMZ",
+    "maxFullStoreys": "Niveaux pleins (DE)",
+    "totalHeight": "Hauteur totale",
+    "sdb": "SDP",
+    "bgf": "Surface brute (BGF)",
+    "nuf": "Surface utile (NUF)"
+  },
+  "status": {
+    "ok": "Conforme",
+    "warning": "À la limite",
+    "error": "Dépassé",
+    "none": "Sans objectif"
+  },
+  "actions": {
+    "ok": "OK",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "apply": "Appliquer",
+    "delete": "Supprimer"
+  }
+}

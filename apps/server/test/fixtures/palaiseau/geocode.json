@@ -1,0 +1,29 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [2.197965, 48.713064] },
+      "properties": {
+        "label": "27 Boulevard Thomas Gobert 91120 Palaiseau",
+        "score": 0.6930489610389611,
+        "housenumber": "27",
+        "id": "91477_4850_00027",
+        "banId": "4b4211ea-6c47-40de-a8d7-608a049471d4",
+        "name": "27 Boulevard Thomas Gobert",
+        "postcode": "91120",
+        "citycode": "91477",
+        "x": 640990.6,
+        "y": 6846180.5,
+        "city": "Palaiseau",
+        "context": "91, Essonne, Île-de-France",
+        "type": "housenumber",
+        "importance": 0.55211,
+        "depcode": "91",
+        "street": "Boulevard Thomas Gobert",
+        "_type": "address"
+      }
+    }
+  ],
+  "query": "27 Bd Thomas Gobert 91120 Palaiseau"
+}

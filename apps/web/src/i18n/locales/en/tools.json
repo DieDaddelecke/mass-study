@@ -1,0 +1,37 @@
+{
+  "copySuffix": "(copy)",
+  "hint": {
+    "selectFirst": "Select one or more masses first",
+    "typed": "length: {{value}} (Enter to apply)",
+    "place": {
+      "first": "Click the insertion point",
+      "direction": "Click the direction (or type a length) — Esc to finish"
+    },
+    "line": {
+      "next": "Click the next point — Enter or double-click to finish, click the first point to close, Backspace removes the last point"
+    },
+    "polygon": {
+      "next": "Click the next point — Enter or click the first point to close"
+    },
+    "move": {
+      "first": "Move: click the base point",
+      "second": "Click the target point (or type a distance)"
+    },
+    "copy": {
+      "first": "Copy: click the base point",
+      "second": "Click the target point (or type a distance)"
+    },
+    "rotate": {
+      "first": "Rotate: click the reference direction",
+      "second": "Click the target direction (or type an angle in degrees)"
+    },
+    "mirror": {
+      "first": "Mirror: click the first axis point",
+      "second": "Click the second axis point"
+    },
+    "array": {
+      "first": "Array: click the base point",
+      "second": "Click the point defining the spacing"
+    }
+  }
+}

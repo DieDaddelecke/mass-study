@@ -1,0 +1,72 @@
+{
+  "appName": "Kubatur",
+  "inPreparation": "in Vorbereitung",
+  "units": {
+    "m": "m",
+    "m2": "m²",
+    "m3": "m³"
+  },
+  "usage": {
+    "wohnen": "Wohnen",
+    "buero": "Büro",
+    "gewerbe": "Gewerbe",
+    "gemeinbedarf": "Gemeinbedarf",
+    "parken": "Parken",
+    "technik": "Technik"
+  },
+  "typology": {
+    "solitaer": "Solitär",
+    "zeile": "Zeile",
+    "reihe": "Reihe",
+    "freeLine": "Freiform (Linie)",
+    "freePolygon": "Freiform (Polygon)"
+  },
+  "template": {
+    "winkel": "Winkel",
+    "uForm": "U-Form",
+    "blockrand": "Blockrand",
+    "hofhaus": "Hofhaus"
+  },
+  "access": {
+    "auto": "Automatisch",
+    "zweispaenner": "Zweispänner",
+    "dreispaenner": "Dreispänner",
+    "laubengang": "Laubengang",
+    "mittelflur": "Mittelflur",
+    "punkthaus": "Punkthaus",
+    "reihenhaus": "Reihenhaus",
+    "buero": "Büro"
+  },
+  "kpi": {
+    "ces": "CES",
+    "emprise": "Emprise au sol",
+    "surfaceDePlancher": "Surface de plancher",
+    "hauteur": "Höhe",
+    "hauteurEgout": "Traufhöhe",
+    "hauteurAcrotere": "Attikahöhe",
+    "niveaux": "Geschosse",
+    "logements": "Wohnungen",
+    "surfaceHabitable": "Wohnfläche",
+    "grz": "GRZ",
+    "gfz": "GFZ",
+    "bmz": "BMZ",
+    "maxFullStoreys": "Vollgeschosse",
+    "totalHeight": "Gesamthöhe",
+    "sdb": "SDP",
+    "bgf": "BGF",
+    "nuf": "NUF"
+  },
+  "status": {
+    "ok": "Eingehalten",
+    "warning": "Am Limit",
+    "error": "Überschritten",
+    "none": "Ohne Vorgabe"
+  },
+  "actions": {
+    "ok": "OK",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "apply": "Übernehmen",
+    "delete": "Löschen"
+  }
+}

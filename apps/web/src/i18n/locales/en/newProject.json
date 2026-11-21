@@ -1,0 +1,98 @@
+{
+  "title": "New project",
+  "close": "Close",
+  "cancel": "Cancel",
+  "busy": "Searching…",
+  "address": {
+    "title": "Address",
+    "placeholder": "Search an address…",
+    "noResult": "No result for this address.",
+    "kind": {
+      "address": "address",
+      "street": "street",
+      "locality": "locality",
+      "municipality": "municipality",
+      "poi": "place",
+      "other": "other"
+    }
+  },
+  "site": {
+    "title": "Site",
+    "parcels": "Parcel(s)",
+    "draw": "Draw",
+    "import": "Import",
+    "area": "Area"
+  },
+  "parcels": {
+    "help": "Click the map to select a parcel; click again to deselect. Several parcels are merged.",
+    "loading": "Loading parcel…",
+    "notCovered": "No cadastre available here. Draw or import the site.",
+    "none": "No parcel at this location.",
+    "ref": "Parcel",
+    "area": "Official area",
+    "remove": "Remove",
+    "total_one": "Total ({{count}} parcel)",
+    "total_other": "Total ({{count}} parcels)",
+    "merged": "merged"
+  },
+  "draw": {
+    "help": "Click the vertices on the map. Double-click or Enter: finish · Backspace: undo last point · Esc: cancel.",
+    "start": "Draw site",
+    "restart": "Redraw",
+    "finish": "Finish",
+    "undo": "Undo point",
+    "cancel": "Cancel",
+    "vertices_one": "{{count}} vertex",
+    "vertices_other": "{{count}} vertices"
+  },
+  "import": {
+    "help": "GeoJSON (WGS 84) or DXF with a closed polyline.",
+    "choose": "Choose a file…",
+    "polyline": "Polyline",
+    "polylineOption": "#{{n}} – layer {{layer}} ({{count}} vertices)",
+    "unit": "Unit",
+    "reference": "Reference",
+    "local": "Local coordinates",
+    "lambert93": "Lambert-93 (EPSG:2154)",
+    "placedAtAddress": "Placed at the chosen address.",
+    "placedAtCenter": "Placed at the map centre.",
+    "replace": "Re-place",
+    "errors": {
+      "invalidJson": "Unreadable JSON file.",
+      "noPolygon": "No polygon found in the file.",
+      "notWgs84": "Coordinates are not WGS 84 (longitude/latitude).",
+      "invalidDxf": "Unreadable DXF file.",
+      "noClosed": "No closed polyline found in the DXF."
+    }
+  },
+  "project": {
+    "title": "Project",
+    "name": "Name",
+    "namePlaceholder": "Project name",
+    "radius": "Context radius"
+  },
+  "map": {
+    "hintParcels": "Click a parcel to select it.",
+    "hintDraw": "Click the map to start drawing.",
+    "hintDrawing": "Double-click or Enter to finish, Esc to cancel.",
+    "hintImport": "The imported site is shown on the map."
+  },
+  "create": {
+    "button": "Create project",
+    "needSite": "Choose a site to create the project.",
+    "phase": {
+      "creating": "Creating project…",
+      "context": "Loading neighbouring buildings ({{radius}} m)…"
+    },
+    "contextFailed": "Project created without context: {{msg}}"
+  },
+  "errors": {
+    "bad_request": "Invalid request.",
+    "not_found": "No data found.",
+    "upstream_error": "The geodata service is unavailable. Please try again later.",
+    "rate_limited": "Too many requests. Please wait a few seconds.",
+    "network": "Server unreachable. Check the connection.",
+    "http": "Server error (HTTP {{status}}).",
+    "unknown": "An unexpected error occurred."
+  }
+}

@@ -160,7 +160,9 @@ export interface Site {
 export interface ContextBuilding {
   id: string;
   footprint: Polygon;
+  /** Top of the building above ground (m). */
   height: number;
+  /** Bottom of the volume above ground (m), e.g. OSM min_height for building parts. */
   baseHeight?: number;
   levels?: number;
   source: 'osm' | 'ign' | 'import' | 'manual';

@@ -1,0 +1,72 @@
+{
+  "appName": "Kubatur",
+  "inPreparation": "coming soon",
+  "units": {
+    "m": "m",
+    "m2": "m²",
+    "m3": "m³"
+  },
+  "usage": {
+    "wohnen": "Residential",
+    "buero": "Office",
+    "gewerbe": "Retail",
+    "gemeinbedarf": "Public facility",
+    "parken": "Parking",
+    "technik": "Plant"
+  },
+  "typology": {
+    "solitaer": "Point block",
+    "zeile": "Slab",
+    "reihe": "Row houses",
+    "freeLine": "Free form (line)",
+    "freePolygon": "Free form (polygon)"
+  },
+  "template": {
+    "winkel": "L-shape",
+    "uForm": "U-shape",
+    "blockrand": "Perimeter block",
+    "hofhaus": "Courtyard house"
+  },
+  "access": {
+    "auto": "Automatic",
+    "zweispaenner": "2 units per landing",
+    "dreispaenner": "3 units per landing",
+    "laubengang": "Gallery access",
+    "mittelflur": "Central corridor",
+    "punkthaus": "Point block (central core)",
+    "reihenhaus": "Single house",
+    "buero": "Office"
+  },
+  "kpi": {
+    "ces": "Site coverage",
+    "emprise": "Footprint",
+    "surfaceDePlancher": "Floor area (SDP)",
+    "hauteur": "Height",
+    "hauteurEgout": "Eaves height",
+    "hauteurAcrotere": "Parapet height",
+    "niveaux": "Storeys",
+    "logements": "Dwellings",
+    "surfaceHabitable": "Living area",
+    "grz": "GRZ",
+    "gfz": "GFZ",
+    "bmz": "BMZ",
+    "maxFullStoreys": "Full storeys",
+    "totalHeight": "Total height",
+    "sdb": "SDP",
+    "bgf": "Gross floor area",
+    "nuf": "Usable area"
+  },
+  "status": {
+    "ok": "Compliant",
+    "warning": "At the limit",
+    "error": "Exceeded",
+    "none": "No target"
+  },
+  "actions": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "close": "Close",
+    "apply": "Apply",
+    "delete": "Delete"
+  }
+}
