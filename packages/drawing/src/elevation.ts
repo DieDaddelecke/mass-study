@@ -244,7 +244,8 @@ export function section(
   const P: Projection = { ...base };
   const ua = base.right[0] * a[0] + base.right[1] * a[1];
   const sc = schemeColors(opts.scheme);
-  const L = 2000;
+  // neighbours only up to `contextMargin` beyond the ends of the section line (like elevations)
+  const L = opts.contextMargin ?? 25;
   const strip = [
     {
       outer: [
@@ -270,12 +271,15 @@ export function section(
 
   // poché of the cut
   const cutRects = (rings: Vec2[][], z0: number, z1: number): Vec2[][] =>
-    lineIntervals(rings, a, b).map(([s0, s1]) => [
-      [s0, z0],
-      [s1, z0],
-      [s1, z1],
-      [s0, z1],
-    ]);
+    lineIntervals(rings, a, b)
+      .map(([s0, s1]): [number, number] => [Math.max(s0, -L), Math.min(s1, len + L)])
+      .filter(([s0, s1]) => s1 - s0 > 1e-6)
+      .map(([s0, s1]) => [
+        [s0, z0],
+        [s1, z0],
+        [s1, z1],
+        [s0, z1],
+      ]);
   const ctxCut = neighbours.flatMap((c) =>
     cutRects(
       [c.footprint.outer, ...(c.footprint.holes ?? [])],
