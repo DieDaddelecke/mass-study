@@ -1,0 +1,125 @@
+{
+  "title": "Tabellen",
+  "allVariants": "{{count}} Varianten",
+  "profile": {
+    "FR": "Regelwerk FR (Code de l’urbanisme)",
+    "DE": "Regelwerk DE (BauNVO / MBO)"
+  },
+  "empty": "Keine Daten – Baukörper platzieren.",
+  "tab": {
+    "surfaces": "Flächen",
+    "kpis": "Kennzahlen",
+    "typologies": "Typologien und Mix",
+    "comparison": "Variantenvergleich"
+  },
+  "actions": {
+    "copy": "Kopieren",
+    "copyHint": "Tabelle in die Zwischenablage kopieren (TSV)",
+    "xlsxHint": "Excel-Arbeitsmappe, ein Blatt je Tabelle, mit Summenformeln"
+  },
+  "export": {
+    "failed": "Export fehlgeschlagen",
+    "xlsxDone": "Excel-Arbeitsmappe exportiert",
+    "copied": "Tabelle in die Zwischenablage kopiert",
+    "xlsx": "Tabellen exportieren (Excel)",
+    "csv": "Aktive Tabelle exportieren (CSV)"
+  },
+  "bool": {
+    "yes": "ja",
+    "no": "nein"
+  },
+  "unit": {
+    "m": "m",
+    "m2": "m²",
+    "m3": "m³",
+    "count": "Stk."
+  },
+  "col": {
+    "name": "Bezeichnung",
+    "usage": "Nutzung",
+    "storeyHeight": "Geschosshöhe",
+    "level": "OKFF",
+    "fullStorey": "Vollgeschoss",
+    "bgf": "BGF",
+    "kgf": "KGF",
+    "nrf": "NRF",
+    "nuf": "NUF",
+    "vf": "VF",
+    "tf": "TF",
+    "bri": "BRI",
+    "indicator": "Kennzahl",
+    "unit": "Einheit",
+    "actual": "Ist",
+    "target": "Soll (max.)",
+    "status": "Status",
+    "mass": "Baukörper",
+    "typology": "Bauform",
+    "depth": "Bautiefe",
+    "suitable": "Geeignete Typologien",
+    "access": "Erschließung",
+    "cores": "Kerne",
+    "dwellings": "WE",
+    "unitType": "{{name}}",
+    "livingArea": "Wohnfläche",
+    "workplaces": "Arbeitsplätze",
+    "parkingDemand": "Stellplatzbedarf",
+    "parkingCapacity": "Stellplatzangebot",
+    "variant": "{{name}}"
+  },
+  "row": {
+    "aboveGround": "Zwischensumme oberirdisch",
+    "belowGround": "Zwischensumme unterirdisch",
+    "massTotal": "Summe {{name}}",
+    "totalAboveGround": "Summe oberirdisch",
+    "totalBelowGround": "Summe unterirdisch",
+    "variantTotal": "Gesamt {{name}}",
+    "total": "Gesamt"
+  },
+  "kpiGroup": {
+    "site": "Grundstück und Überbauung",
+    "density": "Flächen und Dichte",
+    "height": "Höhen und Geschosse",
+    "program": "Programm"
+  },
+  "kpi": {
+    "siteArea": "Grundstücksfläche",
+    "emprise": "Überbaute Fläche (Emprise)",
+    "ces": "Coefficient d’emprise (CES)",
+    "surfaceDePlancher": "Surface de plancher (SDP)",
+    "densite": "Dichte (SDP / Grundstück)",
+    "formula": "Geschossformel (R+n)",
+    "niveaux": "Oberirdische Geschosse",
+    "hauteurEgout": "Traufhöhe",
+    "hauteurAcrotere": "Höhe OK Attika",
+    "gr": "Grundfläche (GR)",
+    "grz": "Grundflächenzahl (GRZ)",
+    "gf": "Geschossfläche (GF)",
+    "gfz": "Geschossflächenzahl (GFZ)",
+    "baumasse": "Baumasse",
+    "bmz": "Baumassenzahl (BMZ)",
+    "maxFullStoreys": "Vollgeschosse",
+    "totalHeight": "Gesamthöhe",
+    "mboHeight": "Höhe nach MBO",
+    "buildingClass": "Gebäudeklasse",
+    "bgf": "BGF gesamt",
+    "nuf": "NUF gesamt",
+    "dwellings": "Wohneinheiten",
+    "livingArea": "Wohnfläche",
+    "workplaces": "Arbeitsplätze",
+    "parkingDemand": "Stellplatzbedarf",
+    "parkingCapacity": "Stellplätze Tiefgarage"
+  },
+  "suit": {
+    "zweispaenner": "Zweispänner",
+    "dreispaenner": "Dreispänner",
+    "laubengang": "Laubengang",
+    "mittelflur": "Mittelflur",
+    "punkthaus": "Punkthaus",
+    "reihenhaus": "Reihenhaus",
+    "buero": "Büro",
+    "zellenbuero": "Zellenbüro",
+    "kombibuero": "Kombibüro",
+    "openSpace": "Großraum",
+    "atrium": "Atrium"
+  }
+}

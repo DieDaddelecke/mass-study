@@ -1,0 +1,25 @@
+{
+  "ifc": {
+    "title": "Export IFC4",
+    "intro": "Exporte la variante active en IFC4 (étages, zones, dalles), géoréférencée dans le système de coordonnées du projet.",
+    "export": "Exporter .ifc",
+    "done": "Fichier IFC exporté",
+    "failed": "L’export IFC a échoué",
+    "options": {
+      "spaces": "Espaces (IfcSpace → zones Archicad)",
+      "slabs": "Dalles de plancher (IfcSlab)",
+      "massProxies": "Volumes par étage (IfcBuildingElementProxy)",
+      "context": "Bâti environnant (IfcBuildingElementProxy)"
+    },
+    "archicad": {
+      "title": "Import dans Archicad",
+      "merge": "Projet existant : Fichier › Interopérabilité › IFC › Fusionner – les niveaux deviennent des étages, les espaces des zones.",
+      "hotlink": "Comme référence actualisable : placer le fichier en module Hotlink et le mettre à jour après chaque nouvel export ; les identifiants restent stables.",
+      "origin": "Le point 0,0 du fichier est l’origine locale du projet ; ses coordonnées Lambert/UTM figurent dans IfcMapConversion. À l’import, choisir « Point de levé » pour un placement géoréférencé, sinon « Origine du projet »."
+    },
+    "building": "Étude de capacité",
+    "site": "Terrain",
+    "slab": "Dalle",
+    "contextBuilding": "Bâti existant"
+  }
+}

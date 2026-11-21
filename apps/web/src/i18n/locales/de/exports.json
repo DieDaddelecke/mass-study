@@ -1,0 +1,25 @@
+{
+  "ifc": {
+    "title": "IFC4-Export",
+    "intro": "Exportiert die aktive Variante als IFC4 (Geschosse, Räume, Decken), georeferenziert im Koordinatensystem des Projekts.",
+    "export": ".ifc exportieren",
+    "done": "IFC-Datei exportiert",
+    "failed": "IFC-Export fehlgeschlagen",
+    "options": {
+      "spaces": "Räume (IfcSpace → Archicad-Zonen)",
+      "slabs": "Geschossdecken (IfcSlab)",
+      "massProxies": "Volumen je Geschoss (IfcBuildingElementProxy)",
+      "context": "Umgebungsbebauung (IfcBuildingElementProxy)"
+    },
+    "archicad": {
+      "title": "Import in Archicad",
+      "merge": "Bestehendes Projekt: Ablage › Interoperabilität › IFC › Zusammenführen – Ebenen werden Geschosse, Räume werden Zonen.",
+      "hotlink": "Als aktualisierbare Referenz: Datei als Hotlink-Modul platzieren und nach jedem Export aktualisieren; die IDs bleiben stabil.",
+      "origin": "0,0 der Datei ist der lokale Projektursprung; seine Landeskoordinaten stehen in IfcMapConversion. Beim Import „Vermessungspunkt“ für georeferenzierte Lage wählen, sonst „Projektnullpunkt“."
+    },
+    "building": "Massenstudie",
+    "site": "Grundstück",
+    "slab": "Decke",
+    "contextBuilding": "Bestandsgebäude"
+  }
+}

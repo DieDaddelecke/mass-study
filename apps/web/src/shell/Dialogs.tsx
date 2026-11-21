@@ -16,6 +16,8 @@ import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
 import { ACCESS_TYPES } from './PropertiesPalette';
 import { useShellStore } from './shellStore';
+import { IfcExportDialog } from '../exports/IfcExportDialog';
+import { DossierDialog } from '../dossier/DossierDialog';
 import { Dialog, NumField, Row } from './ui';
 
 export function Dialogs() {
@@ -31,6 +33,10 @@ export function Dialogs() {
       return <ConstraintsDialog project={project} />;
     case 'warnings':
       return <WarningsDialog />;
+    case 'ifcExport':
+      return <IfcExportDialog project={project} />;
+    case 'dossier':
+      return <DossierDialog project={project} />;
   }
 }
 

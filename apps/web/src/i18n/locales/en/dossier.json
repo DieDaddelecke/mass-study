@@ -1,0 +1,91 @@
+{
+  "title": "Create dossier",
+  "intro": "Drawing set of the massing study as vector PDF: cover, site plan, elevations, sections, axonometries and tables.",
+  "scale": "Scale",
+  "view": {
+    "site": "Site plan",
+    "elevN": "North elevation",
+    "elevE": "East elevation",
+    "elevS": "South elevation",
+    "elevW": "West elevation",
+    "sectionA": "Section A-A (longitudinal)",
+    "sectionB": "Section B-B (cross)",
+    "axoSW": "Axonometry from south-west",
+    "axoNE": "Axonometry from north-east"
+  },
+  "sheet": {
+    "cover": "Cover",
+    "site": "Site plan",
+    "elevations": "Elevations",
+    "sections": "Sections",
+    "axo": "Axonometries",
+    "tables": "Tables (areas, KPIs, unit mix)"
+  },
+  "tb": {
+    "project": "Project",
+    "address": "Address",
+    "client": "Client",
+    "phase": "Stage",
+    "phaseValue": "Massing study",
+    "content": "Drawing content",
+    "number": "Drawing no.",
+    "scale": "Scale",
+    "format": "Format",
+    "index": "Revision",
+    "date": "Date",
+    "sheet": "Sheet",
+    "officeEmpty": "Office",
+    "disclaimer": "Approximate areas – no warranty"
+  },
+  "cover": {
+    "kicker": "Massing study",
+    "variant": "Variant",
+    "kpis": "Key figures"
+  },
+  "table": {
+    "continued": "continued"
+  },
+  "dialog": {
+    "variant": "Variant",
+    "format": "Format",
+    "formats": {
+      "A3": "A3 landscape (420 × 297)",
+      "A2": "A2 landscape (594 × 420)",
+      "A1": "A1 landscape (841 × 594)"
+    },
+    "sheets": "Sheets",
+    "elevationsPerSheet": "Elevations per sheet",
+    "fourPerSheet": "all 4 on one sheet",
+    "twoPerSheet": "2 per sheet",
+    "scales": "Scales",
+    "auto": "Auto",
+    "scaleOf": {
+      "site": "Site plan",
+      "elevations": "Elevations",
+      "sections": "Sections",
+      "axo": "Axonometries"
+    },
+    "scheme": "Colour scheme",
+    "schemes": {
+      "concours": "Competition (black)",
+      "permis": "Permit (red)"
+    },
+    "titleBlock": "Title block",
+    "office": "Office",
+    "client": "Client",
+    "index": "Revision",
+    "date": "Date",
+    "logo": "Logo",
+    "logoUpload": "Choose a logo…",
+    "logoRemove": "Remove",
+    "coverImage": "Current 3D view on the cover",
+    "preview": "Preview",
+    "page": "Sheet {{n}} / {{count}}",
+    "export": "Export PDF",
+    "exporting": "Creating PDF…",
+    "done": "Dossier exported ({{pages}} sheets)",
+    "failed": "PDF creation failed",
+    "empty": "No sheet selected."
+  },
+  "fileSuffix": "Drawing set"
+}

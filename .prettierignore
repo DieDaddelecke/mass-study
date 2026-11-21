@@ -5,3 +5,4 @@ SPEC.md
 docs/SPEC.md
 apps/web/src/demo/palaiseauSurroundings.ts
 apps/server/test/fixtures/palaiseau/raw
+.claude

@@ -1,0 +1,91 @@
+{
+  "title": "Créer le dossier",
+  "intro": "Jeu de plans de l’étude de capacité en PDF vectoriel : page de garde, plan masse, façades, coupes, axonométries et tableaux.",
+  "scale": "Échelle",
+  "view": {
+    "site": "Plan masse",
+    "elevN": "Façade nord",
+    "elevE": "Façade est",
+    "elevS": "Façade sud",
+    "elevW": "Façade ouest",
+    "sectionA": "Coupe A-A (longitudinale)",
+    "sectionB": "Coupe B-B (transversale)",
+    "axoSW": "Axonométrie depuis le sud-ouest",
+    "axoNE": "Axonométrie depuis le nord-est"
+  },
+  "sheet": {
+    "cover": "Page de garde",
+    "site": "Plan masse",
+    "elevations": "Façades",
+    "sections": "Coupes",
+    "axo": "Axonométries",
+    "tables": "Tableaux (surfaces, indicateurs, programme)"
+  },
+  "tb": {
+    "project": "Projet",
+    "address": "Adresse",
+    "client": "Maître d’ouvrage",
+    "phase": "Phase",
+    "phaseValue": "Étude de capacité",
+    "content": "Contenu du plan",
+    "number": "N° de plan",
+    "scale": "Échelle",
+    "format": "Format",
+    "index": "Indice",
+    "date": "Date",
+    "sheet": "Planche",
+    "officeEmpty": "Agence",
+    "disclaimer": "Surfaces approximatives – sans garantie"
+  },
+  "cover": {
+    "kicker": "Étude de capacité",
+    "variant": "Variante",
+    "kpis": "Chiffres clés"
+  },
+  "table": {
+    "continued": "suite"
+  },
+  "dialog": {
+    "variant": "Variante",
+    "format": "Format",
+    "formats": {
+      "A3": "A3 paysage (420 × 297)",
+      "A2": "A2 paysage (594 × 420)",
+      "A1": "A1 paysage (841 × 594)"
+    },
+    "sheets": "Planches",
+    "elevationsPerSheet": "Façades par planche",
+    "fourPerSheet": "4 sur une planche",
+    "twoPerSheet": "2 par planche",
+    "scales": "Échelles",
+    "auto": "Auto",
+    "scaleOf": {
+      "site": "Plan masse",
+      "elevations": "Façades",
+      "sections": "Coupes",
+      "axo": "Axonométries"
+    },
+    "scheme": "Représentation",
+    "schemes": {
+      "concours": "Concours (noir)",
+      "permis": "Permis (rouge)"
+    },
+    "titleBlock": "Cartouche",
+    "office": "Agence",
+    "client": "Maître d’ouvrage",
+    "index": "Indice",
+    "date": "Date",
+    "logo": "Logo",
+    "logoUpload": "Choisir un logo…",
+    "logoRemove": "Retirer",
+    "coverImage": "Vue 3D actuelle en page de garde",
+    "preview": "Aperçu",
+    "page": "Planche {{n}} / {{count}}",
+    "export": "Exporter le PDF",
+    "exporting": "Création du PDF…",
+    "done": "Dossier PDF exporté ({{pages}} planches)",
+    "failed": "La création du PDF a échoué",
+    "empty": "Aucune planche sélectionnée."
+  },
+  "fileSuffix": "Dossier"
+}

@@ -51,9 +51,9 @@ describe('command palette', () => {
 
   it('lists disabled commands but does not run them', () => {
     const cmds = getCommands();
-    const ifc = cmds.find((c) => c.id === 'output.ifc')!;
-    expect(ifc.enabled).toBe(false);
-    expect(ifc.reason).toBe('en préparation');
+    const dxf = cmds.find((c) => c.id === 'output.dxf')!;
+    expect(dxf.enabled).toBe(false);
+    expect(dxf.reason).toBe('en préparation');
     // every two-letter shortcut is reachable from the palette
     for (const code of ['MV', 'RO', 'CO', 'MM', 'AR', 'AL', 'DE', 'ZF'])
       expect(cmds.some((c) => c.shortcut === code)).toBe(true);

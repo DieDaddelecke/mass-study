@@ -1,6 +1,7 @@
 import * as Tabs from '@radix-ui/react-tabs';
 import { polygonArea } from '@kubatur/core';
 import {
+  Box,
   Building2,
   Check,
   Cuboid,
@@ -14,6 +15,7 @@ import {
   RefreshCw,
   Route,
   ScanLine,
+  Table2,
   Trees,
   TreeDeciduous,
   type LucideIcon,
@@ -23,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../i18n';
 import { actions, activeVariant, useProjectStore } from '../store/projectStore';
 import { useUiStore } from '../store/uiStore';
+import type { ViewId } from '../store/tools';
 import { usageColor } from '../viewport/scene/colors';
 import { useViewportStore, type ContextLayers } from '../viewport/viewportStore';
 import { reloadContext } from './commands';
@@ -254,12 +257,21 @@ function ViewsTab() {
   const prep = t('common:inPreparation');
   const activeView = useUiStore((s) => s.activeView);
   const openView = useUiStore((s) => s.openView);
-  const rows: { id: string; label: string; icon: LucideIcon; on?: () => void }[] = [
-    { id: '3d', label: t('views.3d'), icon: Cuboid, on: () => openView('3d') },
-    { id: 'site', label: t('views.site'), icon: Frame },
-    { id: 'elev', label: t('views.elevations'), icon: Columns3 },
-    { id: 'sect', label: t('views.sections'), icon: ScanLine },
-  ];
+  const rows: { id: ViewId; label: string; icon: LucideIcon; on?: () => void }[] = (
+    [
+      ['3d', Cuboid],
+      ['site', Frame],
+      ['elevN', Columns3],
+      ['elevE', Columns3],
+      ['elevS', Columns3],
+      ['elevW', Columns3],
+      ['sectionA', ScanLine],
+      ['sectionB', ScanLine],
+      ['axoSW', Box],
+      ['axoNE', Box],
+      ['areas', Table2],
+    ] as const
+  ).map(([id, icon]) => ({ id, icon, label: t(`views.${id}`), on: () => openView(id) }));
   return (
     <div className="lp-scroll">
       <section className="section">

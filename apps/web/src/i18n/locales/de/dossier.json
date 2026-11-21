@@ -1,0 +1,91 @@
+{
+  "title": "Dossier erstellen",
+  "intro": "Plansatz der Massenstudie als Vektor-PDF: Deckblatt, Lageplan, Ansichten, Schnitte, Axonometrien und Tabellen.",
+  "scale": "Maßstab",
+  "view": {
+    "site": "Lageplan",
+    "elevN": "Ansicht Nord",
+    "elevE": "Ansicht Ost",
+    "elevS": "Ansicht Süd",
+    "elevW": "Ansicht West",
+    "sectionA": "Schnitt A-A (Längsschnitt)",
+    "sectionB": "Schnitt B-B (Querschnitt)",
+    "axoSW": "Axonometrie von Südwesten",
+    "axoNE": "Axonometrie von Nordosten"
+  },
+  "sheet": {
+    "cover": "Deckblatt",
+    "site": "Lageplan",
+    "elevations": "Ansichten",
+    "sections": "Schnitte",
+    "axo": "Axonometrien",
+    "tables": "Tabellen (Flächen, Kennzahlen, Wohnungsmix)"
+  },
+  "tb": {
+    "project": "Projekt",
+    "address": "Adresse",
+    "client": "Bauherr",
+    "phase": "Phase",
+    "phaseValue": "Massenstudie",
+    "content": "Planinhalt",
+    "number": "Plannummer",
+    "scale": "Maßstab",
+    "format": "Format",
+    "index": "Index",
+    "date": "Datum",
+    "sheet": "Blatt",
+    "officeEmpty": "Büro",
+    "disclaimer": "Überschlägige Flächenermittlung nach DIN 277 – ohne Gewähr"
+  },
+  "cover": {
+    "kicker": "Massenstudie",
+    "variant": "Variante",
+    "kpis": "Kennzahlen"
+  },
+  "table": {
+    "continued": "Fortsetzung"
+  },
+  "dialog": {
+    "variant": "Variante",
+    "format": "Format",
+    "formats": {
+      "A3": "A3 quer (420 × 297)",
+      "A2": "A2 quer (594 × 420)",
+      "A1": "A1 quer (841 × 594)"
+    },
+    "sheets": "Pläne",
+    "elevationsPerSheet": "Ansichten je Plan",
+    "fourPerSheet": "alle 4 auf einem Plan",
+    "twoPerSheet": "je 2 pro Plan",
+    "scales": "Maßstäbe",
+    "auto": "Auto",
+    "scaleOf": {
+      "site": "Lageplan",
+      "elevations": "Ansichten",
+      "sections": "Schnitte",
+      "axo": "Axonometrien"
+    },
+    "scheme": "Farbschema",
+    "schemes": {
+      "concours": "Wettbewerb (schwarz)",
+      "permis": "Bauantrag (rot)"
+    },
+    "titleBlock": "Plankopf",
+    "office": "Büro",
+    "client": "Bauherr",
+    "index": "Index",
+    "date": "Datum",
+    "logo": "Logo",
+    "logoUpload": "Logo wählen…",
+    "logoRemove": "Entfernen",
+    "coverImage": "Aktuelle 3D-Ansicht auf dem Deckblatt",
+    "preview": "Vorschau",
+    "page": "Plan {{n}} / {{count}}",
+    "export": "PDF exportieren",
+    "exporting": "PDF wird erstellt…",
+    "done": "Dossier exportiert ({{pages}} Pläne)",
+    "failed": "PDF-Erstellung fehlgeschlagen",
+    "empty": "Kein Plan ausgewählt."
+  },
+  "fileSuffix": "Plansatz"
+}

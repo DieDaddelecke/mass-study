@@ -8,3 +8,4 @@ coverage/
 apps/server/data/
 test-results/
 playwright-report/
+.claude/

@@ -25,6 +25,7 @@ import { useThemeStore, type ThemePreference } from '../theme/themeStore';
 import { closeProject, newProject, openFromFile, redo, save, saveAs, undo } from './commands';
 import { useShellStore } from './shellStore';
 import { IconButton, Tip } from './ui';
+import { exportActiveCsv, exportAllXlsx } from '../tables/tablesStore';
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iP(hone|ad)/.test(navigator.platform);
 export const MOD_KEY = isMac ? '⌘' : 'Ctrl';
@@ -162,7 +163,22 @@ function FileMenu() {
           <Menu.Separator className="menu-sep" />
           <Menu.Label className="menu-label">{t('file.export')}</Menu.Label>
           {(['ifc', 'xlsx', 'csv', 'pdf', 'dxf'] as const).map((f) => (
-            <MenuItem key={f} icon={Download} label={t(`file.exportFormat.${f}`)} disabled />
+            <MenuItem
+              key={f}
+              icon={Download}
+              label={t(`file.exportFormat.${f}`)}
+              onSelect={
+                f === 'ifc'
+                  ? () => setDialog('ifcExport')
+                  : f === 'xlsx'
+                    ? () => void exportAllXlsx()
+                    : f === 'csv'
+                      ? () => exportActiveCsv()
+                      : f === 'pdf'
+                        ? () => setDialog('dossier')
+                        : undefined
+              }
+            />
           ))}
           <Menu.Separator className="menu-sep" />
           <MenuItem

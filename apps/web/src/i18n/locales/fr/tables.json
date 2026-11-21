@@ -1,0 +1,125 @@
+{
+  "title": "Tableaux",
+  "allVariants": "{{count}} variantes",
+  "profile": {
+    "FR": "Règles FR (Code de l’urbanisme)",
+    "DE": "Règles DE (BauNVO / MBO)"
+  },
+  "empty": "Aucune donnée – placez un volume.",
+  "tab": {
+    "surfaces": "Surfaces",
+    "kpis": "Indicateurs",
+    "typologies": "Typologies et programme",
+    "comparison": "Comparaison des variantes"
+  },
+  "actions": {
+    "copy": "Copier",
+    "copyHint": "Copier le tableau dans le presse-papiers (TSV)",
+    "xlsxHint": "Classeur Excel avec un onglet par tableau et formules de somme"
+  },
+  "export": {
+    "failed": "Échec de l’export",
+    "xlsxDone": "Classeur Excel exporté",
+    "copied": "Tableau copié dans le presse-papiers",
+    "xlsx": "Exporter les tableaux (Excel)",
+    "csv": "Exporter le tableau actif (CSV)"
+  },
+  "bool": {
+    "yes": "oui",
+    "no": "non"
+  },
+  "unit": {
+    "m": "m",
+    "m2": "m²",
+    "m3": "m³",
+    "count": "u."
+  },
+  "col": {
+    "name": "Désignation",
+    "usage": "Destination",
+    "storeyHeight": "Hauteur d’étage",
+    "level": "Cote plancher fini",
+    "fullStorey": "Niveau plein (DE)",
+    "bgf": "Surface brute",
+    "kgf": "Surface de construction",
+    "nrf": "Surface nette",
+    "nuf": "Surface utile",
+    "vf": "Circulations",
+    "tf": "Locaux techniques",
+    "bri": "Volume brut",
+    "indicator": "Indicateur",
+    "unit": "Unité",
+    "actual": "Projet",
+    "target": "Règle (max.)",
+    "status": "Statut",
+    "mass": "Volume",
+    "typology": "Forme",
+    "depth": "Épaisseur",
+    "suitable": "Typologies adaptées",
+    "access": "Distribution",
+    "cores": "Noyaux",
+    "dwellings": "Logements",
+    "unitType": "{{name}}",
+    "livingArea": "Surface habitable",
+    "workplaces": "Postes de travail",
+    "parkingDemand": "Places requises",
+    "parkingCapacity": "Places offertes",
+    "variant": "{{name}}"
+  },
+  "row": {
+    "aboveGround": "Sous-total hors sol",
+    "belowGround": "Sous-total sous-sol",
+    "massTotal": "Total {{name}}",
+    "totalAboveGround": "Total hors sol",
+    "totalBelowGround": "Total sous-sol",
+    "variantTotal": "Total {{name}}",
+    "total": "Total"
+  },
+  "kpiGroup": {
+    "site": "Terrain et emprise",
+    "density": "Surfaces et densité",
+    "height": "Hauteurs et niveaux",
+    "program": "Programme"
+  },
+  "kpi": {
+    "siteArea": "Surface du terrain",
+    "emprise": "Emprise au sol",
+    "ces": "Coefficient d’emprise au sol (CES)",
+    "surfaceDePlancher": "Surface de plancher (SDP)",
+    "densite": "Densité (SDP / terrain)",
+    "formula": "Gabarit (R+n)",
+    "niveaux": "Nombre de niveaux hors sol",
+    "hauteurEgout": "Hauteur à l’égout",
+    "hauteurAcrotere": "Hauteur à l’acrotère",
+    "gr": "Emprise au sol (GR)",
+    "grz": "GRZ",
+    "gf": "Surface de plancher DE (GF)",
+    "gfz": "GFZ",
+    "baumasse": "Volume bâti (Baumasse)",
+    "bmz": "BMZ",
+    "maxFullStoreys": "Niveaux pleins (DE)",
+    "totalHeight": "Hauteur totale",
+    "mboHeight": "Hauteur selon MBO",
+    "buildingClass": "Classe de bâtiment (MBO)",
+    "bgf": "Surface brute totale",
+    "nuf": "Surface utile totale",
+    "dwellings": "Logements",
+    "livingArea": "Surface habitable",
+    "workplaces": "Postes de travail",
+    "parkingDemand": "Stationnement requis",
+    "parkingCapacity": "Places en sous-sol"
+  },
+  "suit": {
+    "zweispaenner": "2 logements/palier",
+    "dreispaenner": "3 logements/palier",
+    "laubengang": "Coursive",
+    "mittelflur": "Couloir central",
+    "punkthaus": "Plot à noyau central",
+    "reihenhaus": "Maisons en bande",
+    "buero": "Bureaux",
+    "zellenbuero": "Bureaux cloisonnés",
+    "kombibuero": "Bureaux combinés",
+    "openSpace": "Open space",
+    "atrium": "Atrium"
+  }
+}

@@ -87,7 +87,8 @@ export function Viewport3D() {
         shadows={shadows}
         dpr={[1, 2]}
         flat
-        gl={{ antialias: true }}
+        // preserveDrawingBuffer: the dossier captures the canvas for its cover page.
+        gl={{ antialias: true, preserveDrawingBuffer: true }}
         camera={
           ortho
             ? { near: -5000, far: 20000, up: [0, 0, 1], position: [-100, -100, 100] }
