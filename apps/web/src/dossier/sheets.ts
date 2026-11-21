@@ -208,7 +208,9 @@ export function placeSvg(svg: string, x: number, y: number, w: number, h: number
   const sy = h / vh;
   const scale = Math.abs(sx - 1) < 1e-3 && Math.abs(sy - 1) < 1e-3 ? '' : ` scale(${sx} ${sy})`;
   const shift = vx || vy ? ` translate(${-vx} ${-vy})` : '';
-  return `<g transform="translate(${f2(x)} ${f2(y)})${scale}${shift}">${inner}</g>`;
+  // The drawing sets its font on the root <svg>, which is dropped here; without a font on the
+  // group its texts fall back to Times in the PDF. Use the sheet font (mapped to embedded Inter).
+  return `<g transform="translate(${f2(x)} ${f2(y)})${scale}${shift}" font-family="${FONT}">${inner}</g>`;
 }
 
 /** Scale bar length (m) giving ~25–50 mm on paper. */
