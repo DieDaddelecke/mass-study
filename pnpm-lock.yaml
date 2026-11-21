@@ -57,6 +57,9 @@ importers:
       '@kubatur/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@kubatur/drawing':
+        specifier: workspace:*
+        version: link:../../packages/drawing
       '@kubatur/ifc':
         specifier: workspace:*
         version: link:../../packages/ifc
@@ -157,6 +160,19 @@ importers:
       proj4:
         specifier: ^2.23.0
         version: 2.23.0
+    devDependencies:
+      '@types/polylabel':
+        specifier: ^2.0.0
+        version: 2.0.0
+
+  packages/drawing:
+    dependencies:
+      '@kubatur/core':
+        specifier: workspace:*
+        version: link:../core
+      polylabel:
+        specifier: ^2.1.0
+        version: 2.1.0
     devDependencies:
       '@types/polylabel':
         specifier: ^2.0.0

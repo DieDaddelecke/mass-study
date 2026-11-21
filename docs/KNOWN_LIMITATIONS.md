@@ -8,7 +8,8 @@
 - **Gelände** ist eben (±0,00).
 - **Geodaten-Proxy (apps/server):** Abdeckung „Frankreich“ (API Carto, BD TOPO) ist eine grobe Bounding-Box des Mutterlands inkl. Korsika; DOM/TOM werden nicht als abgedeckt erkannt (→ OSM/Nominatim). Geokodierung: IGN zuerst, Nominatim nur wenn IGN nichts findet; Autovervollständigung nur über IGN (Nominatim-Richtlinie verbietet Autocomplete). Nominatim-Antwortformat nur gegen eine synthetische Fixture getestet (nicht live verifiziert).
 - **Generischer WFS-Flurstücksprovider:** nur mit synthetischer Fixture getestet, kein Land verifiziert und standardmäßig deaktiviert (`PARCEL_WFS`). Keine Umprojektion: der Dienst muss GeoJSON in EPSG:4326 liefern.
-- **2D-Ansichten, Tabellen, Varianten, Ausgabe, Archicad** sind in der Oberfläche sichtbar deaktiviert („en préparation“) und folgen in P5–P8.
+- **2D-Zeichnungen:** Grundrisse je Ebene, Bemaßung im Lageplan, Abstandsflächen, Legende, Kartenunterlage, Ansicht „am Grundstück ausrichten“, frei gesetzte Schnittlinien und DXF-Export fehlen noch. Füllungen der Axonometrie sind maler-sortiert (bei verschachtelten Körpern sind Farbfehler möglich, die Linien bleiben exakt). Sich durchdringende Baukörper werden nur per Abtastung (1 m + Bisektion) behandelt. Gelände ist eben (z = 0).
+- **Tabellen, Varianten, Ausgabe, Archicad** sind in der Oberfläche sichtbar deaktiviert („en préparation“) und folgen in P5–P8.
 - **3D:** Sonnenstand nach Ort/Datum und BVH-Picking fehlen noch; 50 fps bei 2.000 Nachbarn nicht gemessen (Kontext ist zusammengeführt, Baukörper je Geschoss ein Mesh). Beim Ziehen eines Griffs zeigt die Szene bis zum Loslassen nur eine Vorschau-Kontur.
 - **Werkzeuge:** Ausrichten (AL), Grundstück und Nachbargebäude im Modell zeichnen sind noch nicht umgesetzt; temporäre Bemaßung folgt mit den 2D-Ansichten.
 - **DXF-Import:** Bögen in Polylinien werden als gerade Segmente übernommen.

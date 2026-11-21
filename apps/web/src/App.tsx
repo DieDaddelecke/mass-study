@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectStore } from './store/projectStore';
 import { useUiStore } from './store/uiStore';
+import type { ViewId } from './store/tools';
 import { TopLeft, TopRight } from './shell/TopBar';
 import { ToolDock } from './shell/ToolDock';
 import { LeftPanel } from './shell/LeftPanel';
@@ -32,6 +33,9 @@ if (
   new URLSearchParams(window.location.search).get('demo') === 'palaiseau'
 ) {
   openProject(palaiseauDemo());
+  // dev/screenshots: `&view=site|elevN|sectionA|axoSW…` opens a view directly
+  const view = new URLSearchParams(window.location.search).get('view');
+  if (view) useUiStore.getState().openView(view as ViewId);
 }
 
 /**

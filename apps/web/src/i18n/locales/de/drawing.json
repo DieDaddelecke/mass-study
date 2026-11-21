@@ -1,0 +1,30 @@
+{
+  "views": {
+    "site": "Lageplan",
+    "elevN": "Ansicht Nord",
+    "elevE": "Ansicht Ost",
+    "elevS": "Ansicht Süd",
+    "elevW": "Ansicht West",
+    "sectionA": "Schnitt A",
+    "sectionB": "Schnitt B",
+    "axoSW": "Axonometrie Südwest",
+    "axoNE": "Axonometrie Nordost"
+  },
+  "scale": "Maßstab",
+  "auto": "Auto",
+  "fit": "Einpassen",
+  "zoomIn": "Vergrößern",
+  "zoomOut": "Verkleinern",
+  "scheme": "Darstellung",
+  "schemes": {
+    "competition": "Wettbewerb",
+    "permit": "Bauantrag"
+  },
+  "neighbours": "Nachbarbebauung",
+  "sectionLines": "Schnittlinien",
+  "downloadSvg": "Als SVG herunterladen",
+  "parapet": "OK Attika",
+  "datum": "NHN",
+  "noProject": "Kein Projekt geöffnet",
+  "failed": "Die Zeichnung konnte nicht erzeugt werden"
+}

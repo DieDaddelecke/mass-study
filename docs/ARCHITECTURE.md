@@ -50,6 +50,14 @@ Lokales metrisches System (x Ost, y Nord, z oben), Ursprung im Schwerpunkt des G
 - `core` ist reines TypeScript ohne DOM, läuft in Node und im Web Worker, deterministisch, `any`-frei.
 - Abgeleitete Werte werden nie gespeichert, sondern immer aus `Mass` neu berechnet.
 
+## Zeichnungen (`packages/drawing`)
+
+Reines TypeScript ohne DOM (läuft in Node für das PDF-Dossier). `StoreySolid[]` + Projekt → neutrales `DrawingModel` (Linien mit Stift 1–6 und Linientyp, Füllungen mit Schraffur, Texte in mm, Bemaßungen, Symbole Nordpfeil/Maßstabsleiste/Kote/Schnittkopf; Modellkoordinaten in m) → `renderSvg(model, { scale })` (SVG in echten mm).
+
+- `sitePlan` (Lageplan), `elevation` (N/O/S/W), `section` (Schnittlinie + Tiefe, Poché), `axonometry` (SW/SO/NO/NW, Isometrie oder Grundriss-Axonometrie); `drawingInput(result)` liefert Solids, Ebenen und Attika/Formel je Baukörper aus der Analyse; `defaultSections` A/B durch den Grundstücksschwerpunkt.
+- `hidden.ts`: exakte Verdeckung für senkrechte Prismen bei Parallelprojektion (DECISIONS #27), Maler-sortierte Füllungen darunter.
+- `svg.ts`: Stifttabelle, `chooseScale(model, w, h)` (Normmaßstäbe), `measureDrawing`.
+
 ## Web-App (`apps/web/src`)
 
 | Ordner            | Inhalt                                                                                                                                                                                                                                                                                                                     |
@@ -66,6 +74,7 @@ Lokales metrisches System (x Ost, y Nord, z oben), Ursprung im Schwerpunkt des G
 | `tables/`         | Tabellen-Arbeitsbereich (Ansicht „Surfaces“): Flächen, Kennzahlen, Typologien, Variantenvergleich; Gruppen einklappbar, Zeilenklick wählt den Baukörper; `tablesStore` (Reiter, Exporte, `?schedule=`)                                                                                                                     |
 | `exports/`        | Downloads (`download.ts`); `ifc.ts` + `IfcExportDialog.tsx`: IFC4-Export der aktiven Variante, Writer per `import()` nachgeladen; `xlsx.ts` (ein Blatt je Tabelle, SUMME-Formeln, Zahlenformate, fixierte Kopfzeile, Bibliothek per `import()`); `csv.ts` (`;`, Dezimalkomma fr/de, UTF-8-BOM, TSV für die Zwischenablage) |
 | `demo/`           | Offline-Demoprojekt `?demo=palaiseau` aus aufgezeichneten echten Daten                                                                                                                                                                                                                                                     |
+| `drawings/`       | 2D-Ansichten aus `@kubatur/drawing`: `buildDrawing` (Ansicht → Modell), `DrawingView` (Papierblatt, Pan/Zoom, Maßstab, Farbschema, SVG-Download); Dev-Parameter `&view=site` öffnet eine Ansicht                                                                                                                           |
 
 ## IFC-Export (`packages/ifc`)
 
