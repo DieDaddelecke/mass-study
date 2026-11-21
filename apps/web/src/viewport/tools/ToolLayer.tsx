@@ -348,6 +348,7 @@ export function magnetMove(
   targets: readonly Segment[],
   tol: number,
   suspended = false,
+  priority: readonly Segment[] = [],
 ): MagnetMove {
   const s = useUiStore.getState().snap;
   const id: MagnetMove = { d0: d, rot: 0, pivot: [0, 0], extra: [0, 0], guides: [] };
@@ -357,8 +358,8 @@ export function magnetMove(
   );
   const c = selectionCentroid(sel);
   const pivot: Vec2 = [c[0] + d[0], c[1] + d[1]];
-  const r = magnetSnap(polys, targets, { tol, rotate: true, pivot });
-  return { d0: d, rot: r.rotation, pivot, extra: r.delta, guides: r.guides };
+  const r = magnetSnap(polys, targets, { tol, rotate: true, pivot, priority });
+  return { d0: d, rot: r.rotation, pivot: r.pivot ?? pivot, extra: r.delta, guides: r.guides };
 }
 
 /** New position / rotation of a mass after a magnetic move. */
@@ -538,14 +539,28 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
       const ids = sel.map((m) => m.id);
       const d = sub(p, a);
       if (tl.kind === 'move') {
-        const mv = magnetMove(sel, d, geomRef.current.edges, s.tol * 1.2, s.alt);
+        const mv = magnetMove(
+          sel,
+          d,
+          geomRef.current.edges,
+          s.tol * 1.2,
+          s.alt,
+          geomRef.current.siteEdges,
+        );
         actions.updateMasses(ids, (m) => {
           const r = movedPlacement(m, mv);
           m.position = r.position;
           m.rotation = r.rotation;
         });
       } else if (tl.kind === 'copy') {
-        const mv = magnetMove(sel, d, geomRef.current.edges, s.tol * 1.2, s.alt);
+        const mv = magnetMove(
+          sel,
+          d,
+          geomRef.current.edges,
+          s.tol * 1.2,
+          s.alt,
+          geomRef.current.siteEdges,
+        );
         const cs = sel.map((m) => {
           const c = cloneMass(m, t('copySuffix'));
           const r = movedPlacement(m, mv);
@@ -757,7 +772,7 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
     const d = sub(cur, a);
     const mv =
       tl.kind === 'move' || tl.kind === 'copy'
-        ? magnetMove(sel, d, geomRef.current.edges, s.tol * 1.2, s.alt)
+        ? magnetMove(sel, d, geomRef.current.edges, s.tol * 1.2, s.alt, geomRef.current.siteEdges)
         : null;
     if (mv) guides = mv.guides;
     for (const m of sel) {
@@ -1211,7 +1226,7 @@ function MassDrag() {
             Math.round(d[0] / s.gridSize) * s.gridSize,
             Math.round(d[1] / s.gridSize) * s.gridSize,
           ];
-        mv = magnetMove(sel, d, geom.edges, tol * 1.2, ev.altKey);
+        mv = magnetMove(sel, d, geom.edges, tol * 1.2, ev.altKey, geom.siteEdges);
         const cur = mv;
         setGhosts(sel.flatMap((m) => massFootprints({ ...m, ...movedPlacement(m, cur) })));
         setGuides(cur.guides);

@@ -17,10 +17,15 @@ export interface MagnetOptions {
   tol: number;
   /** Allow a small rotation to make façades parallel. */
   rotate?: boolean;
-  /** Largest rotation that is snapped, degrees (default 6). */
+  /**
+   * Largest rotation that is snapped, degrees (default 25). Rotations above 6° only snap when the
+   * façade is already within `tol` of the target.
+   */
   maxAngleDeg?: number;
   /** Pivot of the rotation (centroid of the moved volumes). */
   pivot?: Vec2;
+  /** Preferred targets (the site boundary): they win over other edges at similar distance. */
+  priority?: readonly Segment[];
 }
 
 export interface MagnetResult {
@@ -28,9 +33,11 @@ export interface MagnetResult {
   delta: Vec2;
   /** Rotation about `pivot` (radians, CCW), applied before `delta`. */
   rotation: number;
+  /** Pivot of the rotation: the point of the volume closest to the target edge. */
+  pivot?: Vec2;
   /** Target edges that were snapped to (drawn as guides). */
   guides: Segment[];
-  kind: 'none' | 'corner' | 'flush' | 'flush2' | 'aligned';
+  kind: 'none' | 'corner' | 'flush' | 'flush2' | 'aligned' | 'onEdge';
 }
 
 const NONE: MagnetResult = { delta: [0, 0], rotation: 0, guides: [], kind: 'none' };
@@ -53,6 +60,28 @@ export function segmentDistance(a: Segment, b: Segment): number {
     dist(b[0], closestOnSegment(b[0], a[0], a[1])),
     dist(b[1], closestOnSegment(b[1], a[0], a[1])),
   );
+}
+
+/** Point of segment m that is closest to segment t. */
+function contactPoint(m: Segment, t: Segment): Vec2 {
+  let best: Vec2 = m[0];
+  let bd = Infinity;
+  for (const p of [m[0], m[1]]) {
+    const d = dist(p, closestOnSegment(p, t[0], t[1]));
+    if (d < bd) {
+      bd = d;
+      best = p;
+    }
+  }
+  for (const p of [t[0], t[1]]) {
+    const q = closestOnSegment(p, m[0], m[1]);
+    const d = dist(p, q);
+    if (d < bd) {
+      bd = d;
+      best = q;
+    }
+  }
+  return best;
 }
 
 /** Overlap length of the projections of a and b on the direction u. */
@@ -115,6 +144,38 @@ function flushCandidates(moving: Segment[], targets: Segment[], tol: number): Fl
 }
 
 /**
+ * Smallest move that puts a corner of the moved outline on a target edge, or a target corner on
+ * a moved edge (perpendicular to that edge).
+ */
+function pointOnEdge(
+  moving: readonly Segment[],
+  targets: readonly Segment[],
+  tol: number,
+): { d: Vec2; g: Segment } | null {
+  let best: { d: Vec2; g: Segment } | null = null;
+  let bd = tol;
+  for (const t of targets)
+    for (const m of moving) {
+      const v = m[0];
+      const q = closestOnSegment(v, t[0], t[1]);
+      const dv = dist(v, q);
+      if (dv < bd) {
+        bd = dv;
+        best = { d: sub(q, v), g: t };
+      }
+      for (const w of [t[0], t[1]]) {
+        const p = closestOnSegment(w, m[0], m[1]);
+        const dw = dist(w, p);
+        if (dw < bd) {
+          bd = dw;
+          best = { d: sub(w, p), g: t };
+        }
+      }
+    }
+  return best;
+}
+
+/**
  * Magnetic correction of volumes whose outlines (already at the proposed position) are `polys`.
  */
 export function magnetSnap(
@@ -125,12 +186,17 @@ export function magnetSnap(
   if (!polys.length || !targets.length || !(o.tol > 0)) return NONE;
   const tol = o.tol;
   const tgt = targets.filter((t) => dist(t[0], t[1]) >= MIN_EDGE);
+  const prio = new Set(o.priority ?? []);
+  const weight = (t: Segment) => (prio.has(t) ? 0.5 : 1);
   let moving = polys.flatMap(polygonEdges);
 
   // 1) rotation
   let rotation = 0;
+  let rotTarget: Segment | null = null;
+  let pivot: Vec2 | undefined;
   if (o.rotate && o.pivot) {
-    const maxA = ((o.maxAngleDeg ?? 6) * Math.PI) / 180;
+    const maxA = ((o.maxAngleDeg ?? 25) * Math.PI) / 180;
+    const smallA = (6 * Math.PI) / 180;
     let best = Infinity;
     for (const m of moving) {
       if (dist(m[0], m[1]) < 2) continue;
@@ -146,14 +212,17 @@ export function magnetSnap(
         if (da > Math.PI / 2) da -= Math.PI;
         if (da < -Math.PI / 2) da += Math.PI;
         if (Math.abs(da) < 1e-6 || Math.abs(da) > maxA) continue;
-        const score = d + Math.abs(da) * 10;
+        if (Math.abs(da) > smallA && d > tol) continue;
+        const score = (d + Math.abs(da) * 10) * weight(t);
         if (score < best) {
           best = score;
           rotation = da;
+          rotTarget = t;
+          pivot = contactPoint(m, t);
         }
       }
     }
-    if (rotation) moving = rotatePolygons(polys, o.pivot, rotation).flatMap(polygonEdges);
+    if (rotation && pivot) moving = rotatePolygons(polys, pivot, rotation).flatMap(polygonEdges);
   }
 
   // 2) corner on corner
@@ -172,12 +241,30 @@ export function magnetSnap(
           }
         }
     }
-  if (corner) return { delta: corner.d, rotation, guides: corner.g, kind: 'corner' };
+  if (corner)
+    return {
+      delta: corner.d,
+      rotation,
+      ...(pivot ? { pivot } : {}),
+      guides: corner.g,
+      kind: 'corner',
+    };
 
-  // 3) façade flush
-  const cands = flushCandidates(moving, tgt, tol);
-  if (!cands.length) return rotation ? { ...NONE, rotation } : NONE;
-  cands.sort((a, b) => Number(b.overlap) - Number(a.overlap) || Math.abs(a.c) - Math.abs(b.c));
+  // 3) façade flush (after a rotation the rotated façade may have moved a little further away)
+  let cands = flushCandidates(moving, tgt, tol);
+  if (!cands.length && rotTarget) cands = flushCandidates(moving, [rotTarget], tol * 2.5);
+  if (!cands.length) {
+    // 4) corner on a façade / boundary line (volumes that are not parallel to it)
+    const on = pointOnEdge(moving, tgt, tol);
+    if (on)
+      return { delta: on.d, rotation, ...(pivot ? { pivot } : {}), guides: [on.g], kind: 'onEdge' };
+    return rotation && pivot ? { ...NONE, rotation, pivot } : NONE;
+  }
+  cands.sort(
+    (a, b) =>
+      Number(b.overlap) - Number(a.overlap) ||
+      Math.abs(a.c) * weight(a.target) - Math.abs(b.c) * weight(b.target),
+  );
   const f = cands[0]!;
   let delta: Vec2 = [f.n[0] * f.c, f.n[1] * f.c];
   const guides: Segment[] = [f.target];
@@ -220,7 +307,7 @@ export function magnetSnap(
     if (best2.g !== f.target) guides.push(best2.g);
     kind = 'flush2';
   }
-  return { delta, rotation, guides, kind };
+  return { delta, rotation, ...(pivot ? { pivot } : {}), guides, kind };
 }
 
 /**

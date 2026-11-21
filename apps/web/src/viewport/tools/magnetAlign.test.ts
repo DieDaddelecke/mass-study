@@ -165,3 +165,35 @@ describe('align multi-section Zeile', () => {
     if (r?.typology.kind === 'freePolygon') expect(r.typology.polygon.outer).toHaveLength(4);
   });
 });
+
+describe('magnet on an oblique boundary', () => {
+  // site edge at −10°, volume at +7° (17° apart), 0.8 m away
+  const a = (-10 * Math.PI) / 180;
+  const edge: Segment = [
+    [-40 * Math.cos(a), -40 * Math.sin(a)],
+    [40 * Math.cos(a), 40 * Math.sin(a)],
+  ];
+  const box = (rot: number, off: number) =>
+    rect(-15, 0, 15, 12).outer.map(([x, y]): [number, number] => {
+      const c = Math.cos(rot);
+      const s = Math.sin(rot);
+      return [x * c - y * s, x * s + y * c + off];
+    });
+  it('turns the volume parallel when it is close', () => {
+    const r = magnetSnap([{ outer: box((7 * Math.PI) / 180, 5.3) }], [edge], {
+      tol: 2,
+      rotate: true,
+      pivot: [0, 9],
+    });
+    expect((r.rotation * 180) / Math.PI).toBeCloseTo(-17, 0);
+    // and the façade lies on the boundary afterwards
+    expect(r.kind === 'flush' || r.kind === 'flush2' || r.kind === 'corner').toBe(true);
+  });
+  it('puts a corner on the boundary without rotation', () => {
+    const r = magnetSnap([{ outer: box((7 * Math.PI) / 180, 5.3) }], [edge], {
+      tol: 2,
+      rotate: false,
+    });
+    expect(r.kind).toBe('onEdge');
+  });
+});
