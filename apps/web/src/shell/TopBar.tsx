@@ -21,6 +21,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { actions, activeVariant, useProjectStore } from '../store/projectStore';
+import { useArchicadStore } from '../archicad/archicadStore';
 import { useThemeStore, type ThemePreference } from '../theme/themeStore';
 import { closeProject, newProject, openFromFile, redo, save, saveAs, undo } from './commands';
 import { useShellStore } from './shellStore';
@@ -215,13 +216,18 @@ export function SearchButton() {
 export function TopRight() {
   const { t } = useTranslation('shell');
   const setDialog = useShellStore((s) => s.setDialog);
+  const acReady = useArchicadStore((s) => s.status === 'ready' && s.port !== undefined);
   return (
     <div className="glass tb tb-right">
-      <Tip label={t('status.archicad')}>
-        <span className="pill pill-status" tabIndex={0}>
-          <span className="dot dot-off" />
+      <Tip label={acReady ? t('archicad:pill.ready') : t('status.archicad')}>
+        <button
+          type="button"
+          className="pill pill-status"
+          onClick={() => useArchicadStore.getState().openDialog()}
+        >
+          <span className={acReady ? 'dot' : 'dot dot-off'} />
           Archicad
-        </span>
+        </button>
       </Tip>
       <FileMenu />
       <span className="tb-sep" />

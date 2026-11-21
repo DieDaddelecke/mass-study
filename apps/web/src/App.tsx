@@ -14,6 +14,7 @@ import { Toasts } from './shell/Toasts';
 import { CommandPalette } from './shell/CommandPalette';
 import { StartScreen } from './shell/StartScreen';
 import { Dialogs } from './shell/Dialogs';
+import { ArchicadDialog } from './archicad/ArchicadDialog';
 import { IconButton } from './shell/ui';
 import { useShortcuts } from './shell/shortcuts';
 import { openProject } from './shell/commands';
@@ -116,6 +117,7 @@ export function App() {
         <Toasts />
         <CommandPalette />
         <Dialogs />
+        <ArchicadDialog />
         {newProjectOpen && <NewProjectDialog />}
       </div>
     </Tooltip.Provider>

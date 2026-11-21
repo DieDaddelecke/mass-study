@@ -45,6 +45,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import i18n from '../i18n';
+import { useArchicadStore } from '../archicad/archicadStore';
 import { useProjectStore } from '../store/projectStore';
 import type { ToolState, VisualStyle } from '../store/tools';
 import { useUiStore } from '../store/uiStore';
@@ -349,9 +350,21 @@ export function getCommands(): Command[] {
       off(`output.${f}`, 'output', `${t('file.export')} ${t(`file.exportFormat.${f}`)}`, Download),
     );
   cmds.push(
-    off('archicad.connect', 'archicad', `Archicad : ${t('ribbon.connect')}`, Plug),
-    off('archicad.transfer', 'archicad', `Archicad : ${t('ribbon.transfer')}`, Link),
-    off('archicad.update', 'archicad', `Archicad : ${t('ribbon.update')}`, RefreshCw),
+    ...(
+      [
+        ['archicad.connect', 'ribbon.connect', Plug],
+        ['archicad.transfer', 'ribbon.transfer', Link],
+        ['archicad.update', 'ribbon.update', RefreshCw],
+      ] as const
+    ).map(([id, key, icon]) =>
+      proj({
+        id,
+        group: 'archicad',
+        label: `Archicad : ${t(key)}`,
+        icon,
+        run: () => useArchicadStore.getState().openDialog(),
+      }),
+    ),
     off('archicad.script', 'archicad', `Archicad : ${t('ribbon.exportScript')}`, Download),
   );
   const theme = useThemeStore.getState();
