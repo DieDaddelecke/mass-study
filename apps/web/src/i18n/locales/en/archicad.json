@@ -1,0 +1,76 @@
+{
+  "title": "Archicad",
+  "untitled": "Untitled project",
+  "transfer": "Transfer to “{{name}}”",
+  "update": "Update “{{name}}”",
+  "remove": "Remove from Archicad ({{count}} elements)",
+  "bridge": {
+    "title": "Local bridge",
+    "status": {
+      "idle": "Not checked",
+      "checking": "Looking for the bridge…",
+      "offline": "Bridge not found",
+      "unpaired": "Bridge found, pairing code required",
+      "ready": "Connected (bridge {{version}})"
+    },
+    "howTo": "Start the bridge on this computer (Python 3.10+) and enter the pairing code it shows:",
+    "token": "Pairing code",
+    "advanced": "Advanced",
+    "url": "Bridge address",
+    "connect": "Connect"
+  },
+  "instance": {
+    "title": "Archicad project",
+    "none": "No Archicad open. Open Archicad with the Tapir add-on, then refresh.",
+    "noTapir": "missing",
+    "refresh": "Refresh"
+  },
+  "options": {
+    "title": "Elements to create",
+    "zones": "Zones (area, name, number)",
+    "morphs": "Volumes (Morphs)",
+    "slabs": "Slabs",
+    "offsetX": "Offset X",
+    "offsetY": "Offset Y",
+    "rotation": "Rotation"
+  },
+  "mode": {
+    "replace": "Replace previously transferred elements ({{count}})",
+    "create": "Add, delete nothing"
+  },
+  "preview": {
+    "title": "Preview",
+    "summary": "{{zones}} zones, {{morphs}} volumes, {{slabs}} slabs on {{storeys}} levels, on layer “MS - Massenstudie”.",
+    "level": "Level",
+    "storey": "Storey",
+    "archicadStory": "Archicad story",
+    "offset": "Offset",
+    "storiesUnchanged": "The Archicad story structure is never changed: each level goes onto the nearest Archicad story below it."
+  },
+  "warning": {
+    "noStories": "The Archicad project has no stories.",
+    "noMasses": "The active variant has no masses.",
+    "teamwork": "Teamwork project: elements must be reservable.",
+    "librariesMissing": "Libraries unavailable in Archicad: {{names}}. If the zone stamp is in one of them, Archicad refuses zones; they are then replaced by volumes.",
+    "levelWithoutStory": "Level {{level}} m ({{label}}) has no Archicad story at that height: placed on “{{story}}” with an offset.",
+    "belowLowestStory": "Level {{level}} m ({{label}}) is below the lowest Archicad story."
+  },
+  "progress": {
+    "prepare": "Preparing (layer, categories)…",
+    "delete": "Deleting previous elements…",
+    "zones": "Creating zones…",
+    "slabs": "Creating slabs…",
+    "morphs": "Creating volumes…",
+    "tag": "Tagging elements…",
+    "done": "Done"
+  },
+  "result": {
+    "created": "Created: {{zones}} zones, {{morphs}} volumes, {{slabs}} slabs.",
+    "deleted": "{{count}} previous elements deleted.",
+    "zoneFallback": "Archicad refused every zone (zone stamp or library missing). Volumes were created instead. Load the project's Archicad library and transfer again.",
+    "removed": "{{count}} elements removed from Archicad."
+  },
+  "pill": {
+    "ready": "Archicad: connected – open transfer"
+  }
+}
