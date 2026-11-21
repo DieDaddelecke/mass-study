@@ -1,0 +1,49 @@
+# Architektur
+
+## Module
+
+| Paket                   | Zweck                                                                                                                                              | Stand                           |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `packages/core`         | Datenmodell, Bauform-Generatoren, Geschosslogik, Flächen (DIN 277), Kennzahlen DE/FR, Typologien, Wohnungsmix, Prüfungen, Projektion, Projektdatei | P1 fertig                       |
+| `packages/drawing`      | 2D-Zeichnungsmodell, verdeckte Kanten, Schnitte, SVG/DXF                                                                                           | P6                              |
+| `packages/ifc`          | IFC4-STEP-Writer                                                                                                                                   | P8                              |
+| `apps/web`              | Vite + React SPA                                                                                                                                   | P0-Gerüst, Oberfläche ab P2     |
+| `apps/server`           | Hono: Geodaten-Proxy + Cache, liefert den Web-Build aus                                                                                            | P0-Gerüst (Health), Proxy in P3 |
+| `tools/archicad-bridge` | Python-Bridge + Mock-Archicad                                                                                                                      | P8                              |
+
+## Datenfluss
+
+```
+Project (JSON, *.massing.json)
+  └─ Variant.masses: Mass[]                 (Eingabe: Bauform + Lage + Geschossstapel)
+        │  typologySegments()                Bauform → Abschnitte (lokale Footprints)
+        │  massToSolids()                    Abschnitte × Geschosse → StoreySolid[]
+        ▼
+  StoreySolid[]  ── einzige Quelle für 3D, Flächen, Zeichnungen, IFC und Archicad
+        │  analyzeMass() / analyzeMasses()   DIN 277 je Solid, Höhen, Vollgeschosse,
+        │                                    Erschließung, Kerne, Wohnungsmix, Stellplätze
+        ▼
+  VariantResult ─► kpisDE() / kpisFR() ─► constraintRows() ─► modelWarnings()
+        └──────────────── analyzeProject() bündelt alles für die UI
+```
+
+## Zentrale Typen (`packages/core/src/types.ts`)
+
+- `Polygon { outer, holes? }` – außen CCW, Löcher CW, offene Ringe, lokale Meter.
+- `Mass` – Bauform (`Typology`, Discriminated Union), `position`, `rotation`, `storeys: StoreyStack`, Abschnitts-Overrides, Nutzung je Geschoss, Erschließung.
+- `StoreySolid` – ein Geschoss eines Abschnitts: Footprint in Projektkoordinaten, `z0`/`z1` (OKFF bis OKFF), Nutzung, Staffel-/Dachgeschoss-Flags.
+- `Settings` – Regelwerk-Profil (`FR` | `DE`), Notation, alle editierbaren Kennwerte.
+- `Project` – Georeferenz (`geo.crs`, `originCrs`), Grundstück, Umgebung, Varianten, Einstellungen, Vorgaben.
+
+## Koordinaten
+
+Lokales metrisches System (x Ost, y Nord, z oben), Ursprung im Schwerpunkt des Grundstücks. `projection.ts` wählt das Landessystem (FR: EPSG:2154, DE: EPSG:25832/25833, sonst UTM) und rechnet lon/lat ↔ lokal. CRS und Ursprung stehen im Projekt (für IFC, DXF, Archicad).
+
+## Geometrie
+
+`geometry.ts` kapselt Clipper2 (`clipper2-ts`, Präzision 0,1 mm) für Vereinigung, Schnitt, Differenz und Versatz mit Gehrung. Alles andere (Flächen, Umfang, Schwerpunkt, Inkreis via `polylabel`, orientierte Ausdehnung) ist eigener, reiner Code.
+
+## Prinzipien
+
+- `core` ist reines TypeScript ohne DOM, läuft in Node und im Web Worker, deterministisch, `any`-frei.
+- Abgeleitete Werte werden nie gespeichert, sondern immer aus `Mass` neu berechnet.

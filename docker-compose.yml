@@ -1,0 +1,15 @@
+services:
+  kubatur:
+    build: .
+    ports:
+      - '8080:8080'
+    volumes:
+      - kubatur-data:/data
+    environment:
+      CACHE_TTL_DAYS: '30'
+      USER_AGENT: 'Kubatur/0.1 (massing study tool)'
+      # ALLOWED_ORIGINS: 'https://kubatur.example.org'
+    restart: unless-stopped
+
+volumes:
+  kubatur-data:
