@@ -7,6 +7,7 @@ import type {
   StoreyNotation,
   StoreySolid,
   StoreyStack,
+  TerraceStep,
   Usage,
 } from './types.js';
 
@@ -135,6 +136,16 @@ function defaultUsage(mass: Mass, index: number): Usage {
   return mass.usage ?? 'wohnen';
 }
 
+/** Active terrace step of a storey (the step with the highest `fromStorey` ≤ index), if any. */
+export function terraceStepFor(stack: StoreyStack, index: number): TerraceStep | undefined {
+  if (index < 1) return undefined;
+  let best: TerraceStep | undefined;
+  for (const t of stack.terraces ?? [])
+    if (t.fromStorey >= 1 && t.fromStorey <= index && (!best || t.fromStorey > best.fromStorey))
+      best = t;
+  return best;
+}
+
 /** Apply a setback to a local footprint (front = −y, back = +y, left = −x, right = +x). */
 export function applySetback(
   local: Polygon,
@@ -165,12 +176,23 @@ export function massToSolids(mass: Mass, settings: Pick<Settings, 'notation'>): 
     );
     const defs = storeyDefs(stack);
     const topIndex = defs[defs.length - 1]?.index;
-    const setbackPolys =
-      stack.setback && stack.setback.storeys > 0
-        ? applySetback(seg.local, stack.setback.distance)
-        : null;
+    const cache = new Map<string, Polygon[]>();
+    const footprintsOf = (d: StoreyDef): Polygon[] => {
+      const step = terraceStepFor(stack, d.index);
+      const key = `${step ? step.fromStorey : '-'}|${d.setback ? 1 : 0}`;
+      let polys = cache.get(key);
+      if (polys) return polys;
+      polys = step ? applySetback(seg.local, step.distance) : [seg.local];
+      if (d.setback && stack.setback && stack.setback.storeys > 0) {
+        // both measured from the full footprint
+        const attique = applySetback(seg.local, stack.setback.distance);
+        polys = step ? intersection(polys, attique) : attique;
+      }
+      cache.set(key, polys);
+      return polys;
+    };
     for (const d of defs) {
-      const locals = d.setback && setbackPolys ? setbackPolys : [seg.local];
+      const locals = footprintsOf(d);
       for (const local of locals) {
         const solid: StoreySolid = {
           massId: mass.id,

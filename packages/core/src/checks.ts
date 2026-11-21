@@ -9,6 +9,7 @@ export type WarningCode =
   | 'outsideSite'
   | 'outsideBuildable'
   | 'constraintExceeded'
+  | 'constraintBelow'
   | 'depthOutOfRange'
   | 'lightDepth'
   | 'mixPlausibility'
@@ -86,7 +87,7 @@ export function modelWarnings(
   for (const r of rows) {
     if (r.status === 'error')
       w.push({
-        code: 'constraintExceeded',
+        code: r.min ? 'constraintBelow' : 'constraintExceeded',
         severity: 'error',
         massIds: [],
         data: { key: r.key, actual: r.actual, target: r.target ?? 0 },

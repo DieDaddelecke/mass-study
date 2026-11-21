@@ -1,6 +1,7 @@
 import type { VariantResult } from './analysis.js';
 import type { Constraints, Settings } from './types.js';
 import type { Traffic } from './typologies.js';
+import type { GreenKpis } from './green.js';
 
 // ---------------------------------------------------------------------------
 // DE profile (BauNVO / MBO, simplified)
@@ -27,7 +28,7 @@ export interface KpisDE {
 
 export function kpisDE(r: VariantResult, siteArea: number, settings: Settings): KpisDE {
   const gf = r.solids.filter((s) => s.fullStorey).reduce((a, s) => a + s.areas.bgf, 0);
-  const baumasse = r.areasAbove.bri;
+  const baumasse = r.areasAbove.bri + r.masses.reduce((a, m) => a + m.roofVolume, 0);
   const mboHeight = Math.max(0, ...r.masses.map((m) => m.topFloorLevel));
   const totalHeight = Math.max(0, ...r.masses.map((m) => m.totalHeight));
   // Largest Nutzungseinheit: residential → largest dwelling of the mix, else NUF per storey and core.
@@ -85,8 +86,10 @@ export interface KpisFR {
   densite: number;
   /** Hauteur à l'égout / sommet de façade (flat roof: top slab). */
   hauteurEgout: number;
-  /** Hauteur à l'acrotère (incl. parapet). */
+  /** Hauteur à l'acrotère (incl. parapet) or au faîtage (ridge), whichever is higher. */
   hauteurAcrotere: number;
+  /** Hauteur au faîtage of pitched roofs (0 when all roofs are flat). */
+  hauteurFaitage: number;
   /** Maximum number of above-ground levels (R+n → n+1). */
   niveaux: number;
   formula: string;
@@ -118,6 +121,7 @@ export function kpisFR(r: VariantResult, siteArea: number, settings: Settings): 
     densite: siteArea > 0 ? sdp / siteArea : 0,
     hauteurEgout: Math.max(0, ...r.masses.map((m) => m.eavesHeight)),
     hauteurAcrotere: Math.max(0, ...r.masses.map((m) => m.totalHeight)),
+    hauteurFaitage: Math.max(0, ...r.masses.map((m) => m.ridgeHeight)),
     niveaux: Math.max(0, ...r.masses.map((m) => m.aboveGroundStoreys)),
     formula: highest?.formula ?? '',
     logements: r.dwellings,
@@ -133,6 +137,8 @@ export interface ConstraintRow {
   key: string;
   actual: number;
   target?: number;
+  /** The target is a minimum (espaces verts, pleine terre), not a maximum. */
+  min?: true;
   status: Traffic | 'none';
 }
 
@@ -144,24 +150,43 @@ export function judge(actual: number, max?: number): Traffic | 'none' {
   return 'ok';
 }
 
+/** Minimum: ≥ 105 % of the minimum: ok; ≥ 100 %: warning (at the limit); below: error. */
+export function judgeMin(actual: number, min?: number): Traffic | 'none' {
+  if (min === undefined || !Number.isFinite(min)) return 'none';
+  if (actual < min - 1e-9) return 'error';
+  if (actual < min * 1.05) return 'warning';
+  return 'ok';
+}
+
 export function constraintRows(
   profile: Settings['profile'],
   c: Constraints,
   de: KpisDE,
   fr: KpisFR,
+  green?: GreenKpis,
 ): ConstraintRow[] {
   const row = (key: string, actual: number, target?: number): ConstraintRow => {
     const r: ConstraintRow = { key, actual, status: judge(actual, target) };
     if (target !== undefined) r.target = target;
     return r;
   };
+  const minRow = (key: string, actual: number, target?: number): ConstraintRow => {
+    const r: ConstraintRow = { key, actual, min: true, status: judgeMin(actual, target) };
+    if (target !== undefined) r.target = target;
+    return r;
+  };
   if (profile === 'FR') {
-    return [
+    const rows = [
       row('ces', fr.ces, c.empriseMax),
       row('hauteur', fr.hauteurEgout, c.hauteurMax ?? c.maxHeight),
       row('surfaceDePlancher', fr.surfaceDePlancher),
       row('niveaux', fr.niveaux),
     ];
+    if (green) {
+      rows.push(minRow('espacesVerts', green.espacesVertsRatio, c.espacesVertsMin));
+      rows.push(minRow('pleineTerre', green.pleineTerreRatio, c.pleineTerreMin));
+    }
+    return rows;
   }
   return [
     row('grz', de.grz, c.grz),

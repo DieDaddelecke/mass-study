@@ -98,9 +98,35 @@ export interface StoreyStack {
   heightOverrides?: { index: number; height: number }[];
   /** The top `storeys` upper storeys are set back (Staffelgeschoss / attique). */
   setback?: { storeys: number; distance: SetbackDistance };
+  /**
+   * Terracing (gradins / Terrassierung): from storey `fromStorey` upwards the footprint is set back
+   * by `distance` (measured from the full footprint) until the next step. Sorted or not.
+   */
+  terraces?: TerraceStep[];
   /** Parapet / roof upstand above the top slab, m. */
   parapet: number;
   slabThickness: number;
+}
+
+export interface TerraceStep {
+  /** First storey index of the step (≥ 1). */
+  fromStorey: number;
+  /** Set-back from the full footprint (front = −y, back = +y, left = −x, right = +x, local). */
+  distance: SetbackDistance;
+}
+
+/** flat = toit-terrasse (parapet); shed = monopente; gable = deux pans; hip = quatre pans. */
+export type RoofKind = 'flat' | 'shed' | 'gable' | 'hip';
+export const ROOF_KINDS: readonly RoofKind[] = ['flat', 'shed', 'gable', 'hip'];
+
+export interface RoofConfig {
+  kind: RoofKind;
+  /** Pitch, degrees. */
+  pitch: number;
+  /** Ridge (gable) / slope direction (shed) along the local length (x) or depth (y) axis. */
+  ridge: 'length' | 'depth';
+  /** Shed: the high side is the other one. */
+  flip?: boolean;
 }
 
 export interface Mass {
@@ -119,6 +145,8 @@ export interface Mass {
   access?: AccessType | 'auto';
   /** Outdoor spaces of the dwellings (balcons, loggias, terrasses); default: settings. */
   outdoor?: OutdoorConfig;
+  /** Roof on the top storey (default: flat with parapet). */
+  roof?: RoofConfig;
 }
 
 export type OutdoorKind = 'none' | 'balcon' | 'loggia';
@@ -276,10 +304,34 @@ export interface Surroundings {
   parcels: ContextParcel[];
 }
 
+/** Planted area of the project (espace vert). */
+export type PlantingKind = 'pleineTerre' | 'pelouse' | 'arbustes' | 'boise' | 'surDalle';
+export const PLANTING_KINDS: readonly PlantingKind[] = [
+  'pleineTerre',
+  'pelouse',
+  'arbustes',
+  'boise',
+  'surDalle',
+];
+
+export interface PlantingZone {
+  id: string;
+  name: string;
+  kind: PlantingKind;
+  /** World (project-local) coordinates. */
+  polygon: Polygon;
+  /** Spacing of planted trees, m (0 / missing = no trees). */
+  treeSpacing?: number;
+  /** Height of planted trees, m (default 8). */
+  treeHeight?: number;
+}
+
 export interface Variant {
   id: string;
   name: string;
   masses: Mass[];
+  /** Vegetation zones of this variant. */
+  plantings?: PlantingZone[];
 }
 
 export interface Constraints {
@@ -302,6 +354,10 @@ export interface Constraints {
   prospectMin?: number;
   buildable?: Polygon[];
   buildingLines?: Vec2[][];
+  /** FR: minimum share of green space (espaces verts) of the site, 0…1. */
+  espacesVertsMin?: number;
+  /** FR: minimum share of open ground (pleine terre) of the site, 0…1. */
+  pleineTerreMin?: number;
 }
 
 export interface UnitType {

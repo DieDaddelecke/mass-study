@@ -24,6 +24,7 @@ import {
   suitability,
   type TypologySuitability,
 } from './typologies.js';
+import { effectiveParapet, massRoofPieces, roofTop, roofVolume, type RoofPiece } from './roof.js';
 import type { AccessType, Mass, Polygon, Settings, StoreySolid, Usage } from './types.js';
 
 export interface SolidResult {
@@ -44,8 +45,14 @@ export interface MassResult {
   areas: AreaFigures;
   areasAbove: AreaFigures;
   areasBelow: AreaFigures;
-  /** Top of parapet above ±0,00 (max over sections). */
+  /** Top of parapet or ridge above ±0,00 (max over sections). */
   totalHeight: number;
+  /** Pitched roof faces on the top storeys (empty for flat roofs). */
+  roofs: RoofPiece[];
+  /** Ridge height above ±0,00 (0 for flat roofs). */
+  ridgeHeight: number;
+  /** Volume under the pitched roof, m³. */
+  roofVolume: number;
   /** Top of the top slab without parapet (≈ hauteur à l'égout for flat roofs). */
   eavesHeight: number;
   /** Finished floor level of the highest storey (DE: "Höhe nach MBO"). */
@@ -68,6 +75,8 @@ export interface VariantResult {
   /** Union of all above-ground footprints (overlap-free). */
   footprintUnion: Polygon[];
   footprintArea: number;
+  /** Pitched roof faces of all masses. */
+  roofs: RoofPiece[];
   levels: ProjectLevel[];
   dwellings: number;
   livingArea: number;
@@ -102,8 +111,13 @@ export function analyzeMass(mass: Mass, settings: Settings): MassResult {
   const access = resolveAccess(mass, settings);
   const solids = massToSolids(mass, settings);
   const segs = typologySegments(mass.typology);
-  const stackOf = (segment?: number) =>
-    mergeStack(mass.storeys, segment !== undefined ? mass.segmentOverrides?.[segment] : undefined);
+  const stackOf = (segment?: number) => {
+    const st = mergeStack(
+      mass.storeys,
+      segment !== undefined ? mass.segmentOverrides?.[segment] : undefined,
+    );
+    return { ...st, parapet: effectiveParapet(mass, st) };
+  };
 
   const flags = fullStoreyFlags(solids, mass.storeys.slabThickness, settings);
   const results: SolidResult[] = solids.map((solid, i) => ({
@@ -134,6 +148,10 @@ export function analyzeMass(mass: Mass, settings: Settings): MassResult {
       new Set(own.map((r) => r.solid.storeyIndex)).size,
     );
   }
+
+  const roofs = massRoofPieces(mass, solids);
+  const ridgeHeight = roofTop(roofs);
+  totalHeight = Math.max(totalHeight, ridgeHeight);
 
   const areas = sumAreas(results.map((r) => r.areas));
   const areasAbove = sumAreas(results.filter((r) => r.solid.aboveGround).map((r) => r.areas));
@@ -179,6 +197,9 @@ export function analyzeMass(mass: Mass, settings: Settings): MassResult {
     areasAbove,
     areasBelow,
     totalHeight,
+    roofs,
+    ridgeHeight,
+    roofVolume: roofVolume(roofs),
     eavesHeight,
     topFloorLevel,
     fullStoreys,
@@ -218,6 +239,7 @@ export function analyzeMasses(masses: readonly Mass[], settings: Settings): Vari
     areasBelow: sumAreas(massResults.map((m) => m.areasBelow)),
     footprintUnion,
     footprintArea: polygonsArea(footprintUnion),
+    roofs: massResults.flatMap((m) => m.roofs),
     levels: projectLevels(
       solids.map((s) => s.solid),
       settings,
