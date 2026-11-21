@@ -302,3 +302,16 @@ export function stackTop(s: StoreyStack): number {
 export function heightGripCount(startCount: number, dz: number, storeyHeight: number): number {
   return Math.max(0, Math.round(startCount + dz / Math.max(0.1, storeyHeight)));
 }
+
+/** World segment of the façade that a side grip moves. */
+export function sideSegment(
+  m: Pick<Mass, 'position' | 'rotation' | 'typology'>,
+  g: SideGrip,
+): [Vec2, Vec2] | null {
+  const e = localExtents(m.typology);
+  if (!e) return null;
+  const [x0, x1, y0, y1] = e;
+  const a: Vec2 = g.axis === 'length' ? [g.sign > 0 ? x1 : x0, y0] : [x0, g.sign > 0 ? y1 : y0];
+  const b: Vec2 = g.axis === 'length' ? [g.sign > 0 ? x1 : x0, y1] : [x1, g.sign > 0 ? y1 : y0];
+  return [toWorldPoint(m, a), toWorldPoint(m, b)];
+}

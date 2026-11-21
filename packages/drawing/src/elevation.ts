@@ -6,6 +6,7 @@ import {
   contextPrisms,
   line,
   massPrisms,
+  roofPrisms,
   schemeColors,
   siteBox,
   visibleContext,
@@ -55,6 +56,7 @@ function emitHlr(
   P: Projection,
   opts: ElevationOptions,
   massWall: string,
+  massRoof: string,
 ): VisibleSegment[] {
   const res = hiddenLine(prisms, P, { storeyLines: opts.storeyLines ?? true });
   for (const f of painterOrder(res.faces, P)) {
@@ -62,7 +64,13 @@ function emitHlr(
     items.push({
       kind: 'fill',
       rings: f.rings,
-      fill: ctx ? COLORS.neighbourWall : massWall,
+      fill: ctx
+        ? f.kind === 'roof'
+          ? COLORS.neighbourRoof
+          : COLORS.neighbourWall
+        : f.kind === 'roof'
+          ? massRoof
+          : massWall,
     });
   }
   const style = (s: VisibleSegment) => `${s.prism?.group}|${s.cls === 'storey' ? 's' : 'e'}`;
@@ -87,6 +95,7 @@ function levelsAndGround(
   allX: [number, number],
   topZ: number,
   minZ: number,
+  ridge = false,
 ) {
   // ground line
   items.push(
@@ -113,7 +122,13 @@ function levelsAndGround(
     zs.push({ z: lv.elevation, sub });
   }
   if (!zs.some((l) => Math.abs(l.z) < 0.005)) zs.push({ z: 0 });
-  if (topZ > 0) zs.push({ z: topZ, sub: opts.texts?.parapet ?? DEFAULT_TEXTS.parapet });
+  if (topZ > 0)
+    zs.push({
+      z: topZ,
+      sub: ridge
+        ? (opts.texts?.ridge ?? DEFAULT_TEXTS.ridge)
+        : (opts.texts?.parapet ?? DEFAULT_TEXTS.parapet),
+    });
   zs.sort((a, b) => a.z - b.z);
   for (const lv of zs) {
     items.push(
@@ -142,7 +157,7 @@ export function elevation(
 ): DrawingModel {
   const P = horizontalProjection(LOOK[dir]);
   const sc = schemeColors(opts.scheme);
-  const masses = massPrisms(solids, opts.masses);
+  const masses = [...massPrisms(solids, opts.masses), ...roofPrisms(opts.roofs)];
   const box = siteBox(project, solids);
   const m = opts.contextMargin ?? 25;
   const region = { minX: box.minX - m, minY: box.minY - m, maxX: box.maxX + m, maxY: box.maxY + m };
@@ -162,7 +177,7 @@ export function elevation(
           ),
         );
   const items: DItem[] = [];
-  emitHlr(items, [...ctx, ...masses], P, opts, sc.wall);
+  emitHlr(items, [...ctx, ...masses], P, opts, sc.wall, sc.roof);
   const u = (p: Vec2) => P.right[0] * p[0] + P.right[1] * p[1];
   const massU = masses.flatMap((p) => p.outer.map(u));
   const allU = [...massU, ...ctx.flatMap((p) => p.outer.map(u)), ...sitePts.map(u)];
@@ -190,8 +205,16 @@ export function elevation(
     [Math.min(...allU), Math.max(...allU)],
     top,
     0,
+    isRidge(masses, top),
   );
   return { kind: 'elevation', items, bounds: geometryBounds(items), warnings: [] };
+}
+
+/** Is the top kote the ridge of a pitched roof? */
+function isRidge(masses: Prism[], top: number): boolean {
+  const roof = Math.max(-Infinity, ...masses.filter((p) => p.top).map((p) => p.z1));
+  const flat = Math.max(-Infinity, ...masses.filter((p) => !p.top).map((p) => p.z1));
+  return Number.isFinite(roof) && roof >= flat - 1e-6 && Math.abs(roof - top) < 1e-3;
 }
 
 /** Parameters along a→b (unbounded line) where the line is inside the polygon rings. */
@@ -256,13 +279,16 @@ export function section(
       ] as Vec2[],
     },
   ];
-  const masses = massPrisms(solids, opts.masses, (s) => s.aboveGround, strip);
+  const masses = [
+    ...massPrisms(solids, opts.masses, (s) => s.aboveGround, strip),
+    ...roofPrisms(opts.roofs, strip),
+  ];
   const neighbours = opts.neighbours === false ? [] : visibleContext(project);
   const ctx = contextPrisms(neighbours, strip);
   const items: DItem[] = [];
   const shift = (p: Vec2): Vec2 => [p[0] - ua, p[1]];
   const beyond: DItem[] = [];
-  emitHlr(beyond, [...ctx, ...masses], P, { ...opts, kotes: false }, sc.wall);
+  emitHlr(beyond, [...ctx, ...masses], P, { ...opts, kotes: false }, sc.wall, sc.roof);
   for (const it of beyond) {
     if (it.kind === 'line') it.pts = it.pts.map(shift);
     if (it.kind === 'fill') it.rings = it.rings.map((r) => r.map(shift));
@@ -303,6 +329,25 @@ export function section(
       massRects.push(r);
       // floor slab line (white) at the storey bottom
       slabLines.push(line([r[0]!, r[1]!], 1, 'solid', '#ffffff'));
+    }
+  }
+  // pitched roofs: the cut between the top slab and the roof plane
+  const ux = u[0];
+  const uy = u[1];
+  for (const r of opts.roofs ?? []) {
+    const zAt = (t: number) =>
+      r.plane[0] + r.plane[1] * (a[0] + ux * t) + r.plane[2] * (a[1] + uy * t);
+    for (const [s0, s1] of lineIntervals([r.polygon.outer, ...(r.polygon.holes ?? [])], a, b)) {
+      const t0 = Math.max(s0, -L);
+      const t1 = Math.min(s1, len + L);
+      if (t1 - t0 < 1e-6) continue;
+      const pts: Vec2[] = [
+        [t0, r.z0],
+        [t1, r.z0],
+        [t1, Math.max(r.z0, zAt(t1))],
+        [t0, Math.max(r.z0, zAt(t0))],
+      ];
+      massRects.push(pts);
     }
   }
   if (massRects.length) {
@@ -371,6 +416,12 @@ export function section(
     allX,
     top,
     minZ,
+    isRidge(masses, top) ||
+      (opts.roofs ?? []).some((r) =>
+        r.polygon.outer.some(
+          (q) => Math.abs(r.plane[0] + r.plane[1] * q[0] + r.plane[2] * q[1] - top) < 1e-3,
+        ),
+      ),
   );
   return { kind: 'section', items, bounds: geometryBounds(items), warnings: [] };
 }

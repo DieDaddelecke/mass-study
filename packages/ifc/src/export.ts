@@ -2,6 +2,7 @@ import type {
   MassResult,
   Polygon,
   Project,
+  RoofPiece,
   SolidResult,
   TypologyKind,
   Usage,
@@ -33,6 +34,10 @@ export interface IfcLabels {
   typology: Record<TypologyKind, string>;
   slab: string;
   context: string;
+  /** Name of roof faces (default "Toiture"). */
+  roof?: string;
+  /** Planting kinds (defaults: French). */
+  planting?: Partial<Record<string, string>>;
 }
 
 export const IFC_LABELS_FR: IfcLabels = {
@@ -55,6 +60,14 @@ export const IFC_LABELS_FR: IfcLabels = {
   },
   slab: 'Dalle',
   context: 'Bâti existant',
+  roof: 'Toiture',
+  planting: {
+    pleineTerre: 'Pleine terre',
+    pelouse: 'Pelouse',
+    arbustes: 'Arbustes',
+    boise: 'Boisé',
+    surDalle: 'Végétation sur dalle',
+  },
 };
 
 export interface IfcExportOptions {
@@ -66,6 +79,10 @@ export interface IfcExportOptions {
   massProxies?: boolean;
   /** Context buildings as IfcBuildingElementProxy under the site. Default false. */
   context?: boolean;
+  /** Pitched roof faces as IfcRoof (faceted B-rep) in the storey of the top solid. Default true. */
+  roofs?: boolean;
+  /** Vegetation zones of the variant as IfcGeographicElement under the site. Default true. */
+  plantings?: boolean;
   /** Deterministic GlobalIds derived from this seed (e.g. project id); random when absent. */
   guidSeed?: string;
   /** Fixed time (tests); default now. */
@@ -80,6 +97,8 @@ export const IFC_DEFAULT_OPTIONS = {
   slabs: true,
   massProxies: false,
   context: false,
+  roofs: true,
+  plantings: true,
 } as const satisfies IfcExportOptions;
 
 interface CrsInfo {
@@ -583,6 +602,85 @@ export function exportIfc(
       });
     }
   }
+  // --- pitched roofs ----------------------------------------------------------------------
+  const brepRep = (items: StepRef[]) =>
+    w.add('IFCSHAPEREPRESENTATION', [bodyCtx, str('Body'), str('Brep'), list(items)]);
+  const face = (pts: [number, number, number][]): StepRef | null => {
+    const clean = pts.filter((p, i) => {
+      const q = pts[(i + 1) % pts.length]!;
+      return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) > 1e-6;
+    });
+    if (clean.length < 3) return null;
+    const loop = w.add('IFCPOLYLOOP', [list(clean.map(([x, y, z]) => pt3(x, y, z)))]);
+    return w.add('IFCFACE', [list([w.add('IFCFACEOUTERBOUND', [loop, bool(true)])])]);
+  };
+  /** Closed solid between z0 and the roof plane over the piece's outline (relative to dz). */
+  const roofBrep = (r: RoofPiece, dz: number): StepRef | null => {
+    let ring = [...r.polygon.outer];
+    const f0 = ring[0];
+    const fl = ring[ring.length - 1];
+    if (f0 && fl && ring.length > 1 && Math.hypot(f0[0] - fl[0], f0[1] - fl[1]) < 1e-9) ring.pop();
+    if (ring.length < 3) return null;
+    let area = 0;
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i]!;
+      const b = ring[(i + 1) % ring.length]!;
+      area += a[0] * b[1] - b[0] * a[1];
+    }
+    if (area < 0) ring = ring.reverse();
+    const zt = (p: Vec2) => Math.max(r.z0, r.plane[0] + r.plane[1] * p[0] + r.plane[2] * p[1]);
+    const faces: (StepRef | null)[] = [
+      face([...ring].reverse().map(([x, y]) => [x, y, r.z0 - dz])),
+      face(ring.map((p) => [p[0], p[1], zt(p) - dz])),
+    ];
+    ring.forEach((a, i) => {
+      const b = ring[(i + 1) % ring.length]!;
+      faces.push(
+        face([
+          [a[0], a[1], r.z0 - dz],
+          [b[0], b[1], r.z0 - dz],
+          [b[0], b[1], zt(b) - dz],
+          [a[0], a[1], zt(a) - dz],
+        ]),
+      );
+    });
+    const valid = faces.filter((x): x is StepRef => x !== null);
+    if (valid.length < 4) return null;
+    return w.add('IFCFACETEDBREP', [w.add('IFCCLOSEDSHELL', [list(valid)])]);
+  };
+  if (opt.roofs && storeys.length) {
+    for (const m of result.masses) {
+      const above = m.solids.filter((s) => s.solid.aboveGround);
+      if (!m.roofs?.length || !above.length) continue;
+      const topSolid = above.reduce((a, b) => (b.solid.z1 > a.solid.z1 ? b : a)).solid;
+      const st = storeyOf(topSolid.z0);
+      m.roofs.forEach((r, i) => {
+        const brep = roofBrep(r, st.level.elevation);
+        if (!brep) return;
+        const roof = w.add('IFCROOF', [
+          str(guid(`roof:${m.mass.id}:${i}`)),
+          oh,
+          str(`${L.roof ?? 'Toiture'} ${m.mass.name}${m.roofs.length > 1 ? `.${i + 1}` : ''}`),
+          NULL,
+          NULL,
+          localPlacement(st.placement),
+          productShape([brepRep([brep])]),
+          NULL,
+          enumv(
+            m.mass.roof?.kind === 'gable'
+              ? 'GABLE_ROOF'
+              : m.mass.roof?.kind === 'hip'
+                ? 'HIP_ROOF'
+                : m.mass.roof?.kind === 'shed'
+                  ? 'SHED_ROOF'
+                  : 'NOTDEFINED',
+          ),
+        ]);
+        st.elements.push(roof);
+      });
+    }
+  }
+
   for (const st of storeys) {
     if (st.spaces.length)
       w.add('IFCRELAGGREGATES', [
@@ -629,6 +727,48 @@ export function exportIfc(
         NULL,
         NULL,
         list(ctxElems),
+        site,
+      ]);
+  }
+
+  // --- vegetation -------------------------------------------------------------------------
+  if (opt.plantings) {
+    const zones = (variant?.plantings ?? []).filter((z) => z.polygon.outer.length >= 3);
+    const geo = zones.map((z) => {
+      const kind = L.planting?.[z.kind] ?? IFC_LABELS_FR.planting?.[z.kind] ?? z.kind;
+      const el = w.add('IFCGEOGRAPHICELEMENT', [
+        str(guid(`planting:${z.id}`)),
+        oh,
+        str(z.name),
+        NULL,
+        str(kind),
+        localPlacement(sitePlacement),
+        productShape([bodyRep([extrusion(z.polygon, 0, 0.05)]), footprintRep([z.polygon])]),
+        str(z.id),
+        enumv('USERDEFINED'),
+      ]);
+      pset(
+        `planting:${z.id}`,
+        'Pset_Massenstudie',
+        [el],
+        [
+          prop('Name', label(z.name)),
+          prop('Kind', label(z.kind)),
+          prop('Variante', label(variantName)),
+          ...(z.treeSpacing
+            ? [prop('TreeSpacing', typed('IFCPOSITIVELENGTHMEASURE', real(z.treeSpacing)))]
+            : []),
+        ],
+      );
+      return el;
+    });
+    if (geo.length)
+      w.add('IFCRELCONTAINEDINSPATIALSTRUCTURE', [
+        str(guid('rel:site-plantings')),
+        oh,
+        NULL,
+        NULL,
+        list(geo),
         site,
       ]);
   }

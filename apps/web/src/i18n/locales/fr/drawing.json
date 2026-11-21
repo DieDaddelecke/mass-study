@@ -74,5 +74,6 @@
     "outdoor": "Espace extérieur (balcon, loggia, terrasse)",
     "outdoorFail": "{{count}} espace(s) extérieur(s) sous le minimum (4 m², profondeur) ou éloigné(s) du séjour",
     "outdoorNone": "{{count}} logement(s) sans espace extérieur"
-  }
+  },
+  "ridge": "faîtage"
 }

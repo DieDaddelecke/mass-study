@@ -54,7 +54,9 @@
     "totalHeight": "Hauteur totale",
     "sdb": "SDP",
     "bgf": "Surface brute (BGF)",
-    "nuf": "Surface utile (NUF)"
+    "nuf": "Surface utile (NUF)",
+    "espacesVerts": "Espaces verts",
+    "pleineTerre": "Pleine terre"
   },
   "status": {
     "ok": "Conforme",

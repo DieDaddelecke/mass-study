@@ -93,7 +93,8 @@
       "array": "Array",
       "align": "Align",
       "drawSite": "Draw parcel",
-      "drawContext": "Draw building"
+      "drawContext": "Draw building",
+      "drawGreen": "Vegetation zone"
     },
     "panel": {
       "site": "Site",
@@ -307,7 +308,9 @@
     "empriseMax": "Max. site coverage (CES)",
     "hauteurMax": "Max. height",
     "clear": "Clear",
-    "note": "Empty fields = no target. Values drive the traffic lights of the key-figure bar."
+    "note": "Empty fields = no target. Values drive the traffic lights of the key-figure bar.",
+    "espacesVertsMin": "Green space min.",
+    "pleineTerreMin": "Open ground min."
   },
   "warnings": {
     "none": "No warnings.",
@@ -326,7 +329,8 @@
     "lightDepth": "Depth of {{masses}} ({{depth}} m): daylight critical.",
     "mixPlausibility": "{{masses}}: {{actual}} units per storey and core (expected {{min}}–{{max}}).",
     "estimatedContextHeights": "Estimated height for {{count}} context building(s).",
-    "unitFacade": "{{count}} dwellings do not meet the minimum façade lengths ({{masses}})."
+    "unitFacade": "{{count}} dwellings do not meet the minimum façade lengths ({{masses}}).",
+    "constraintBelow": "{{key}} below the minimum: {{actual}} instead of min. {{target}}."
   },
   "cmd": {
     "undo": "Undo",
@@ -424,5 +428,61 @@
     "loggiaMinDepth": "Min. loggia depth",
     "balconMinDepth": "Min. balcony depth",
     "terraceDepth": "Ground terrace depth"
+  },
+  "roof": {
+    "title": "Roof",
+    "kind": "Shape",
+    "kinds": {
+      "flat": "Flat roof",
+      "shed": "Shed roof",
+      "gable": "Gable roof",
+      "hip": "Hip roof"
+    },
+    "pitch": "Pitch",
+    "slope": "Slope",
+    "ridge": "Ridge",
+    "alongLength": "along the length",
+    "alongDepth": "along the depth",
+    "flip": "Flip slope",
+    "note": "Attic space is not counted as floor area. Total height = ridge."
+  },
+  "terrace": {
+    "title": "Terracing",
+    "from": "From storey",
+    "side": "Side",
+    "distance": "Set-back",
+    "remove": "Remove step",
+    "add": "Add step",
+    "regular": "Regular terracing (one more set-back per storey)",
+    "step": "Set-back per storey",
+    "generate": "Generate",
+    "sides": {
+      "all": "All sides",
+      "front": "Front",
+      "back": "Back",
+      "left": "Left",
+      "right": "Right"
+    }
+  },
+  "green": {
+    "title": "Vegetation zone",
+    "kind": "Type",
+    "kinds": {
+      "pleineTerre": "Open ground",
+      "pelouse": "Lawn",
+      "arbustes": "Shrubs",
+      "boise": "Woodland",
+      "surDalle": "Garden on slab"
+    },
+    "trees": "Trees",
+    "treeSpacing": "Spacing",
+    "treeHeight": "Height",
+    "treeNote": "Spacing 0 = no trees. Trees are staggered.",
+    "delete": "Delete zone"
+  },
+  "align": {
+    "mode": "Mode",
+    "facade": "Façade",
+    "volume": "Whole volume"
   }
 }

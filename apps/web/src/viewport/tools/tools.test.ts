@@ -25,6 +25,7 @@ const S: SnapSettings = {
   angleStep: 15,
   grid: true,
   gridSize: 0.5,
+  magnet: true,
 };
 const geom: SnapGeometry = {
   edges: [

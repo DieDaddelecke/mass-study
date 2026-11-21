@@ -1,6 +1,7 @@
 import { analyzeMasses, type VariantResult } from './analysis.js';
 import { massLayouts } from './layout.js';
 import { modelWarnings, type ModelWarning } from './checks.js';
+import { greenKpis, type GreenKpis } from './green.js';
 import { defaultTypology } from './generators.js';
 import {
   normalizePolygon,
@@ -133,6 +134,8 @@ export interface ProjectAnalysis {
   fr: KpisFR;
   constraints: ConstraintRow[];
   warnings: ModelWarning[];
+  /** Vegetation zones of the variant. */
+  green: GreenKpis;
 }
 
 /** Full live analysis of one variant (default: the active one). */
@@ -146,7 +149,8 @@ export function analyzeProject(
   const siteArea = project.site.boundary.outer.length ? polygonArea(project.site.boundary) : 0;
   const de = kpisDE(result, siteArea, project.settings);
   const fr = kpisFR(result, siteArea, project.settings);
-  const constraints = constraintRows(project.settings.profile, project.constraints, de, fr);
+  const green = greenKpis(variant.plantings ?? [], project.site.boundary, result);
+  const constraints = constraintRows(project.settings.profile, project.constraints, de, fr, green);
   const site: { boundary: Polygon; buildable?: Polygon[] } = { boundary: project.site.boundary };
   const buildable = project.constraints.buildable ?? project.site.buildable;
   if (buildable) site.buildable = buildable;
@@ -167,7 +171,7 @@ export function analyzeProject(
       massIds: failingMasses,
       data: { count: failing },
     });
-  return { result, de, fr, constraints, warnings };
+  return { result, de, fr, constraints, warnings, green };
 }
 
 // ---------------------------------------------------------------------------

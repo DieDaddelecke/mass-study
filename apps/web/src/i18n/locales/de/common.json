@@ -54,7 +54,9 @@
     "totalHeight": "Gesamthöhe",
     "sdb": "SDP",
     "bgf": "BGF",
-    "nuf": "NUF"
+    "nuf": "NUF",
+    "espacesVerts": "Grünflächen",
+    "pleineTerre": "Unversiegelt"
   },
   "status": {
     "ok": "Eingehalten",

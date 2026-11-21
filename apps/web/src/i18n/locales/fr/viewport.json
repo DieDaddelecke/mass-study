@@ -33,7 +33,8 @@
     "isolate": "Isoler / masquer",
     "soon": "en préparation",
     "persp": "Perspective",
-    "ortho": "Ortho"
+    "ortho": "Ortho",
+    "magnet": "Magnétisme (Alt maintenu : désactivé)"
   },
   "legend": {
     "title": "Affectations",

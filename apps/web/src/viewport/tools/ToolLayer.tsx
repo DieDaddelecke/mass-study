@@ -1,6 +1,9 @@
 import {
   createMass,
+  DEFAULT_TREE_SPACING,
   massFootprints,
+  normalizePolygon,
+  polygonArea,
   newId,
   storeyLabel,
   TEMPLATES,
@@ -42,8 +45,10 @@ import {
   isRepeatClick,
   mirrorMass,
   moveVertex,
+  add,
   pointAtLength,
   rotateAbout,
+  sideSegment,
   selectionCentroid,
   sideGrips,
   stackTop,
@@ -54,7 +59,16 @@ import {
   type Placement,
   type SideGrip,
 } from './math';
-import { collectSnapGeometry, dist, snapPoint, type SnapResult } from './snap';
+import { alignFacade, alignVolume, pickableEdges, pickEdge, type PickableEdge } from './align';
+import { facadeMagnet, magnetSnap } from './magnet';
+import {
+  collectSnapGeometry,
+  dist,
+  snapPoint,
+  type Segment,
+  type SnapGeometry,
+  type SnapResult,
+} from './snap';
 
 const ACCENT = '#1e6fd9';
 const GHOST = '#e07b00';
@@ -318,11 +332,85 @@ function addMasses(ms: Mass[]) {
   });
 }
 
+/** Result of a magnetic move: translation `d0`, then rotation about `pivot`, then `extra`. */
+export interface MagnetMove {
+  d0: Vec2;
+  rot: number;
+  pivot: Vec2;
+  extra: Vec2;
+  guides: Segment[];
+}
+
+/** Magnetic correction of a translation `d` of the masses `sel` (identity when switched off). */
+export function magnetMove(
+  sel: readonly Mass[],
+  d: Vec2,
+  targets: readonly Segment[],
+  tol: number,
+  suspended = false,
+): MagnetMove {
+  const s = useUiStore.getState().snap;
+  const id: MagnetMove = { d0: d, rot: 0, pivot: [0, 0], extra: [0, 0], guides: [] };
+  if (!s.enabled || !s.magnet || suspended || !sel.length) return id;
+  const polys = sel.flatMap((m) =>
+    massFootprints({ ...m, position: [m.position[0] + d[0], m.position[1] + d[1]] }),
+  );
+  const c = selectionCentroid(sel);
+  const pivot: Vec2 = [c[0] + d[0], c[1] + d[1]];
+  const r = magnetSnap(polys, targets, { tol, rotate: true, pivot });
+  return { d0: d, rot: r.rotation, pivot, extra: r.delta, guides: r.guides };
+}
+
+/** New position / rotation of a mass after a magnetic move. */
+export function movedPlacement(
+  m: Pick<Mass, 'position' | 'rotation'>,
+  mv: MagnetMove,
+): { position: Vec2; rotation: number } {
+  const p: Vec2 = [m.position[0] + mv.d0[0], m.position[1] + mv.d0[1]];
+  const r = mv.rot ? rotateAbout({ position: p, rotation: m.rotation }, mv.pivot, mv.rot) : null;
+  const q = r?.position ?? p;
+  return {
+    position: [q[0] + mv.extra[0], q[1] + mv.extra[1]],
+    rotation: r?.rotation ?? m.rotation,
+  };
+}
+
+function Guides({ guides }: { guides: readonly Segment[] }) {
+  return (
+    <>
+      {guides.map((g, i) => {
+        // extend the guide a little beyond the target edge
+        const dx = g[1][0] - g[0][0];
+        const dy = g[1][1] - g[0][1];
+        const l = Math.hypot(dx, dy) || 1;
+        const e = 6 / l;
+        return (
+          <Line
+            key={i}
+            points={[
+              [g[0][0] - dx * e, g[0][1] - dy * e, 0.09],
+              [g[1][0] + dx * e, g[1][1] + dy * e, 0.09],
+            ]}
+            color="#d6336c"
+            lineWidth={1.5}
+            dashed
+            dashSize={0.8}
+            gapSize={0.4}
+            depthTest={false}
+            renderOrder={12}
+          />
+        );
+      })}
+    </>
+  );
+}
+
 interface DrawState {
   pts: Vec2[];
   snap: SnapResult | null;
   typed: string;
   tol: number;
+  alt: boolean;
 }
 
 function ActiveTool({ kind }: { kind: ActiveKind }) {
@@ -331,7 +419,8 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
   const rc = useMemo(() => new Raycaster(), []);
   const { project, masses } = useProjectMasses();
   const [, bump] = useReducer((x: number) => x + 1, 0);
-  const st = useRef<DrawState>({ pts: [], snap: null, typed: '', tol: 1 });
+  const st = useRef<DrawState>({ pts: [], snap: null, typed: '', tol: 1, alt: false });
+  const geomRef = useRef<SnapGeometry>({ edges: [], siteEdges: [] });
   const env = useRef({ project, masses });
   env.current = { project, masses };
 
@@ -358,7 +447,8 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
     const tl = tool();
     const n = s.pts.length;
     let key: string;
-    if (tl.kind === 'place') {
+    if (tl.kind === 'drawGreen') key = n === 0 ? 'hint.green.first' : 'hint.polygon.next';
+    else if (tl.kind === 'place') {
       if (isPolyDrawing(tl))
         key =
           n === 0
@@ -383,6 +473,25 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
   const finishPoly = (closed: boolean) => {
     const tl = tool();
     const s = st.current;
+    if (tl.kind === 'drawGreen') {
+      if (s.pts.length < 3) return;
+      const polygon = normalizePolygon({ outer: [...s.pts] });
+      if (polygonArea(polygon) < 0.5) return;
+      const zones = env.current.project ? (activeVariant(env.current.project).plantings ?? []) : [];
+      const id = newId('green');
+      actions.addPlanting({
+        id,
+        name: `${t('greenPrefix')} ${zones.length + 1}`,
+        kind: tl.plantingKind,
+        polygon,
+        ...(DEFAULT_TREE_SPACING[tl.plantingKind]
+          ? { treeSpacing: DEFAULT_TREE_SPACING[tl.plantingKind], treeHeight: 10 }
+          : {}),
+      });
+      useUiStore.getState().setSelection([id]);
+      reset();
+      return;
+    }
     if (tl.kind !== 'place') return;
     const isLine = tl.typology.kind === 'freeLine';
     if (isLine ? s.pts.length < 2 : s.pts.length < 3) return;
@@ -409,7 +518,11 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
     const tl = tool();
     const s = st.current;
     s.typed = '';
-    if (tl.kind === 'place') {
+    if (tl.kind === 'drawGreen') {
+      if (isClosingClick(s.pts, p, s.tol)) return finishPoly(true);
+      if (isRepeatClick(s.pts, p, Math.min(s.tol, 0.05))) return finishPoly(true);
+      s.pts.push(p);
+    } else if (tl.kind === 'place') {
       if (isPolyDrawing(tl)) {
         if (isClosingClick(s.pts, p, s.tol)) return finishPoly(true);
         if (isRepeatClick(s.pts, p, Math.min(s.tol, 0.05)))
@@ -425,13 +538,19 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
       const ids = sel.map((m) => m.id);
       const d = sub(p, a);
       if (tl.kind === 'move') {
+        const mv = magnetMove(sel, d, geomRef.current.edges, s.tol * 1.2, s.alt);
         actions.updateMasses(ids, (m) => {
-          m.position = [m.position[0] + d[0], m.position[1] + d[1]];
+          const r = movedPlacement(m, mv);
+          m.position = r.position;
+          m.rotation = r.rotation;
         });
       } else if (tl.kind === 'copy') {
+        const mv = magnetMove(sel, d, geomRef.current.edges, s.tol * 1.2, s.alt);
         const cs = sel.map((m) => {
           const c = cloneMass(m, t('copySuffix'));
-          c.position = [m.position[0] + d[0], m.position[1] + d[1]];
+          const r = movedPlacement(m, mv);
+          c.position = r.position;
+          c.rotation = r.rotation;
           return c;
         });
         addMasses(cs);
@@ -492,10 +611,12 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
       return collectSnapGeometry(p, ms, exclude);
     };
     let geom = geomFor();
+    geomRef.current = geom;
     const onMove = (e: PointerEvent) => {
       const raw = groundFromClient(e.clientX, e.clientY, dom, camera, rc);
       if (!raw) return;
       const s = st.current;
+      s.alt = e.altKey;
       s.tol = worldPerPixel(camera, new Vector3(raw[0], raw[1], 0), dom.clientHeight) * SNAP_PX;
       const prev = s.pts[s.pts.length - 1] ?? null;
       const g = { ...geom, points: s.pts };
@@ -525,6 +646,7 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
       if (e.button === 0) {
         down = [e.clientX, e.clientY];
         geom = geomFor();
+        geomRef.current = geom;
       }
     };
     const onUp = (e: PointerEvent) => {
@@ -546,7 +668,7 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
       const s = st.current;
       const tl = tool();
       if (e.key === 'Escape') {
-        if (s.pts.length && tl.kind === 'place') return reset();
+        if (s.pts.length && (tl.kind === 'place' || tl.kind === 'drawGreen')) return reset();
         useUiStore.getState().setTool({ kind: 'select' });
         return;
       }
@@ -567,6 +689,7 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
           return;
         }
         if (isPolyDrawing(tl)) finishPoly(tl.typology.kind === 'freePolygon');
+        if (tl.kind === 'drawGreen') finishPoly(true);
         return;
       }
       if (e.key === 'Backspace') {
@@ -606,7 +729,12 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
   const last = s.pts[s.pts.length - 1];
   const ghosts: Polygon[] = [];
   const extraLines: Vec2[][] = [];
-  if (tl.kind === 'place') {
+  let guides: Segment[] = [];
+  if (tl.kind === 'drawGreen') {
+    const pts = cur ? [...s.pts, cur] : s.pts;
+    if (pts.length >= 3) ghosts.push({ outer: pts });
+    if (pts.length >= 2) extraLines.push(pts);
+  } else if (tl.kind === 'place') {
     if (isPolyDrawing(tl)) {
       const pts = cur ? [...s.pts, cur] : s.pts;
       if (pts.length >= 2) {
@@ -627,10 +755,14 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
     const sel = selected();
     const a = s.pts[0]!;
     const d = sub(cur, a);
+    const mv =
+      tl.kind === 'move' || tl.kind === 'copy'
+        ? magnetMove(sel, d, geomRef.current.edges, s.tol * 1.2, s.alt)
+        : null;
+    if (mv) guides = mv.guides;
     for (const m of sel) {
       let ms: Pick<Mass, 'position' | 'rotation' | 'typology'>[] = [];
-      if (tl.kind === 'move' || tl.kind === 'copy')
-        ms = [{ ...m, position: [m.position[0] + d[0], m.position[1] + d[1]] }];
+      if (mv) ms = [{ ...m, ...movedPlacement(m, mv) }];
       else if (tl.kind === 'array')
         ms = Array.from({ length: Math.max(1, tl.count - 1) }, (_, i) => ({
           ...m,
@@ -670,6 +802,7 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
           renderOrder={10}
         />
       ))}
+      <Guides guides={guides} />
       {s.snap && (
         <SnapGlyph snap={cur && cur !== s.snap.point ? { point: cur, kind: 'none' } : s.snap} />
       )}
@@ -719,6 +852,7 @@ function Grips({ mass }: { mass: Mass }) {
   const rc = useMemo(() => new Raycaster(), []);
   const { project, masses } = useProjectMasses();
   const [preview, setPreview] = useState<Mass | null>(null);
+  const [guides, setGuides] = useState<Segment[]>([]);
   const cleanup = useRef<(() => void) | null>(null);
   useEffect(() => () => cleanup.current?.(), []);
 
@@ -774,8 +908,24 @@ function Grips({ mass }: { mass: Mass }) {
           const dir = gripWorldDir(start, drag.grip);
           const raw = (p[0] - startGround[0]) * dir[0] + (p[1] - startGround[1]) * dir[1];
           const s = useUiStore.getState().snap;
-          const delta =
+          let delta =
             s.enabled && s.grid && s.gridSize > 0 ? Math.round(raw / s.gridSize) * s.gridSize : raw;
+          let guide: Segment | null = null;
+          const seg0 = sideSegment(start, drag.grip);
+          if (s.enabled && s.magnet && !ev.altKey && geom && seg0) {
+            const tol =
+              worldPerPixel(camera, new Vector3(p[0], p[1], 0), dom.clientHeight) * SNAP_PX * 1.2;
+            const moved: Segment = [
+              [seg0[0][0] + dir[0] * raw, seg0[0][1] + dir[1] * raw],
+              [seg0[1][0] + dir[0] * raw, seg0[1][1] + dir[1] * raw],
+            ];
+            const f = facadeMagnet(moved, dir, geom.edges, tol);
+            if (f) {
+              delta = raw + f.offset;
+              guide = f.guide;
+            }
+          }
+          setGuides(guide ? [guide] : []);
           next = { ...start, ...applySideGrip(start, drag.grip, delta) };
         } else {
           const tol = worldPerPixel(camera, new Vector3(p[0], p[1], 0), dom.clientHeight) * SNAP_PX;
@@ -799,6 +949,7 @@ function Grips({ mass }: { mass: Mass }) {
         });
       }
       setPreview(null);
+      setGuides([]);
     };
     const onUp = () => end(true);
     const onKey = (ev: KeyboardEvent) => {
@@ -819,6 +970,7 @@ function Grips({ mass }: { mass: Mass }) {
   return (
     <group>
       {preview && fps.map((f, i) => <Outline key={i} poly={f} color={GHOST} z={0.1} />)}
+      <Guides guides={guides} />
       {sideGrips(m.typology).map(({ grip, local, dir }) => {
         const w = toWorldPoint(m, local);
         const wd = gripWorldDir(m, grip);
@@ -878,6 +1030,248 @@ function Grips({ mass }: { mass: Mass }) {
 }
 
 // ---------------------------------------------------------------------------
+// Align (AL): reference edge, then façade
+// ---------------------------------------------------------------------------
+
+function EdgeHighlight({ e, color }: { e: PickableEdge; color: string }) {
+  const [a, b] = e.seg;
+  const z0 = e.z0 + 0.06;
+  const z1 = Math.max(e.z1, e.z0) + 0.06;
+  const pts: [number, number, number][] =
+    e.z1 - e.z0 > 0.1
+      ? [
+          [a[0], a[1], z0],
+          [b[0], b[1], z0],
+          [b[0], b[1], z1],
+          [a[0], a[1], z1],
+          [a[0], a[1], z0],
+        ]
+      : [
+          [a[0], a[1], z0],
+          [b[0], b[1], z0],
+        ];
+  return <Line points={pts} color={color} lineWidth={3.5} depthTest={false} renderOrder={13} />;
+}
+
+function AlignTool() {
+  const { t } = useTranslation('tools');
+  const { camera, gl } = useThree();
+  const rc = useMemo(() => new Raycaster(), []);
+  const { project, masses } = useProjectMasses();
+  const [ref, setRef] = useState<PickableEdge | null>(null);
+  const [hover, setHover] = useState<PickableEdge | null>(null);
+  const env = useRef({ project, masses, ref });
+  env.current = { project, masses, ref };
+
+  useEffect(() => {
+    const ui = useUiStore.getState();
+    const tl = ui.tool;
+    const mode = tl.kind === 'align' ? (tl.mode ?? 'facade') : 'facade';
+    ui.setHint(t(ref ? `hint.align.${mode}` : 'hint.align.first'));
+  }, [ref, t]);
+
+  useEffect(() => {
+    const dom = gl.domElement;
+    let down: [number, number] | null = null;
+    const pick = (x: number, y: number): PickableEdge | null => {
+      const { project: p, masses: ms, ref: r } = env.current;
+      if (!p) return null;
+      const ray = rayFromClient(x, y, dom, camera, rc);
+      const g = new Vector3();
+      const gp = ray.intersectPlane(GROUND, g) ? g : ray.origin;
+      const tol = worldPerPixel(camera, gp, dom.clientHeight) * SNAP_PX;
+      let edges = pickableEdges(p, ms);
+      if (r) edges = edges.filter((e) => e.kind === 'mass' && e.seg !== r.seg);
+      return pickEdge(
+        edges,
+        [ray.origin.x, ray.origin.y, ray.origin.z],
+        [ray.direction.x, ray.direction.y, ray.direction.z],
+        tol,
+      );
+    };
+    const onMove = (e: PointerEvent) => setHover(pick(e.clientX, e.clientY));
+    const onDown = (e: PointerEvent) => {
+      if (e.button === 0) down = [e.clientX, e.clientY];
+    };
+    const onUp = (e: PointerEvent) => {
+      if (e.button !== 0 || !down) return;
+      const moved = Math.hypot(e.clientX - down[0], e.clientY - down[1]);
+      down = null;
+      if (moved > CLICK_PX) return;
+      const hit = pick(e.clientX, e.clientY);
+      if (!hit) return;
+      const { masses: ms, ref: r } = env.current;
+      if (!r) {
+        setRef(hit);
+        return;
+      }
+      const m = ms.find((x) => x.id === hit.massId);
+      if (!m) return;
+      const tl = useUiStore.getState().tool;
+      const volume = (tl.kind === 'align' && tl.mode === 'volume') || e.shiftKey;
+      if (volume) {
+        const res = alignVolume(m, hit.seg, r.seg);
+        actions.updateMass(m.id, (d) => {
+          d.position = res.position;
+          d.rotation = res.rotation;
+        });
+      } else {
+        const res = alignFacade(m, hit.seg, r.seg);
+        if (!res) {
+          useUiStore.getState().setHint(t('hint.align.impossible'));
+          return;
+        }
+        actions.updateMass(m.id, (d) => {
+          d.position = res.position;
+          d.rotation = res.rotation;
+          d.typology = res.typology;
+        });
+      }
+      useUiStore.getState().setSelection([m.id]);
+      setRef(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (isTyping(e) || e.key !== 'Escape') return;
+      if (env.current.ref) setRef(null);
+      else useUiStore.getState().setTool({ kind: 'select' });
+    };
+    dom.addEventListener('pointermove', onMove);
+    dom.addEventListener('pointerdown', onDown);
+    dom.addEventListener('pointerup', onUp);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      dom.removeEventListener('pointermove', onMove);
+      dom.removeEventListener('pointerdown', onDown);
+      dom.removeEventListener('pointerup', onUp);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [camera, gl, rc, t]);
+
+  return (
+    <group>
+      {ref && <EdgeHighlight e={ref} color="#d6336c" />}
+      {ref && <Guides guides={[ref.seg]} />}
+      {hover && <EdgeHighlight e={hover} color={ACCENT} />}
+    </group>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Direct drag of selected masses (select tool) with magnetic snapping
+// ---------------------------------------------------------------------------
+
+let dragStarter: ((e: PointerEvent, id: string) => boolean) | null = null;
+
+/**
+ * Called by the scene on pointer-down on a mass. Starts a drag when the mass is selected and the
+ * select tool is active; returns true when the drag took over the pointer.
+ */
+export function startMassDrag(e: PointerEvent, id: string): boolean {
+  return dragStarter?.(e, id) ?? false;
+}
+
+function MassDrag() {
+  const { camera, gl } = useThree();
+  const rc = useMemo(() => new Raycaster(), []);
+  const { project, masses } = useProjectMasses();
+  const env = useRef({ project, masses });
+  env.current = { project, masses };
+  const [ghosts, setGhosts] = useState<Polygon[]>([]);
+  const [guides, setGuides] = useState<Segment[]>([]);
+  const [label, setLabel] = useState<{ at: Vec2; text: string } | null>(null);
+
+  useEffect(() => {
+    const dom = gl.domElement;
+    let cleanup: (() => void) | null = null;
+    dragStarter = (e, id) => {
+      const ui = useUiStore.getState();
+      if (e.button !== 0 || ui.tool.kind !== 'select' || !ui.selection.includes(id)) return false;
+      if (e.ctrlKey || e.shiftKey || e.metaKey) return false;
+      const { project: p, masses: ms } = env.current;
+      if (!p) return false;
+      const start = groundFromClient(e.clientX, e.clientY, dom, camera, rc);
+      if (!start) return false;
+      const sel = ms.filter((m) => ui.selection.includes(m.id));
+      const ids = sel.map((m) => m.id);
+      const geom = collectSnapGeometry(p, ms, ids);
+      const down: [number, number] = [e.clientX, e.clientY];
+      let active = false;
+      let mv: MagnetMove | null = null;
+      useViewportStore.getState().setControlsEnabled(false);
+      const onMove = (ev: PointerEvent) => {
+        if (!active && Math.hypot(ev.clientX - down[0], ev.clientY - down[1]) < CLICK_PX) return;
+        active = true;
+        const q = groundFromClient(ev.clientX, ev.clientY, dom, camera, rc);
+        if (!q) return;
+        const tol = worldPerPixel(camera, new Vector3(q[0], q[1], 0), dom.clientHeight) * SNAP_PX;
+        const s = useUiStore.getState().snap;
+        let d = sub(q, start);
+        if (s.enabled && s.grid && s.gridSize > 0)
+          d = [
+            Math.round(d[0] / s.gridSize) * s.gridSize,
+            Math.round(d[1] / s.gridSize) * s.gridSize,
+          ];
+        mv = magnetMove(sel, d, geom.edges, tol * 1.2, ev.altKey);
+        const cur = mv;
+        setGhosts(sel.flatMap((m) => massFootprints({ ...m, ...movedPlacement(m, cur) })));
+        setGuides(cur.guides);
+        const tot = add(add(cur.d0, cur.extra), [0, 0]);
+        setLabel({
+          at: q,
+          text:
+            `${Math.hypot(tot[0], tot[1]).toFixed(2)} m` +
+            (cur.rot ? ` · ${((cur.rot * 180) / Math.PI).toFixed(1)}°` : ''),
+        });
+        useUiStore.getState().setCursor(q);
+      };
+      const finish = (commit: boolean) => {
+        cleanup?.();
+        cleanup = null;
+        const m = mv;
+        if (commit && active && m)
+          actions.updateMasses(ids, (x) => {
+            const r = movedPlacement(x, m);
+            x.position = r.position;
+            x.rotation = r.rotation;
+          });
+        setGhosts([]);
+        setGuides([]);
+        setLabel(null);
+      };
+      const onUp = () => finish(true);
+      const onKey = (ev: KeyboardEvent) => {
+        if (ev.key === 'Escape') finish(false);
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('keydown', onKey);
+      cleanup = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('keydown', onKey);
+        useViewportStore.getState().setControlsEnabled(true);
+        useUiStore.getState().setCursor(null);
+      };
+      return true;
+    };
+    return () => {
+      dragStarter = null;
+      cleanup?.();
+    };
+  }, [camera, gl, rc]);
+
+  return (
+    <group>
+      {ghosts.map((g, i) => (
+        <Outline key={i} poly={g} color={GHOST} z={0.1} />
+      ))}
+      <Guides guides={guides} />
+      {label && <Label at={[label.at[0], label.at[1], 0.5]} text={label.text} />}
+    </group>
+  );
+}
+
+// ---------------------------------------------------------------------------
 
 const MODIFY: readonly ToolState['kind'][] = ['move', 'copy', 'rotate', 'mirror', 'array'];
 
@@ -911,9 +1305,15 @@ export function ToolLayer() {
 
   if (kind === 'select') {
     const m = selection.length === 1 ? masses.find((x) => x.id === selection[0]) : undefined;
-    return m ? <Grips key={m.id} mass={m} /> : null;
+    return (
+      <>
+        <MassDrag />
+        {m && <Grips key={m.id} mass={m} />}
+      </>
+    );
   }
   if (needsSelection || !IMPLEMENTED_TOOLS.includes(kind)) return null;
+  if (kind === 'align') return <AlignTool />;
   const key = tool.kind === 'place' ? `place-${tool.typology.kind}-${tool.template ?? ''}` : kind;
   return <ActiveTool key={key} kind={kind} />;
 }

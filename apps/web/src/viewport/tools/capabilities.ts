@@ -12,4 +12,6 @@ export const IMPLEMENTED_TOOLS: readonly ToolKind[] = [
   'rotate',
   'mirror',
   'array',
+  'align',
+  'drawGreen',
 ];

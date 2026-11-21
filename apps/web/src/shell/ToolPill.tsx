@@ -1,10 +1,11 @@
-import { USAGES, type Usage } from '@kubatur/core';
+import { PLANTING_KINDS, USAGES, type PlantingKind, type Usage } from '@kubatur/core';
 import { produce } from 'immer';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../store/uiStore';
 import { escape } from './commands';
 import { TypologyInputs } from './TypologyInputs';
+import { Segmented } from './ui';
 
 /** Floating contextual bar (top centre) while a tool is active, with the status hint below. */
 export function ToolPill() {
@@ -46,6 +47,37 @@ export function ToolPill() {
                 {USAGES.map((u) => (
                   <option key={u} value={u}>
                     {t(`common:usage.${u}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        ) : tool.kind === 'align' ? (
+          <>
+            <span className="tp-title">{t('ribbon.tool.align')}</span>
+            <Segmented
+              ariaLabel={t('align.mode')}
+              value={tool.mode ?? 'facade'}
+              onChange={(mode) => setTool({ ...tool, mode })}
+              options={[
+                { value: 'facade', label: t('align.facade') },
+                { value: 'volume', label: t('align.volume') },
+              ]}
+            />
+          </>
+        ) : tool.kind === 'drawGreen' ? (
+          <>
+            <span className="tp-title">{t('ribbon.tool.drawGreen')}</span>
+            <label className="tp-field">
+              <span>{t('green.kind')}</span>
+              <select
+                aria-label={t('green.kind')}
+                value={tool.plantingKind}
+                onChange={(e) => setTool({ ...tool, plantingKind: e.target.value as PlantingKind })}
+              >
+                {PLANTING_KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {t(`green.kinds.${k}`)}
                   </option>
                 ))}
               </select>

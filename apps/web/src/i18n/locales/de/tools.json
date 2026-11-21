@@ -32,6 +32,16 @@
     "array": {
       "first": "Reihe: Basispunkt klicken",
       "second": "Punkt für den Abstand klicken"
+    },
+    "green": {
+      "first": "Vegetationszone: ersten Punkt des Umrisses klicken"
+    },
+    "align": {
+      "first": "Ausrichten: Referenz klicken (Fassade, Grundstücksgrenze, Gebäude, Zone)",
+      "facade": "Fassade klicken, die ausgerichtet wird (Umschalt+Klick: ganzes Volumen)",
+      "volume": "Fassade des Volumens klicken",
+      "impossible": "Diese Fassade kann nicht ausgerichtet werden (versetzte Abschnitte) — parallele Referenz oder ganzes Volumen verwenden"
     }
-  }
+  },
+  "greenPrefix": "Grünfläche"
 }

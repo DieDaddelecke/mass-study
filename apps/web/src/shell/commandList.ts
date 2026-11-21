@@ -1,6 +1,7 @@
 import type { TemplateId, TypologyKind } from '@kubatur/core';
 import {
   AlignStartVertical,
+  Trees,
   Box,
   Columns3,
   Copy,
@@ -116,6 +117,7 @@ export const MODIFY_TOOLS: { tool: ToolState; icon: LucideIcon; code: string }[]
   { tool: { kind: 'mirror' }, icon: SquareSplitHorizontal, code: 'MM' },
   { tool: { kind: 'array', count: 3 }, icon: Grid3x3, code: 'AR' },
   { tool: { kind: 'align' }, icon: AlignStartVertical, code: 'AL' },
+  { tool: { kind: 'drawGreen', plantingKind: 'pleineTerre' }, icon: Trees, code: 'VG' },
 ];
 
 export const STYLES: VisualStyle[] = [

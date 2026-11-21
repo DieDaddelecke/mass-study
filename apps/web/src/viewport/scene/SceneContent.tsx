@@ -1,5 +1,8 @@
 import {
   difference,
+  effectiveParapet,
+  type PlantingZone,
+  type RoofPiece,
   type ContextBuilding,
   type MassLayout,
   type Polygon,
@@ -18,6 +21,11 @@ import { useScenePalette } from '../../theme/themeStore';
 import { Basemap } from './Basemap';
 import { COLORS, usageColor } from './colors';
 import { useLayers } from './sceneLayers';
+import { startMassDrag } from '../tools/ToolLayer';
+import { Plantings } from './Plantings';
+import { roofGeometry } from './roofGeometry';
+
+const EMPTY_ZONES: PlantingZone[] = [];
 import { Surroundings, Z } from './Surroundings';
 import { FatSegments } from './FatSegments';
 import { buildGranulometry, buildOutdoor, storeyKey, type OutdoorScene } from './granulometry';
@@ -36,6 +44,8 @@ import {
 interface Props {
   project: Project;
   solids: readonly SolidResult[];
+  /** Pitched roof faces. */
+  roofs?: readonly RoofPiece[];
   style: VisualStyle;
   shadows: boolean;
   /** Dwelling layouts (outdoor spaces; dwellings in the granulometry style). */
@@ -260,7 +270,9 @@ function buildMasses(
   covered: ReadonlySet<string> = new Set(),
   cuts: ReadonlyMap<string, Polygon[]> = new Map(),
 ) {
-  const parapetOf = new Map(activeVariant(project).masses.map((m) => [m.id, m.storeys.parapet]));
+  const parapetOf = new Map(
+    activeVariant(project).masses.map((m) => [m.id, effectiveParapet(m, m.storeys)]),
+  );
   const out: MassSolidGeo[] = [];
   const edges = new Map<string, MassEdges>();
   // keys of footprints by mass at their bottom / top heights (to find interior slab lines)
@@ -305,7 +317,8 @@ function buildMasses(
   return { solids: out, edges };
 }
 
-function Masses({ project, solids, style, shadows, pal, layouts }: Props & { pal: ScenePalette }) {
+function Masses(props: Props & { pal: ScenePalette }) {
+  const { project, solids, style, shadows, pal, layouts } = props;
   const granulo = useMemo(
     () =>
       style === 'granulometry' && layouts
@@ -339,6 +352,9 @@ function Masses({ project, solids, style, shadows, pal, layouts }: Props & { pal
     [built],
   );
   const pick = (id: string) => ({
+    onPointerDown: (e: ThreeEvent<PointerEvent>) => {
+      if (startMassDrag(e.nativeEvent, id)) e.stopPropagation();
+    },
     onClick: (e: ThreeEvent<MouseEvent>) => {
       if (!selectable(e)) return;
       e.stopPropagation();
@@ -401,6 +417,7 @@ function Masses({ project, solids, style, shadows, pal, layouts }: Props & { pal
           <ThinLines segments={g.edges} color={pal.contextEdge} />
         </group>
       ))}
+      <Roofs roofs={props.roofs} style={style} shadows={shadows} pal={pal} faceColor={pal.mass} />
       {outdoor && style !== 'wireframe' && (
         <OutdoorMeshes o={outdoor} style={style} shadows={shadows} pal={pal} />
       )}
@@ -414,6 +431,81 @@ function Masses({ project, solids, style, shadows, pal, layouts }: Props & { pal
               width={hot ? 3 : style === 'realistic' ? 1.2 : 2}
             />
             <ThinLines segments={e.thin} color={hot ? ACCENT : pal.contextEdge} />
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+function Roofs({
+  roofs,
+  style,
+  shadows,
+  pal,
+  faceColor,
+}: {
+  roofs?: readonly RoofPiece[] | undefined;
+  style: VisualStyle;
+  shadows: boolean;
+  pal: ScenePalette;
+  faceColor: string;
+}) {
+  const selection = useUiStore((s) => s.selection);
+  const hover = useUiStore((s) => s.hover);
+  const built = useMemo(() => {
+    const byMass = new Map<string, RoofPiece[]>();
+    for (const r of roofs ?? []) {
+      const l = byMass.get(r.massId) ?? [];
+      l.push(r);
+      byMass.set(r.massId, l);
+    }
+    return [...byMass].map(([id, ps]) => ({ id, ...roofGeometry(ps) }));
+  }, [roofs]);
+  useEffect(() => () => built.forEach((b) => b.geometry?.dispose()), [built]);
+  return (
+    <group>
+      {built.map((b) => {
+        const hot = hover === b.id || selection.includes(b.id);
+        return (
+          <group key={b.id}>
+            {b.geometry && (
+              <mesh
+                geometry={b.geometry}
+                castShadow={shadows}
+                receiveShadow={shadows}
+                onClick={(e) => {
+                  if (!selectable(e)) return;
+                  e.stopPropagation();
+                  selectId(b.id, e);
+                }}
+                onPointerDown={(e) => {
+                  if (startMassDrag(e.nativeEvent, b.id)) e.stopPropagation();
+                }}
+                onPointerMove={(e) => {
+                  e.stopPropagation();
+                  hoverIn(b.id);
+                }}
+                onPointerOut={() => hoverOut(b.id)}
+              >
+                {style === 'wireframe' ? (
+                  <meshBasicMaterial colorWrite={false} depthWrite={false} side={DoubleSide} />
+                ) : (
+                  <meshLambertMaterial
+                    color={faceColor}
+                    side={DoubleSide}
+                    polygonOffset
+                    polygonOffsetFactor={1}
+                    polygonOffsetUnits={1}
+                  />
+                )}
+              </mesh>
+            )}
+            <FatSegments
+              segments={b.edges}
+              color={hot ? ACCENT : pal.massEdge}
+              width={hot ? 3 : style === 'realistic' ? 1.2 : 2}
+            />
           </group>
         );
       })}
@@ -509,6 +601,11 @@ export function SceneContent(props: Props) {
           <SelectedContext buildings={project.context} />
         </>
       )}
+      <Plantings
+        zones={activeVariant(project).plantings ?? EMPTY_ZONES}
+        pal={pal}
+        shadows={shadows}
+      />
       <Masses {...props} pal={pal} />
     </group>
   );

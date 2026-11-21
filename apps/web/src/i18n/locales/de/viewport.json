@@ -33,7 +33,8 @@
     "isolate": "Isolieren / Ausblenden",
     "soon": "in Vorbereitung",
     "persp": "Perspektive",
-    "ortho": "Ortho"
+    "ortho": "Ortho",
+    "magnet": "Magnetisch fangen (Alt gedrückt: aus)"
   },
   "legend": {
     "title": "Nutzungen",

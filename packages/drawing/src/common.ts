@@ -8,11 +8,12 @@ import {
   type Polygon,
   type Project,
   type ProjectLevel,
+  type RoofPiece,
   type StoreySolid,
   type VariantResult,
   type Vec2,
 } from '@kubatur/core';
-import { prismFromPolygon, type Prism } from './hidden.js';
+import { orientPrism, prismFromPolygon, type Prism } from './hidden.js';
 import type { ColorScheme, DItem, LineType, Pen } from './model.js';
 
 /** Per-mass information the generators use for texts (from the analysis). */
@@ -40,6 +41,8 @@ export interface CommonOptions {
   contextMargin?: number;
   /** Localised texts written into the drawing (defaults: French). */
   texts?: Partial<DrawingTexts>;
+  /** Pitched roof faces (see `VariantResult.roofs`). */
+  roofs?: RoofPiece[];
 }
 
 export interface DrawingTexts {
@@ -47,9 +50,11 @@ export interface DrawingTexts {
   parapet: string;
   /** Datum name of absolute levels (NGF / NHN). */
   datum: string;
+  /** Sub-label of the ridge kote (pitched roofs). */
+  ridge: string;
 }
 
-export const DEFAULT_TEXTS: DrawingTexts = { parapet: 'acrotère', datum: 'NGF' };
+export const DEFAULT_TEXTS: DrawingTexts = { parapet: 'acrotère', datum: 'NGF', ridge: 'faîtage' };
 
 /** Collect mass info (formula, top of parapet, parapet height) from an analysis result. */
 export function massInfoFromResult(result: VariantResult): MassInfo[] {
@@ -61,7 +66,7 @@ export function massInfoFromResult(result: VariantResult): MassInfo[] {
       name: m.mass.name,
       formula: m.formula,
       top: m.totalHeight,
-      parapet: Math.max(0, m.totalHeight - slab),
+      parapet: m.ridgeHeight > 0 ? 0 : Math.max(0, m.totalHeight - slab),
     };
   });
 }
@@ -71,11 +76,13 @@ export function drawingInput(result: VariantResult): {
   solids: StoreySolid[];
   levels: ProjectLevel[];
   masses: MassInfo[];
+  roofs: RoofPiece[];
 } {
   return {
     solids: result.solids.map((s) => s.solid),
     levels: result.levels,
     masses: massInfoFromResult(result),
+    roofs: result.roofs ?? [],
   };
 }
 
@@ -161,6 +168,75 @@ export function massPrisms(
     polys.forEach((p, i) => out.push(prismFromPolygon(p, g.z0, g.z1, 'mass', `${g.massId}#${i}`)));
   }
   return out;
+}
+
+/**
+ * Prisms with a sloped top for pitched roof pieces (group 'mass', kind of face 'roof'). With
+ * `clip`, the pieces are intersected with the clip polygons; edges on an original seam stay seams.
+ */
+export function roofPrisms(roofs: readonly RoofPiece[] | undefined, clip?: Polygon[]): Prism[] {
+  const out: Prism[] = [];
+  (roofs ?? []).forEach((r, k) => {
+    const ring = [...r.polygon.outer];
+    let seams = [...r.seams];
+    const f = ring[0];
+    const l = ring[ring.length - 1];
+    if (ring.length > 1 && f && l && Math.hypot(f[0] - l[0], f[1] - l[1]) < 1e-6) {
+      ring.pop();
+      seams = seams.slice(0, ring.length);
+    }
+    const polys: { outer: Vec2[]; holes: Vec2[][]; seams: boolean[] }[] = [];
+    if (clip) {
+      const segs: [Vec2, Vec2][] = [];
+      ring.forEach((a, i) => {
+        if (seams[i]) segs.push([a, ring[(i + 1) % ring.length]!]);
+      });
+      for (const p of intersection([{ outer: ring, holes: r.polygon.holes ?? [] }], clip)) {
+        const o = p.outer;
+        polys.push({
+          outer: o,
+          holes: p.holes ?? [],
+          seams: o.map((a, i) => {
+            const b = o[(i + 1) % o.length]!;
+            const m: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+            return segs.some(([c, d]) => onSegment(m, c, d) && onSegment(a, c, d, true));
+          }),
+        });
+      }
+    } else polys.push({ outer: ring, holes: r.polygon.holes ?? [], seams });
+    polys.forEach((p, i) => {
+      if (p.outer.length < 3) return;
+      const zs = p.outer.map((q) => r.plane[0] + r.plane[1] * q[0] + r.plane[2] * q[1]);
+      const z1 = Math.max(...zs);
+      if (z1 - r.z0 < 1e-6) return;
+      out.push(
+        orientPrism({
+          outer: p.outer,
+          holes: p.holes,
+          z0: r.z0,
+          z1,
+          group: 'mass',
+          id: `${r.massId}#roof${k}.${i}`,
+          top: [...r.plane],
+          seams: p.seams,
+        }),
+      );
+    });
+  });
+  return out;
+}
+
+/** Is p on the segment c–d (within 1 mm); `line` only checks the supporting line. */
+function onSegment(p: Vec2, c: Vec2, d: Vec2, line = false): boolean {
+  const dx = d[0] - c[0];
+  const dy = d[1] - c[1];
+  const L = Math.hypot(dx, dy);
+  if (L < 1e-9) return false;
+  const off = Math.abs((p[0] - c[0]) * -dy + (p[1] - c[1]) * dx) / L;
+  if (off > 1e-3) return false;
+  if (line) return true;
+  const t = ((p[0] - c[0]) * dx + (p[1] - c[1]) * dy) / L;
+  return t > -1e-3 && t < L + 1e-3;
 }
 
 export function visibleContext(project: Project): ContextBuilding[] {
