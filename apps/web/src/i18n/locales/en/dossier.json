@@ -86,5 +86,6 @@
     "done": "Dossier exported ({{pages}} sheets)",
     "failed": "PDF creation failed",
     "empty": "No sheet selected."
-  }
+  },
+  "fileSuffix": "Drawing set"
 }

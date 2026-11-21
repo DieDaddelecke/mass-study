@@ -12,7 +12,8 @@ export const DEFAULT_PEN_WIDTHS: Record<Pen, number> = {
 };
 
 /** Font family written into the SVG; the PDF step maps "Kubatur Sans" to the embedded OFL font. */
-export const DRAWING_FONT = "'Kubatur Sans', Inter, 'Helvetica Neue', Arial, sans-serif";
+export const DRAWING_FONT =
+  "'Kubatur Sans', Inter, 'Inter Variable', 'Helvetica Neue', Arial, sans-serif";
 
 /** Standard scales (denominators) for automatic scale selection (SPEC §12). */
 export const STANDARD_SCALES = [200, 250, 500, 1000, 2000] as const;

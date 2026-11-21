@@ -101,7 +101,8 @@ export interface Sheet {
 
 export const MARGIN = { left: 20, top: 10, right: 10, bottom: 10 };
 export const TITLE_BLOCK = { width: 180, height: 60 };
-const FONT = 'Inter';
+// The PDF maps 'Inter' to the embedded TTF; the fallbacks only matter for the on-screen preview.
+const FONT = "Inter, 'Inter Variable', Arial, sans-serif";
 const CAPTION_H = 15;
 const GAP = 6;
 const ROW_H = 5;

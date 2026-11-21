@@ -116,7 +116,7 @@ export function DossierDialog({ project }: { project: Project }) {
       const pdf = await renderPdf(sheets, await loadFonts(), project.name);
       downloadBlob(
         new Blob([pdf], { type: 'application/pdf' }),
-        `${safeFileName(project.name)} – ${t('title')}.pdf`,
+        `${safeFileName(project.name)} – ${t('fileSuffix')}.pdf`,
       );
       shell.setInfo(t('dialog.done', { pages: sheets.length }));
       close();

@@ -86,5 +86,6 @@
     "done": "Dossier exportiert ({{pages}} Pläne)",
     "failed": "PDF-Erstellung fehlgeschlagen",
     "empty": "Kein Plan ausgewählt."
-  }
+  },
+  "fileSuffix": "Plansatz"
 }
