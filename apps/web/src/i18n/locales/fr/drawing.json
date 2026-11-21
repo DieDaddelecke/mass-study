@@ -1,0 +1,30 @@
+{
+  "views": {
+    "site": "Plan masse",
+    "elevN": "Façade nord",
+    "elevE": "Façade est",
+    "elevS": "Façade sud",
+    "elevW": "Façade ouest",
+    "sectionA": "Coupe A",
+    "sectionB": "Coupe B",
+    "axoSW": "Axonométrie sud-ouest",
+    "axoNE": "Axonométrie nord-est"
+  },
+  "scale": "Échelle",
+  "auto": "Auto",
+  "fit": "Ajuster à la vue",
+  "zoomIn": "Zoom avant",
+  "zoomOut": "Zoom arrière",
+  "scheme": "Représentation",
+  "schemes": {
+    "competition": "Concours",
+    "permit": "Permis de construire"
+  },
+  "neighbours": "Bâtiments voisins",
+  "sectionLines": "Traits de coupe",
+  "downloadSvg": "Télécharger en SVG",
+  "parapet": "acrotère",
+  "datum": "NGF",
+  "noProject": "Aucun projet ouvert",
+  "failed": "Le dessin n'a pas pu être généré"
+}

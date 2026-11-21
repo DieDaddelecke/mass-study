@@ -48,17 +48,26 @@ Lokales metrisches System (x Ost, y Nord, z oben), Ursprung im Schwerpunkt des G
 - `core` ist reines TypeScript ohne DOM, läuft in Node und im Web Worker, deterministisch, `any`-frei.
 - Abgeleitete Werte werden nie gespeichert, sondern immer aus `Mass` neu berechnet.
 
+## Zeichnungen (`packages/drawing`)
+
+Reines TypeScript ohne DOM (läuft in Node für das PDF-Dossier). `StoreySolid[]` + Projekt → neutrales `DrawingModel` (Linien mit Stift 1–6 und Linientyp, Füllungen mit Schraffur, Texte in mm, Bemaßungen, Symbole Nordpfeil/Maßstabsleiste/Kote/Schnittkopf; Modellkoordinaten in m) → `renderSvg(model, { scale })` (SVG in echten mm).
+
+- `sitePlan` (Lageplan), `elevation` (N/O/S/W), `section` (Schnittlinie + Tiefe, Poché), `axonometry` (SW/SO/NO/NW, Isometrie oder Grundriss-Axonometrie); `drawingInput(result)` liefert Solids, Ebenen und Attika/Formel je Baukörper aus der Analyse; `defaultSections` A/B durch den Grundstücksschwerpunkt.
+- `hidden.ts`: exakte Verdeckung für senkrechte Prismen bei Parallelprojektion (DECISIONS #25), Maler-sortierte Füllungen darunter.
+- `svg.ts`: Stifttabelle, `chooseScale(model, w, h)` (Normmaßstäbe), `measureDrawing`.
+
 ## Web-App (`apps/web/src`)
 
-| Ordner            | Inhalt                                                                                                                                                                                          |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `store/`          | `projectStore` (Projekt, immer-Rezepte, Undo/Redo via zundo), `uiStore` (Auswahl, Werkzeug, Ansicht, Fang), `useAnalysis` (Live-Berechnung)                                                     |
-| `shell/`          | Moderne Web-App-Oberfläche: Kopfleiste, Werkzeugleiste, linkes Panel (Projekt/Calques/Vues), Inspektor, Werkzeug-Pille, Kennzahlen-Karten, Befehlssuche (Strg+K), Toasts, Dialoge, Tastenkürzel |
-| `persistence/`    | Autosave (IndexedDB), Öffnen/Speichern `.massing.json`                                                                                                                                          |
-| `viewport/`       | 3D-Szene (R3F, z oben), visuelle Stile, Navigationswürfel, Ansichtssteuerleiste; `scene/Surroundings` (Straßen, Grün, Bäume, Wasser, Nachbarparzellen), `scene/Basemap` (IGN-Kacheln am Boden)  |
-| `viewport/tools/` | Platzieren, Fangen, MV/RO/CO/MM/AR, Griffe; `capabilities.ts` steuert, welche Ribbon-Befehle aktiv sind                                                                                         |
-| `newProject/`     | Dialog „Nouveau projet“: Adresse, Karte (MapLibre), Parzellen, Zeichnen, Import GeoJSON/DXF, Kontext laden                                                                                      |
-| `api/`            | HTTP-Vertrag mit dem Server (`contract.ts`) und Client                                                                                                                                          |
-| `i18n/`           | i18next, Französisch Standard; ein Namespace je Modul                                                                                                                                           |
-| `theme/`          | Design-Tokens (`tokens.css`), Szenenpalette (`palette.ts`), hell/dunkel/System (`themeStore.ts`)                                                                                                |
-| `demo/`           | Offline-Demoprojekt `?demo=palaiseau` aus aufgezeichneten echten Daten                                                                                                                          |
+| Ordner            | Inhalt                                                                                                                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `store/`          | `projectStore` (Projekt, immer-Rezepte, Undo/Redo via zundo), `uiStore` (Auswahl, Werkzeug, Ansicht, Fang), `useAnalysis` (Live-Berechnung)                                                      |
+| `shell/`          | Moderne Web-App-Oberfläche: Kopfleiste, Werkzeugleiste, linkes Panel (Projekt/Calques/Vues), Inspektor, Werkzeug-Pille, Kennzahlen-Karten, Befehlssuche (Strg+K), Toasts, Dialoge, Tastenkürzel  |
+| `persistence/`    | Autosave (IndexedDB), Öffnen/Speichern `.massing.json`                                                                                                                                           |
+| `viewport/`       | 3D-Szene (R3F, z oben), visuelle Stile, Navigationswürfel, Ansichtssteuerleiste; `scene/Surroundings` (Straßen, Grün, Bäume, Wasser, Nachbarparzellen), `scene/Basemap` (IGN-Kacheln am Boden)   |
+| `viewport/tools/` | Platzieren, Fangen, MV/RO/CO/MM/AR, Griffe; `capabilities.ts` steuert, welche Ribbon-Befehle aktiv sind                                                                                          |
+| `newProject/`     | Dialog „Nouveau projet“: Adresse, Karte (MapLibre), Parzellen, Zeichnen, Import GeoJSON/DXF, Kontext laden                                                                                       |
+| `api/`            | HTTP-Vertrag mit dem Server (`contract.ts`) und Client                                                                                                                                           |
+| `i18n/`           | i18next, Französisch Standard; ein Namespace je Modul                                                                                                                                            |
+| `theme/`          | Design-Tokens (`tokens.css`), Szenenpalette (`palette.ts`), hell/dunkel/System (`themeStore.ts`)                                                                                                 |
+| `demo/`           | Offline-Demoprojekt `?demo=palaiseau` aus aufgezeichneten echten Daten                                                                                                                           |
+| `drawings/`       | 2D-Ansichten aus `@kubatur/drawing`: `buildDrawing` (Ansicht → Modell), `DrawingView` (Papierblatt, Pan/Zoom, Maßstab, Farbschema, SVG-Download); Dev-Parameter `&view=site` öffnet eine Ansicht |

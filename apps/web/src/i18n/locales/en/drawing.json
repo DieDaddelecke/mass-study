@@ -1,0 +1,30 @@
+{
+  "views": {
+    "site": "Site plan",
+    "elevN": "North elevation",
+    "elevE": "East elevation",
+    "elevS": "South elevation",
+    "elevW": "West elevation",
+    "sectionA": "Section A",
+    "sectionB": "Section B",
+    "axoSW": "Axonometry south-west",
+    "axoNE": "Axonometry north-east"
+  },
+  "scale": "Scale",
+  "auto": "Auto",
+  "fit": "Fit to view",
+  "zoomIn": "Zoom in",
+  "zoomOut": "Zoom out",
+  "scheme": "Rendering",
+  "schemes": {
+    "competition": "Competition",
+    "permit": "Planning application"
+  },
+  "neighbours": "Neighbouring buildings",
+  "sectionLines": "Section lines",
+  "downloadSvg": "Download as SVG",
+  "parapet": "top of parapet",
+  "datum": "datum",
+  "noProject": "No project open",
+  "failed": "The drawing could not be generated"
+}

@@ -57,6 +57,9 @@ importers:
       '@kubatur/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@kubatur/drawing':
+        specifier: workspace:*
+        version: link:../../packages/drawing
       '@radix-ui/react-dialog':
         specifier: ^1.3.1
         version: 1.3.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -151,6 +154,19 @@ importers:
       proj4:
         specifier: ^2.23.0
         version: 2.23.0
+    devDependencies:
+      '@types/polylabel':
+        specifier: ^2.0.0
+        version: 2.0.0
+
+  packages/drawing:
+    dependencies:
+      '@kubatur/core':
+        specifier: workspace:*
+        version: link:../core
+      polylabel:
+        specifier: ^2.1.0
+        version: 2.1.0
     devDependencies:
       '@types/polylabel':
         specifier: ^2.0.0

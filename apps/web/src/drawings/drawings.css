@@ -1,0 +1,150 @@
+/* 2D drawing views: paper sheet on the stage with pan/zoom and a floating toolbar. */
+.dv-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  background:
+    radial-gradient(circle at 1px 1px, var(--hairline-strong) 1px, transparent 0) 0 0 / 22px 22px,
+    var(--sky);
+}
+.dv-stage:active {
+  cursor: grabbing;
+}
+.dv-sheet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.dv-paper {
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px rgb(16 24 40 / 0.06),
+    0 10px 40px rgb(16 24 40 / 0.16);
+}
+:root[data-theme='dark'] .dv-paper {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.08),
+    0 16px 48px rgb(0 0 0 / 0.55);
+}
+.dv-paper > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+.dv-caption {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 8px;
+  white-space: nowrap;
+  transform-origin: 0 100%;
+  pointer-events: none;
+}
+.dv-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.dv-scale {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+}
+.dv-toolbar {
+  position: absolute;
+  top: calc(2 * var(--inset) + var(--bar-h));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+  cursor: default;
+}
+.dv-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--hairline-strong);
+}
+.dv-field select {
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.dv-field select:hover {
+  background: var(--field-hover);
+}
+.dv-seg {
+  display: flex;
+  gap: 2px;
+  margin-left: 6px;
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--field);
+}
+.dv-seg button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.dv-seg button:hover {
+  color: var(--text);
+}
+.dv-seg button.is-active {
+  background: var(--bg-solid);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+.dv-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.dv-swatch-competition {
+  background: #3b3b3b;
+}
+.dv-swatch-permit {
+  background: #e0453a;
+}
+@media (max-width: 720px) {
+  .dv-toolbar {
+    top: auto;
+    bottom: calc(var(--inset) + 64px);
+    max-width: calc(100% - 2 * var(--inset));
+    overflow-x: auto;
+  }
+  .dv-seg button {
+    padding: 0 6px;
+  }
+}
