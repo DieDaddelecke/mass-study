@@ -1,1 +1,37 @@
-{}
+{
+  "copySuffix": "(copie)",
+  "hint": {
+    "selectFirst": "Sélectionnez d'abord un ou plusieurs volumes",
+    "typed": "longueur : {{value}} (Entrée pour valider)",
+    "place": {
+      "first": "Cliquez le point d'insertion",
+      "direction": "Cliquez la direction (ou tapez une longueur) — Échap pour terminer"
+    },
+    "line": {
+      "next": "Cliquez le point suivant — Entrée ou double-clic pour terminer, clic sur le premier point pour fermer, Retour arrière annule le dernier point"
+    },
+    "polygon": {
+      "next": "Cliquez le point suivant — Entrée ou clic sur le premier point pour fermer"
+    },
+    "move": {
+      "first": "Déplacer : cliquez le point de base",
+      "second": "Cliquez le point d'arrivée (ou tapez une distance)"
+    },
+    "copy": {
+      "first": "Copier : cliquez le point de base",
+      "second": "Cliquez le point d'arrivée (ou tapez une distance)"
+    },
+    "rotate": {
+      "first": "Rotation : cliquez la direction de référence",
+      "second": "Cliquez la direction cible (ou tapez un angle en degrés)"
+    },
+    "mirror": {
+      "first": "Symétrie : cliquez le premier point de l'axe",
+      "second": "Cliquez le second point de l'axe"
+    },
+    "array": {
+      "first": "Réseau : cliquez le point de base",
+      "second": "Cliquez le point définissant l'espacement"
+    }
+  }
+}

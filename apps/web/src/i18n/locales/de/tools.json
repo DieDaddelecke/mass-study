@@ -1,1 +1,37 @@
-{}
+{
+  "copySuffix": "(Kopie)",
+  "hint": {
+    "selectFirst": "Bitte zuerst einen oder mehrere Baukörper auswählen",
+    "typed": "Länge: {{value}} (Enter übernimmt)",
+    "place": {
+      "first": "Einfügepunkt klicken",
+      "direction": "Richtung klicken (oder Länge eintippen) — Esc beendet"
+    },
+    "line": {
+      "next": "Nächsten Punkt klicken — Enter oder Doppelklick beendet, Klick auf den ersten Punkt schließt, Rücktaste entfernt den letzten Punkt"
+    },
+    "polygon": {
+      "next": "Nächsten Punkt klicken — Enter oder Klick auf den ersten Punkt schließt"
+    },
+    "move": {
+      "first": "Verschieben: Basispunkt klicken",
+      "second": "Zielpunkt klicken (oder Abstand eintippen)"
+    },
+    "copy": {
+      "first": "Kopieren: Basispunkt klicken",
+      "second": "Zielpunkt klicken (oder Abstand eintippen)"
+    },
+    "rotate": {
+      "first": "Drehen: Bezugsrichtung klicken",
+      "second": "Zielrichtung klicken (oder Winkel in Grad eintippen)"
+    },
+    "mirror": {
+      "first": "Spiegeln: ersten Achspunkt klicken",
+      "second": "Zweiten Achspunkt klicken"
+    },
+    "array": {
+      "first": "Reihe: Basispunkt klicken",
+      "second": "Punkt für den Abstand klicken"
+    }
+  }
+}
