@@ -8,6 +8,7 @@ import { useUiStore } from '../../store/uiStore';
 import { COLORS, usageColor } from './colors';
 import { FatSegments } from './FatSegments';
 import {
+  contextRange,
   buildContextGeometry,
   contextIdAt,
   dashDotSegments,
@@ -326,8 +327,8 @@ function SelectedContext({ buildings }: { buildings: readonly ContextBuilding[] 
     const out: number[] = [];
     for (const b of buildings) {
       if (b.hidden || (b.id !== hover && !selection.includes(b.id))) continue;
-      const z0 = b.baseHeight ?? 0;
-      prismEdges(b.footprint, z0, z0 + b.height, {}, out);
+      const [z0, z1] = contextRange(b);
+      prismEdges(b.footprint, z0, z1, {}, out);
     }
     return out;
   }, [buildings, selection, hover]);

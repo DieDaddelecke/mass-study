@@ -2,14 +2,14 @@
 
 ## Module
 
-| Paket                   | Zweck                                                                                                                                              | Stand                           |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| `packages/core`         | Datenmodell, Bauform-Generatoren, Geschosslogik, Flächen (DIN 277), Kennzahlen DE/FR, Typologien, Wohnungsmix, Prüfungen, Projektion, Projektdatei | P1 fertig                       |
-| `packages/drawing`      | 2D-Zeichnungsmodell, verdeckte Kanten, Schnitte, SVG/DXF                                                                                           | P6                              |
-| `packages/ifc`          | IFC4-STEP-Writer                                                                                                                                   | P8                              |
-| `apps/web`              | Vite + React SPA                                                                                                                                   | P0-Gerüst, Oberfläche ab P2     |
-| `apps/server`           | Hono: Geodaten-Proxy + Cache, liefert den Web-Build aus                                                                                            | P0-Gerüst (Health), Proxy in P3 |
-| `tools/archicad-bridge` | Python-Bridge + Mock-Archicad                                                                                                                      | P8                              |
+| Paket                   | Zweck                                                                                                                                              | Stand                                                             |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `packages/core`         | Datenmodell, Bauform-Generatoren, Geschosslogik, Flächen (DIN 277), Kennzahlen DE/FR, Typologien, Wohnungsmix, Prüfungen, Projektion, Projektdatei | P1 fertig                                                         |
+| `packages/drawing`      | 2D-Zeichnungsmodell, verdeckte Kanten, Schnitte, SVG/DXF                                                                                           | P6                                                                |
+| `packages/ifc`          | IFC4-STEP-Writer                                                                                                                                   | P8                                                                |
+| `apps/web`              | Vite + React SPA                                                                                                                                   | P2–P4: Oberfläche, Dialog „Nouveau projet“, 3D-Ansicht, Werkzeuge |
+| `apps/server`           | Hono: Geodaten-Proxy + Cache, liefert den Web-Build aus                                                                                            | P3: Geodaten-Proxy (IGN, API Carto, BD TOPO, Overpass, Nominatim) |
+| `tools/archicad-bridge` | Python-Bridge + Mock-Archicad                                                                                                                      | P8                                                                |
 
 ## Datenfluss
 
@@ -47,3 +47,17 @@ Lokales metrisches System (x Ost, y Nord, z oben), Ursprung im Schwerpunkt des G
 
 - `core` ist reines TypeScript ohne DOM, läuft in Node und im Web Worker, deterministisch, `any`-frei.
 - Abgeleitete Werte werden nie gespeichert, sondern immer aus `Mass` neu berechnet.
+
+## Web-App (`apps/web/src`)
+
+| Ordner            | Inhalt                                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `store/`          | `projectStore` (Projekt, immer-Rezepte, Undo/Redo via zundo), `uiStore` (Auswahl, Werkzeug, Ansicht, Fang), `useAnalysis` (Live-Berechnung) |
+| `shell/`          | Ribbon, Optionsleiste, Eigenschaften, Projektbrowser, Ansichts-Tabs, Kennzahlen- und Statusleiste, Dialoge, Tastenkürzel                    |
+| `persistence/`    | Autosave (IndexedDB), Öffnen/Speichern `.massing.json`                                                                                      |
+| `viewport/`       | 3D-Szene (R3F, z oben), visuelle Stile, Navigationswürfel, Ansichtssteuerleiste                                                             |
+| `viewport/tools/` | Platzieren, Fangen, MV/RO/CO/MM/AR, Griffe; `capabilities.ts` steuert, welche Ribbon-Befehle aktiv sind                                     |
+| `newProject/`     | Dialog „Nouveau projet“: Adresse, Karte (MapLibre), Parzellen, Zeichnen, Import GeoJSON/DXF, Kontext laden                                  |
+| `api/`            | HTTP-Vertrag mit dem Server (`contract.ts`) und Client                                                                                      |
+| `i18n/`           | i18next, Französisch Standard; ein Namespace je Modul                                                                                       |
+| `demo/`           | Offline-Demoprojekt `?demo=palaiseau` aus aufgezeichneten echten Daten                                                                      |

@@ -19,7 +19,8 @@ const page = await browser.newPage({
 const errors = [];
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 page.on('pageerror', (e) => errors.push(String(e)));
-await page.goto(url, { waitUntil: 'networkidle' });
+await page.goto(url, { waitUntil: 'load' });
+await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 await page.waitForTimeout(1500);
 await page.screenshot({ path: out });
 await browser.close();

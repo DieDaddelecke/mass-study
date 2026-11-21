@@ -193,8 +193,9 @@ export interface ContextGeometry {
 }
 
 export function contextRange(b: ContextBuilding): [number, number] {
+  // `height` is the top above ground (OSM semantics), `baseHeight` the bottom (min_height).
   const z0 = b.baseHeight ?? 0;
-  return [z0, z0 + Math.max(0.1, b.height)];
+  return [z0, Math.max(z0 + 0.1, b.height)];
 }
 
 export function buildContextGeometry(buildings: readonly ContextBuilding[]): ContextGeometry {

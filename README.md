@@ -2,7 +2,7 @@
 
 Web-App für städtebauliche Massenstudien / études de capacité: Grundstück wählen, Baukörper anordnen, Geschosse einstellen und live Flächen, Kennzahlen und Typologien erhalten – mit Plansatz (PDF), IFC-Export und Archicad-Anbindung.
 
-> Stand: Phase P0–P1 (Gerüst und Rechenkern). Die Oberfläche folgt in P2–P4.
+> Stand: Phasen P0–P4 – Rechenkern, Geodaten-Proxy, Revit-artige Oberfläche (Französisch), Dialog „Nouveau projet“ mit Karte und Kataster, 3D-Ansicht mit Modellierwerkzeugen. Offline-Demo: `http://localhost:5173/?demo=palaiseau`.
 
 ## Start
 
