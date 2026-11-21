@@ -228,7 +228,8 @@
     "sectionA": "Coupe A",
     "sectionB": "Coupe B",
     "areas": "Surfaces",
-    "none": "Aucune vue ouverte – double-cliquez sur {3D} dans l'arborescence"
+    "none": "Aucune vue ouverte – double-cliquez sur {3D} dans l'arborescence",
+    "floorPlan": "Plans d'étage"
   },
   "view": {
     "style": "Style visuel",

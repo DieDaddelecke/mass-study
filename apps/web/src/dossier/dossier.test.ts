@@ -56,6 +56,15 @@ describe('dossier sheets', () => {
       expect(s.svg).toContain('Maître d’ouvrage');
     }
     expect(sheets.map((s) => s.title)).toContain('Plan masse');
+    // schematic floor plans: identical upper storeys grouped on one sheet, with legend
+    const fp = sheets.filter(
+      (s) => s.title.startsWith('Plans d’étage') || s.title.startsWith("Plans d'étage"),
+    );
+    expect(fp).toHaveLength(1);
+    expect(fp[0]!.title).toContain('R+1 à R+4');
+    expect(fp[0]!.svg).toContain('Cage d');
+    expect(fp[0]!.svg).toContain('Distribution triple');
+    if (process.env.KUBATUR_DOSSIER_OUT) writeFileSync(process.env.KUBATUR_DOSSIER_OUT, fp[0]!.svg);
   });
 
   it('places a view at its true paper size for a fixed scale', () => {
@@ -125,6 +134,7 @@ describe('dossier sheets', () => {
           site: false,
           elevations: false,
           sections: false,
+          floorPlans: false,
           axo: false,
         },
       }),

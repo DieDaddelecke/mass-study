@@ -228,7 +228,8 @@
     "sectionA": "Section A",
     "sectionB": "Section B",
     "areas": "Areas",
-    "none": "No view open – double-click {3D} in the project browser"
+    "none": "No view open – double-click {3D} in the project browser",
+    "floorPlan": "Floor plans"
   },
   "view": {
     "style": "Visual style",

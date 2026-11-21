@@ -11,7 +11,8 @@
     "sectionA": "Schnitt A-A (Längsschnitt)",
     "sectionB": "Schnitt B-B (Querschnitt)",
     "axoSW": "Axonometrie von Südwesten",
-    "axoNE": "Axonometrie von Nordosten"
+    "axoNE": "Axonometrie von Nordosten",
+    "floorPlan": "Schematischer Grundriss"
   },
   "sheet": {
     "cover": "Deckblatt",
@@ -19,7 +20,8 @@
     "elevations": "Ansichten",
     "sections": "Schnitte",
     "axo": "Axonometrien",
-    "tables": "Tabellen (Flächen, Kennzahlen, Wohnungsmix)"
+    "tables": "Tabellen (Flächen, Kennzahlen, Wohnungsmix)",
+    "floorPlans": "Schematische Grundrisse"
   },
   "tb": {
     "project": "Projekt",
@@ -87,5 +89,29 @@
     "failed": "PDF-Erstellung fehlgeschlagen",
     "empty": "Kein Plan ausgewählt."
   },
-  "fileSuffix": "Plansatz"
+  "fileSuffix": "Plansatz",
+  "fp": {
+    "storey": "Geschoss",
+    "legend": "Schematischer Geschossgrundriss",
+    "core": "Treppenhaus",
+    "circulation": "Erschließung (Podest, Laubengang, Flur)",
+    "open": "Freie Fläche (Gewerbe, Büro)",
+    "dwellings": "{{count}} Wohnungen",
+    "total": "Summe",
+    "perCore": "{{n}} Wohnungen je Podest",
+    "outOfRange": "* Fläche außerhalb der Spanne des Typs",
+    "differs": "Schema: {{layout}} Wohnungen – flächenbasierte Schätzung: {{area}} Wohnungen (ganzes Gebäude).",
+    "noUnits": "Keine Wohnungen in diesem Geschoss",
+    "typical": "Regelgeschoss",
+    "access": {
+      "zweispaenner": "Zweispänner",
+      "dreispaenner": "Dreispänner",
+      "laubengang": "Laubengang",
+      "mittelflur": "Mittelflur",
+      "punkthaus": "Punkthaus",
+      "reihenhaus": "Reihenhäuser",
+      "buero": "Offene Fläche"
+    },
+    "range": "{{from}} bis {{to}}"
+  }
 }

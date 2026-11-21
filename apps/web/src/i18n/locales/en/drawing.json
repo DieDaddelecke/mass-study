@@ -8,7 +8,8 @@
     "sectionA": "Section A",
     "sectionB": "Section B",
     "axoSW": "Axonometry south-west",
-    "axoNE": "Axonometry north-east"
+    "axoNE": "Axonometry north-east",
+    "floorPlan": "Floor plans"
   },
   "scale": "Scale",
   "auto": "Auto",
@@ -26,5 +27,28 @@
   "parapet": "top of parapet",
   "datum": "datum",
   "noProject": "No project open",
-  "failed": "The drawing could not be generated"
+  "failed": "The drawing could not be generated",
+  "fp": {
+    "storey": "Storey",
+    "legend": "Schematic floor plan",
+    "core": "Stair core",
+    "circulation": "Circulation (landing, gallery, corridor)",
+    "open": "Open floor (retail, office)",
+    "dwellings": "{{count}} dwellings",
+    "total": "Total",
+    "perCore": "{{n}} dwellings per landing",
+    "outOfRange": "* area outside the type's range",
+    "differs": "Schematic plan: {{layout}} dwellings – area-based estimate: {{area}} dwellings (whole building).",
+    "noUnits": "No dwellings on this storey",
+    "typical": "typical",
+    "access": {
+      "zweispaenner": "Two-flat stair access",
+      "dreispaenner": "Three-flat stair access",
+      "laubengang": "Access gallery",
+      "mittelflur": "Central corridor",
+      "punkthaus": "Point block (central core)",
+      "reihenhaus": "Terraced houses",
+      "buero": "Open floor"
+    }
+  }
 }

@@ -3,12 +3,24 @@
  * (viewBox = paper size), so the same string is used for the on-screen preview and for the PDF.
  */
 import {
+  massLayouts,
+  type MassLayout,
   type ProjectAnalysis,
   type Project,
   type Schedule,
   type ScheduleColumn,
   type ScheduleRow,
 } from '@kubatur/core';
+import {
+  chooseScale,
+  distinctStoreyGroups,
+  drawingInput,
+  floorPlan,
+  FLOOR_PLAN_COLORS,
+  measureDrawing,
+  renderSvg,
+  unitColor,
+} from '@kubatur/drawing';
 import { cellText, columnHeader, text } from '../tables/format';
 import {
   buildPlanViews,
@@ -27,12 +39,14 @@ export const PAPER: Record<PaperFormat, [number, number]> = {
   A1: [841, 594],
 };
 
-export type SheetKind = 'cover' | 'site' | 'elevations' | 'sections' | 'axo' | 'tables';
+export type SheetKind =
+  'cover' | 'site' | 'elevations' | 'sections' | 'floorPlans' | 'axo' | 'tables';
 export const SHEET_KINDS: SheetKind[] = [
   'cover',
   'site',
   'elevations',
   'sections',
+  'floorPlans',
   'axo',
   'tables',
 ];
@@ -57,7 +71,16 @@ export interface DossierOptions {
 
 export const DEFAULT_OPTIONS: DossierOptions = {
   format: 'A3',
-  sheets: { cover: true, site: true, elevations: true, sections: true, axo: true, tables: true },
+  sheets: {
+    cover: true,
+    site: true,
+    elevations: true,
+    sections: true,
+    // only produces sheets when the variant has dwellings (residential storeys)
+    floorPlans: true,
+    axo: true,
+    tables: true,
+  },
   elevationsPerSheet: 4,
   scales: { site: 'auto', elevations: 'auto', sections: 'auto', axo: 'auto' },
   scheme: 'concours',
@@ -493,6 +516,130 @@ function viewSheet(
   return { body, scaleLabel: scales.map((s) => `1:${s}`).join(' / ') };
 }
 
+const FP_SCALES = [200, 250, 500, 1000];
+const FP_LEGEND_W = 72;
+
+/** Legend of a schematic floor plan sheet (types with counts, access, keys). */
+function floorPlanLegend(
+  layouts: readonly MassLayout[],
+  storey: number,
+  input: DossierInput,
+  x: number,
+  y: number,
+): string {
+  const { t, project } = input;
+  const mix = project.settings.unitMix;
+  const out: string[] = [txt(x, y, t('fp.legend'), 3.2, { bold: true })];
+  y += 6;
+  const here = layouts.flatMap((m) =>
+    m.storeys.filter((s) => s.storeyIndex === storey).map((s) => ({ m, s })),
+  );
+  for (const { m, s } of here) {
+    const per =
+      m.expectedUnitsPerCore && s.unitsPerCore !== undefined
+        ? ` : ${t('fp.perCore', { n: input.formatNumber(s.unitsPerCore, 0) })}`
+        : '';
+    for (const l of wrap2(`${m.name} · ${t(`fp.access.${s.access}`)}${per}`, 2.4, FP_LEGEND_W)) {
+      out.push(txt(x, y, l, 2.4));
+      y += 3.6;
+    }
+  }
+  y += 2;
+  let total = 0;
+  let area = 0;
+  for (const type of mix) {
+    let n = 0;
+    let a = 0;
+    for (const { s } of here)
+      for (const b of s.summary.byType)
+        if (b.typeId === type.id) {
+          n += b.count;
+          a += b.area;
+        }
+    if (!n) continue;
+    total += n;
+    area += a;
+    out.push(
+      rect(x, y - 2.6, 3.2, 3.2, { fill: unitColor(type.id, mix), stroke: '#000', pen: 0.1 }),
+    );
+    out.push(txt(x + 5, y, type.label, 2.6));
+    out.push(txt(x + 40, y, String(n), 2.6, { anchor: 'end' }));
+    out.push(txt(x + FP_LEGEND_W, y, `${input.formatNumber(a, 0)} m²`, 2.6, { anchor: 'end' }));
+    y += 4.6;
+  }
+  out.push(line(x, y - 2.8, x + FP_LEGEND_W, y - 2.8, 0.18));
+  out.push(txt(x + 5, y + 0.6, t('fp.total'), 2.6, { bold: true }));
+  out.push(txt(x + 40, y + 0.6, String(total), 2.6, { anchor: 'end', bold: true }));
+  out.push(
+    txt(x + FP_LEGEND_W, y + 0.6, `${input.formatNumber(area, 0)} m²`, 2.6, {
+      anchor: 'end',
+      bold: true,
+    }),
+  );
+  y += 7;
+  for (const [fill, key] of [
+    [FLOOR_PLAN_COLORS.core, 'fp.core'],
+    [FLOOR_PLAN_COLORS.circulation, 'fp.circulation'],
+  ] as const) {
+    out.push(rect(x, y - 2.6, 3.2, 3.2, { fill, stroke: '#000', pen: 0.1 }));
+    out.push(txt(x + 5, y, fit(t(key), 2.4, FP_LEGEND_W - 5), 2.4));
+    y += 4.4;
+  }
+  if (here.some(({ s }) => s.units.some((u) => u.outOfRange))) {
+    out.push(txt(x, y + 1, fit(t('fp.outOfRange'), 2, FP_LEGEND_W), 2, { fill: '#555' }));
+    y += 4;
+  }
+  for (const m of layouts)
+    if (m.areaBasedDwellings > 0 && m.totals.units !== m.areaBasedDwellings)
+      for (const l of wrap2(
+        t('fp.differs', { layout: m.totals.units, area: m.areaBasedDwellings }),
+        2,
+        FP_LEGEND_W,
+      )) {
+        out.push(txt(x, y + 1, l, 2, { fill: '#555' }));
+        y += 3;
+      }
+  return out.join('');
+}
+
+/** One sheet per distinct residential storey layout ("R+1 à R+3"), with legend. */
+function floorPlanDrafts(input: DossierInput, f: Frame, counter: { n: number }): Draft[] {
+  const { project, analysis, t } = input;
+  const layouts = massLayouts(analysis.result, project.settings);
+  const groups = distinctStoreyGroups(layouts, (s) => s.units.length > 0);
+  const { solids } = drawingInput(analysis.result);
+  const boxW = f.cw - FP_LEGEND_W - 12;
+  const boxH = f.ch - CAPTION_H;
+  return groups.map((g) => {
+    const storey = g.storeys[0]!;
+    const model = floorPlan(project, solids, storey, layouts, { neighbours: false });
+    const scale = chooseScale(model, boxW, boxH, FP_SCALES);
+    const size = measureDrawing(model, scale);
+    const svg = renderSvg(model, { scale, background: null, theme: 'paper' });
+    const range =
+      g.labels.length > 1
+        ? t('fp.range', { from: g.labels[0]!, to: g.labels[g.labels.length - 1]! })
+        : g.labels[0]!;
+    const vx = f.cx + (boxW - size.widthMm) / 2;
+    const vy = f.cy + Math.max(0, (boxH - size.heightMm) / 2);
+    const body: string[] = [placeSvg(svg, vx, vy, size.widthMm, size.heightMm)];
+    const cy = vy + size.heightMm + 7;
+    body.push(
+      `<circle cx="${f2(vx + 3.5)}" cy="${f2(cy)}" r="3.5" fill="none" stroke="#000" stroke-width="0.35"/>`,
+    );
+    body.push(txt(vx + 3.5, cy + 1.1, String(++counter.n), 3, { anchor: 'middle', bold: true }));
+    body.push(txt(vx + 9, cy - 0.3, `${t('view.floorPlan')} ${range}`, 3.5, { bold: true }));
+    body.push(line(vx + 9, cy + 1.2, vx + Math.max(40, size.widthMm * 0.45), cy + 1.2, 0.25));
+    body.push(txt(vx + 9, cy + 4.6, `${t('scale')} 1:${scale}`, 2.4));
+    body.push(floorPlanLegend(layouts, storey, input, f.cx + f.cw - FP_LEGEND_W, f.cy + 6));
+    return {
+      title: `${t('sheet.floorPlans')} ${range}`,
+      scaleLabel: `1:${scale}`,
+      body: body.join(''),
+    };
+  });
+}
+
 function coverBody(input: DossierInput, opts: DossierOptions, f: Frame): string {
   const { t, project } = input;
   const out: string[] = [];
@@ -598,6 +745,7 @@ export function composeDossier(input: DossierInput, opts: DossierOptions): Sheet
     );
     drafts.push({ titleKey: 'sheet.sections', ...r });
   }
+  if (opts.sheets.floorPlans) drafts.push(...floorPlanDrafts(input, f, counter));
   if (opts.sheets.axo) {
     const r = viewSheet(input, opts, f, ['axoSW', 'axoNE'], 2, 1, opts.scales.axo, 'axo', counter);
     drafts.push({ titleKey: 'sheet.axo', ...r });

@@ -35,6 +35,7 @@ export type ViewId =
   | 'axoSW'
   | 'axoNE'
   | 'site'
+  | 'floorPlan'
   | 'elevN'
   | 'elevE'
   | 'elevS'

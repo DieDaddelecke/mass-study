@@ -8,7 +8,8 @@
     "sectionA": "Coupe A",
     "sectionB": "Coupe B",
     "axoSW": "Axonométrie sud-ouest",
-    "axoNE": "Axonométrie nord-est"
+    "axoNE": "Axonométrie nord-est",
+    "floorPlan": "Plans d'étage"
   },
   "scale": "Échelle",
   "auto": "Auto",
@@ -26,5 +27,28 @@
   "parapet": "acrotère",
   "datum": "NGF",
   "noProject": "Aucun projet ouvert",
-  "failed": "Le dessin n'a pas pu être généré"
+  "failed": "Le dessin n'a pas pu être généré",
+  "fp": {
+    "storey": "Niveau",
+    "legend": "Plan d'étage schématique",
+    "core": "Cage d'escalier",
+    "circulation": "Circulation (palier, coursive, couloir)",
+    "open": "Surface libre (activités, bureaux)",
+    "dwellings": "{{count}} logements",
+    "total": "Total",
+    "perCore": "{{n}} logements par palier",
+    "outOfRange": "* surface hors fourchette du type",
+    "differs": "Plan schématique : {{layout}} logements – estimation par surface : {{area}} logements (bâtiment entier).",
+    "noUnits": "Pas de logements à ce niveau",
+    "typical": "courant",
+    "access": {
+      "zweispaenner": "Distribution double",
+      "dreispaenner": "Distribution triple",
+      "laubengang": "Coursive",
+      "mittelflur": "Couloir central",
+      "punkthaus": "Plot à cage centrale",
+      "reihenhaus": "Maisons en bande",
+      "buero": "Plateau libre"
+    }
+  }
 }

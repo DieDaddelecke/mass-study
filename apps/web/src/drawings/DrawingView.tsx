@@ -1,4 +1,11 @@
-import { chooseScale, renderSvg, STANDARD_SCALES, type ColorScheme } from '@kubatur/drawing';
+import { massLayouts } from '@kubatur/core';
+import {
+  chooseScale,
+  renderSvg,
+  STANDARD_SCALES,
+  typicalStorey,
+  type ColorScheme,
+} from '@kubatur/drawing';
 import { Building2, Download, Maximize, Minus, Plus, Scissors } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +15,7 @@ import { useShellStore } from '../shell/shellStore';
 import { useProjectStore } from '../store/projectStore';
 import { useAnalysis } from '../store/useAnalysis';
 import { buildDrawing, type DrawingViewId } from './buildDrawing';
+import { FloorPlanLegend } from './FloorPlanLegend';
 import './drawings.css';
 
 /** Usable area of an A3 landscape sheet minus title block, for the automatic scale (mm). */
@@ -34,6 +42,28 @@ export function DrawingView({ view }: { view: DrawingViewId }) {
   const [neighbours, setNeighbours] = useState(true);
   const [sectionLines, setSectionLines] = useState(true);
   const [scaleSel, setScaleSel] = useState<number | 'auto'>('auto');
+  const [storeySel, setStoreySel] = useState<number | null>(null);
+
+  // floor plans: schematic unit layouts of all masses (pure, from the analysis)
+  const layouts = useMemo(
+    () =>
+      view === 'floorPlan' && project && analysis
+        ? massLayouts(analysis.result, project.settings)
+        : null,
+    [view, project, analysis],
+  );
+  const storeyOptions = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const ml of layouts ?? [])
+      for (const s of ml.storeys) if (!m.has(s.storeyIndex)) m.set(s.storeyIndex, s.label);
+    return [...m.entries()].sort((a, b) => b[0] - a[0]);
+  }, [layouts]);
+  const storey =
+    layouts && storeySel !== null && storeyOptions.some(([i]) => i === storeySel)
+      ? storeySel
+      : layouts
+        ? typicalStorey(layouts)
+        : 0;
 
   const texts = useMemo(() => ({ parapet: t('parapet'), datum: t('datum') }), [t]);
   const model = useMemo(() => {
@@ -44,12 +74,14 @@ export function DrawingView({ view }: { view: DrawingViewId }) {
         neighbours,
         sectionLines,
         texts,
+        storey,
+        ...(layouts ? { layouts } : {}),
       });
     } catch (e) {
       console.error('drawing failed', e);
       return null;
     }
-  }, [view, project, analysis, scheme, neighbours, sectionLines, texts]);
+  }, [view, project, analysis, scheme, neighbours, sectionLines, texts, storey, layouts]);
   const scale = useMemo(
     () => (model ? (scaleSel === 'auto' ? chooseScale(model, ...AUTO_BOX) : scaleSel) : 500),
     [model, scaleSel],
@@ -66,7 +98,8 @@ export function DrawingView({ view }: { view: DrawingViewId }) {
     const el = stageRef.current;
     if (!el || !size.w) return;
     const r = el.getBoundingClientRect();
-    const left = leftOpen ? 390 : 88;
+    // floor plans: keep the legend (left) free
+    const left = (leftOpen ? 390 : 88) + (view === 'floorPlan' ? 290 : 0);
     const right = inspectorOpen ? 336 : 32;
     const top = 156;
     const bottom = 104;
@@ -74,7 +107,7 @@ export function DrawingView({ view }: { view: DrawingViewId }) {
     const ah = Math.max(200, r.height - top - bottom);
     const k = Math.min(aw / size.w, ah / size.h, 4);
     setVs({ k, x: left + (aw - size.w * k) / 2, y: top + (ah - size.h * k) / 2 });
-  }, [size.w, size.h, leftOpen, inspectorOpen]);
+  }, [size.w, size.h, leftOpen, inspectorOpen, view]);
   // refit when the view or the sheet size changes
   const fitKey = `${view}|${scale}|${Math.round(size.w)}|${Math.round(size.h)}`;
   const lastFit = useRef('');
@@ -166,6 +199,10 @@ export function DrawingView({ view }: { view: DrawingViewId }) {
         </div>
       </div>
 
+      {layouts && project && (
+        <FloorPlanLegend layouts={layouts} storey={storey} mix={project.settings.unitMix} />
+      )}
+
       <div className="dv-toolbar glass" onPointerDown={(e) => e.stopPropagation()}>
         <IconButton icon={Maximize} label={t('fit')} onClick={fit} side="bottom" size={16} />
         <IconButton
@@ -201,20 +238,34 @@ export function DrawingView({ view }: { view: DrawingViewId }) {
             ))}
           </select>
         </label>
-        <div className="dv-seg" role="group" aria-label={t('scheme')}>
-          {(['competition', 'permit'] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              className={scheme === s ? 'is-active' : ''}
-              aria-pressed={scheme === s}
-              onClick={() => setScheme(s)}
-            >
-              <span className={`dv-swatch dv-swatch-${s}`} />
-              {t(`schemes.${s}`)}
-            </button>
-          ))}
-        </div>
+        {view === 'floorPlan' && (
+          <label className="dv-field">
+            <span className="dv-field-label">{t('fp.storey')}</span>
+            <select value={storey} onChange={(e) => setStoreySel(Number(e.target.value))}>
+              {storeyOptions.map(([i, label]) => (
+                <option key={i} value={i}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {view !== 'floorPlan' && (
+          <div className="dv-seg" role="group" aria-label={t('scheme')}>
+            {(['competition', 'permit'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={scheme === s ? 'is-active' : ''}
+                aria-pressed={scheme === s}
+                onClick={() => setScheme(s)}
+              >
+                <span className={`dv-swatch dv-swatch-${s}`} />
+                {t(`schemes.${s}`)}
+              </button>
+            ))}
+          </div>
+        )}
         <span className="dv-sep" />
         <IconButton
           icon={Building2}

@@ -148,3 +148,78 @@
     padding: 0 6px;
   }
 }
+
+/* floor plan legend */
+.dv-field-label {
+  margin: 0 6px 0 4px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.dv-legend {
+  position: absolute;
+  bottom: 104px;
+  z-index: 2;
+  width: 270px;
+  max-height: calc(100% - 300px);
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 12.5px;
+  color: var(--text);
+  cursor: default;
+}
+.dv-legend-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.dv-legend-access {
+  margin: 0 0 8px;
+  color: var(--text-2);
+  line-height: 1.35;
+}
+.dv-legend-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.dv-legend-table td {
+  padding: 3px 0;
+}
+.dv-legend-table .num {
+  text-align: right;
+  padding-left: 10px;
+}
+.dv-legend-table .muted {
+  color: var(--text-3);
+}
+.dv-legend-total td {
+  border-top: 1px solid var(--hairline-strong);
+  padding-top: 5px;
+  font-weight: 600;
+}
+.dv-legend-sw {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border-radius: 4px;
+  vertical-align: -2px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18);
+}
+.dv-legend-keys {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-2);
+}
+.dv-legend-keys li {
+  padding: 2px 0;
+}
+.dv-legend-note {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-3);
+}

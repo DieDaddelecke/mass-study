@@ -11,6 +11,7 @@ import {
   Frame,
   Columns3,
   LandPlot,
+  LayoutGrid,
   PanelLeftClose,
   RefreshCw,
   Route,
@@ -261,6 +262,7 @@ function ViewsTab() {
     [
       ['3d', Cuboid],
       ['site', Frame],
+      ['floorPlan', LayoutGrid],
       ['elevN', Columns3],
       ['elevE', Columns3],
       ['elevS', Columns3],

@@ -11,7 +11,8 @@
     "sectionA": "Coupe A-A (longitudinale)",
     "sectionB": "Coupe B-B (transversale)",
     "axoSW": "Axonométrie depuis le sud-ouest",
-    "axoNE": "Axonométrie depuis le nord-est"
+    "axoNE": "Axonométrie depuis le nord-est",
+    "floorPlan": "Plan d'étage schématique"
   },
   "sheet": {
     "cover": "Page de garde",
@@ -19,7 +20,8 @@
     "elevations": "Façades",
     "sections": "Coupes",
     "axo": "Axonométries",
-    "tables": "Tableaux (surfaces, indicateurs, programme)"
+    "tables": "Tableaux (surfaces, indicateurs, programme)",
+    "floorPlans": "Plans d'étage schématiques"
   },
   "tb": {
     "project": "Projet",
@@ -87,5 +89,29 @@
     "failed": "La création du PDF a échoué",
     "empty": "Aucune planche sélectionnée."
   },
-  "fileSuffix": "Dossier"
+  "fileSuffix": "Dossier",
+  "fp": {
+    "storey": "Niveau",
+    "legend": "Plan d'étage schématique",
+    "core": "Cage d'escalier",
+    "circulation": "Circulation (palier, coursive, couloir)",
+    "open": "Surface libre (activités, bureaux)",
+    "dwellings": "{{count}} logements",
+    "total": "Total",
+    "perCore": "{{n}} logements par palier",
+    "outOfRange": "* surface hors fourchette du type",
+    "differs": "Plan schématique : {{layout}} logements – estimation par surface : {{area}} logements (bâtiment entier).",
+    "noUnits": "Pas de logements à ce niveau",
+    "typical": "courant",
+    "access": {
+      "zweispaenner": "Distribution double",
+      "dreispaenner": "Distribution triple",
+      "laubengang": "Coursive",
+      "mittelflur": "Couloir central",
+      "punkthaus": "Plot à cage centrale",
+      "reihenhaus": "Maisons en bande",
+      "buero": "Plateau libre"
+    },
+    "range": "{{from}} à {{to}}"
+  }
 }

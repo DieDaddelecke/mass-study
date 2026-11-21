@@ -228,7 +228,8 @@
     "sectionA": "Schnitt A",
     "sectionB": "Schnitt B",
     "areas": "Flächen",
-    "none": "Keine Ansicht geöffnet – Doppelklick auf {3D} im Projektbrowser"
+    "none": "Keine Ansicht geöffnet – Doppelklick auf {3D} im Projektbrowser",
+    "floorPlan": "Geschossgrundrisse"
   },
   "view": {
     "style": "Visueller Stil",

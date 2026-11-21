@@ -8,7 +8,8 @@
     "sectionA": "Schnitt A",
     "sectionB": "Schnitt B",
     "axoSW": "Axonometrie Südwest",
-    "axoNE": "Axonometrie Nordost"
+    "axoNE": "Axonometrie Nordost",
+    "floorPlan": "Geschossgrundrisse"
   },
   "scale": "Maßstab",
   "auto": "Auto",
@@ -26,5 +27,28 @@
   "parapet": "OK Attika",
   "datum": "NHN",
   "noProject": "Kein Projekt geöffnet",
-  "failed": "Die Zeichnung konnte nicht erzeugt werden"
+  "failed": "Die Zeichnung konnte nicht erzeugt werden",
+  "fp": {
+    "storey": "Geschoss",
+    "legend": "Schematischer Geschossgrundriss",
+    "core": "Treppenhaus",
+    "circulation": "Erschließung (Podest, Laubengang, Flur)",
+    "open": "Freie Fläche (Gewerbe, Büro)",
+    "dwellings": "{{count}} Wohnungen",
+    "total": "Summe",
+    "perCore": "{{n}} Wohnungen je Podest",
+    "outOfRange": "* Fläche außerhalb der Spanne des Typs",
+    "differs": "Schema: {{layout}} Wohnungen – flächenbasierte Schätzung: {{area}} Wohnungen (ganzes Gebäude).",
+    "noUnits": "Keine Wohnungen in diesem Geschoss",
+    "typical": "Regelgeschoss",
+    "access": {
+      "zweispaenner": "Zweispänner",
+      "dreispaenner": "Dreispänner",
+      "laubengang": "Laubengang",
+      "mittelflur": "Mittelflur",
+      "punkthaus": "Punkthaus",
+      "reihenhaus": "Reihenhäuser",
+      "buero": "Offene Fläche"
+    }
+  }
 }
