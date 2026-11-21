@@ -1,60 +1,13 @@
-import type { ContextBuildingLonLat, LonLat, LonLatRings } from './contract.js';
-import {
-  type BBox,
-  closeRing,
-  isRecord,
-  joinIntoRings,
-  pointInPolygon,
-  pointInRing,
-  ringCentroid,
-} from './geometry.js';
+import type { ContextBuildingLonLat, LonLatRings } from './contract.js';
+import { type BBox, isRecord, pointInPolygon, ringCentroid } from './geometry.js';
 import { parseCount, parseMeters, resolveHeight } from './height.js';
-import { Throttle, type GeoHttp } from './http.js';
+import { OverpassClient, elementPolygons, readTags } from './osm.js';
 import type { ContextProvider } from './providers.js';
-
-export const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 
 export function overpassQuery(b: BBox): string {
   const [w, s, e, n] = b;
   const box = `${s},${w},${n},${e}`;
   return `[out:json][timeout:25];(way["building"](${box});relation["building"](${box});way["building:part"](${box}););out geom;`;
-}
-
-type Tags = Record<string, string>;
-
-function readTags(v: unknown): Tags {
-  const out: Tags = {};
-  if (isRecord(v)) for (const [k, x] of Object.entries(v)) if (typeof x === 'string') out[k] = x;
-  return out;
-}
-
-function readGeom(v: unknown): LonLat[] {
-  if (!Array.isArray(v)) return [];
-  return v.flatMap((p: unknown): LonLat[] =>
-    isRecord(p) && typeof p.lon === 'number' && typeof p.lat === 'number' ? [[p.lon, p.lat]] : [],
-  );
-}
-
-/** Builds polygons from multipolygon members: joins open ways, assigns inners to outers. */
-function relationPolygons(members: unknown): LonLatRings[] {
-  if (!Array.isArray(members)) return [];
-  const outerLines: LonLat[][] = [];
-  const innerLines: LonLat[][] = [];
-  for (const m of members) {
-    if (!isRecord(m) || m.type !== 'way') continue;
-    const g = readGeom(m.geometry);
-    if (g.length < 2) continue;
-    (m.role === 'inner' ? innerLines : outerLines).push(g);
-  }
-  const outers = joinIntoRings(outerLines);
-  const inners = joinIntoRings(innerLines);
-  const polys: LonLatRings[] = outers.map((o) => [o]);
-  for (const inner of inners) {
-    const probe = inner[0];
-    const host = probe && polys.find((p) => p[0] && pointInRing(probe, p[0]));
-    if (host) host.push(inner);
-  }
-  return polys;
 }
 
 interface Candidate {
@@ -72,13 +25,7 @@ export function mapOverpass(data: unknown): ContextBuildingLonLat[] {
     const isPart = !!tags['building:part'] && tags['building:part'] !== 'no';
     const isBuilding = !!tags.building && tags.building !== 'no';
     if (!isPart && !isBuilding) continue;
-    let polygons: LonLatRings[];
-    if (e.type === 'way') {
-      const ring = closeRing(readGeom(e.geometry));
-      polygons = ring.length >= 4 ? [[ring]] : [];
-    } else {
-      polygons = relationPolygons(e.members);
-    }
+    const polygons: LonLatRings[] = elementPolygons(e);
     if (!polygons.length) continue;
 
     const bl = parseCount(tags['building:levels']);
@@ -113,24 +60,14 @@ export function mapOverpass(data: unknown): ContextBuildingLonLat[] {
 /** OSM buildings via Overpass (worldwide; fallback in France). */
 export class OverpassContextProvider implements ContextProvider {
   readonly id = 'osm' as const;
-  constructor(
-    private readonly http: GeoHttp,
-    private readonly throttle = new Throttle(1000),
-    private readonly url = OVERPASS_URL,
-  ) {}
+  constructor(private readonly client: OverpassClient) {}
 
   covers(): boolean {
     return true;
   }
 
   async buildings(bbox: BBox): Promise<ContextBuildingLonLat[]> {
-    const data = await this.http.getJson(this.url, {
-      method: 'POST',
-      body: `data=${encodeURIComponent(overpassQuery(bbox))}`,
-      contentType: 'application/x-www-form-urlencoded',
-      upstream: 'overpass',
-      throttle: this.throttle,
-    });
+    const data = await this.client.query(overpassQuery(bbox));
     return mapOverpass(data);
   }
 }

@@ -103,6 +103,33 @@ export class GeoHttp {
     private readonly timeoutMs = 10_000,
   ) {}
 
+  /** Binary GET without the JSON cache (tiles have their own cache). */
+  async getBytes(
+    url: string,
+    opts: Pick<RequestOptions, 'upstream' | 'throttle'> & { accept?: string },
+  ): Promise<{ bytes: Uint8Array; contentType: string | null }> {
+    const doFetch = async () => {
+      let res: Response;
+      try {
+        res = await this.fetchFn(url, {
+          headers: { 'User-Agent': this.userAgent, Accept: opts.accept ?? '*/*' },
+          signal: AbortSignal.timeout(this.timeoutMs),
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new UpstreamError(`${opts.upstream}: request failed (${msg})`, opts.upstream);
+      }
+      if (!res.ok) {
+        throw new UpstreamError(`${opts.upstream}: HTTP ${res.status}`, opts.upstream, res.status);
+      }
+      return {
+        bytes: new Uint8Array(await res.arrayBuffer()),
+        contentType: res.headers.get('content-type'),
+      };
+    };
+    return opts.throttle ? opts.throttle.run(doFetch) : doFetch();
+  }
+
   async getJson(url: string, opts: RequestOptions): Promise<unknown> {
     const method = opts.method ?? 'GET';
     const key = FileCache.key(method, url, opts.body);

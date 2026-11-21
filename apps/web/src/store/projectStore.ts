@@ -1,4 +1,12 @@
-import type { Constraints, ContextBuilding, Mass, Project, Settings, Variant } from '@kubatur/core';
+import type {
+  Constraints,
+  ContextBuilding,
+  Mass,
+  Project,
+  Settings,
+  Surroundings,
+  Variant,
+} from '@kubatur/core';
 import { produce, type Draft } from 'immer';
 import { temporal } from 'zundo';
 import { create } from 'zustand';
@@ -84,6 +92,11 @@ export const actions = {
   setContext(buildings: ContextBuilding[]) {
     useProjectStore.getState().update((p) => {
       p.context = buildings;
+    });
+  },
+  setSurroundings(s: Surroundings) {
+    useProjectStore.getState().update((p) => {
+      p.surroundings = s;
     });
   },
   updateContextBuilding(id: string, recipe: (c: Draft<ContextBuilding>) => void) {

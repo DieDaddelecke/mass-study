@@ -7,6 +7,7 @@ import bdtopo from '../../../server/test/fixtures/palaiseau/bdtopo-batiment.json
 import p0518 from '../../../server/test/fixtures/palaiseau/parcel-0518.json';
 import p0519 from '../../../server/test/fixtures/palaiseau/parcel-0519.json';
 import type {
+  ContextLayersResponse,
   ContextResponse,
   GeocodeResponse,
   LonLat,
@@ -52,4 +53,80 @@ export const contextResponse: ContextResponse = {
     heightEstimated: b.properties.hauteur == null,
     source: 'ign',
   })),
+};
+
+/** Small contract-shaped /api/context/layers answer around parcel 0518 (hand-made coordinates). */
+export const layersResponse: ContextLayersResponse = {
+  roads: [
+    {
+      id: 'ign/TRONROUT1',
+      line: [
+        [2.1975, 48.7125],
+        [2.1985, 48.7125],
+      ],
+      width: 5,
+      widthEstimated: false,
+      kind: 'tertiary',
+      name: 'Boulevard Thomas Gobert',
+      level: 0,
+      source: 'ign',
+    },
+    {
+      id: 'osm/way/1',
+      line: [[2.1975, 48.7126]],
+      width: 2,
+      widthEstimated: true,
+      kind: 'footway',
+      level: 0,
+      source: 'osm',
+    },
+  ],
+  green: [
+    {
+      id: 'osm/relation/9',
+      polygons: [
+        [
+          [
+            [2.1996, 48.7117],
+            [2.2002, 48.7117],
+            [2.2002, 48.7124],
+            [2.1996, 48.7124],
+            [2.1996, 48.7117],
+          ],
+          [
+            [2.1998, 48.7119],
+            [2.1998, 48.7121],
+            [2.2, 48.7121],
+            [2.2, 48.7119],
+            [2.1998, 48.7119],
+          ],
+        ],
+        [
+          [
+            [2.1966, 48.7119],
+            [2.1972, 48.7119],
+            [2.1972, 48.7123],
+            [2.1966, 48.7119],
+          ],
+        ],
+      ],
+      kind: 'wood',
+      source: 'osm',
+    },
+  ],
+  trees: [
+    {
+      id: 'osm/node/1',
+      lonLat: [2.1979, 48.7131],
+      height: 10,
+      crown: 6,
+      heightEstimated: true,
+      leafType: 'broadleaved',
+      source: 'osm',
+    },
+  ],
+  water: [],
+  parcels: [parcel0518, parcel0519],
+  providers: { roads: 'ign', green: 'osm', trees: 'osm', parcels: 'apicarto' },
+  errors: [{ layer: 'water', message: 'ign-wfs: HTTP 503' }],
 };
