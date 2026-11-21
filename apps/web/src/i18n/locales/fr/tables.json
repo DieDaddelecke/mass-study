@@ -41,7 +41,7 @@
     "level": "Cote plancher fini",
     "fullStorey": "Niveau plein (DE)",
     "bgf": "Surface brute",
-    "kgf": "Emprise constructive",
+    "kgf": "Surface de construction",
     "nrf": "Surface nette",
     "nuf": "Surface utile",
     "vf": "Circulations",

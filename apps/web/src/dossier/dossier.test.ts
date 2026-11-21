@@ -151,7 +151,8 @@ describe('dossier PDF', () => {
       project.name,
     );
     const buf = Buffer.from(pdf);
-    writeFileSync('/tmp/dossier.pdf', buf);
+    // DOSSIER_PDF=/path/out.pdf pnpm test … writes the sample for manual inspection
+    if (process.env.DOSSIER_PDF) writeFileSync(process.env.DOSSIER_PDF, buf);
     expect(buf.subarray(0, 5).toString()).toBe('%PDF-');
     expect(buf.length).toBeLessThan(10 * 1024 * 1024);
     const pages = buf.toString('latin1').match(/\/Type \/Page\b/g) ?? [];

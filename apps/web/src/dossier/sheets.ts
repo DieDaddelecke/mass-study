@@ -148,6 +148,20 @@ function fit(s: string, size: number, maxW: number): string {
   return s.slice(0, n) + '…';
 }
 
+/** Break a label into at most two lines that fit `maxW` (the second one truncated if needed). */
+export function wrap2(s: string, size: number, maxW: number): string[] {
+  if (textWidth(s, size) <= maxW) return [s];
+  const words = s.split(' ');
+  let first = '';
+  for (let i = 0; i < words.length; i++) {
+    const cand = first ? `${first} ${words[i]}` : words[i]!;
+    if (first && textWidth(cand, size) > maxW)
+      return [fit(first, size, maxW), fit(words.slice(i).join(' '), size, maxW)];
+    first = cand;
+  }
+  return [fit(first, size, maxW)];
+}
+
 let placed = 0;
 
 /** Inline a view SVG (viewBox in mm) at (x, y) with its paper size. */
@@ -367,13 +381,14 @@ export function paginateRows<T>(rows: readonly T[], perPage: number): T[][] {
 
 export function rowsPerPage(format: PaperFormat): number {
   const f = frame(format);
-  return Math.floor((f.ch - 12 - ROW_H) / ROW_H);
+  // title (12 mm) + two-line header
+  return Math.floor((f.ch - 12 - 2 * ROW_H) / ROW_H);
 }
 
 function tableSvg(s: Schedule, rows: ScheduleRow[], f: Frame, title: string): string {
   const weights = s.columns.map((c) => c.width ?? 12);
   const total = weights.reduce((a, b) => a + b, 0);
-  const tw = Math.min(f.cw, total * 2.4);
+  const tw = Math.min(f.cw, total * 2.8);
   const widths = weights.map((w) => (w / total) * tw);
   const out: string[] = [txt(f.cx, f.cy + 6, title, 5, { bold: true })];
   let y = f.cy + 12;
@@ -400,7 +415,29 @@ function tableSvg(s: Schedule, rows: ScheduleRow[], f: Frame, title: string): st
     out.push(line(f.cx, y + ROW_H, f.cx + tw, y + ROW_H, 0.1, '#999'));
     y += ROW_H;
   };
-  drawRow(s.columns.map(columnHeader), s.columns, { bold: true, fill: '#e9e9e9' });
+  // header: two lines, wrapped at word boundaries instead of truncated
+  {
+    const hh = 2 * ROW_H;
+    out.push(rect(f.cx, y, tw, hh, { fill: '#e9e9e9' }));
+    let x = f.cx;
+    s.columns.forEach((c, i) => {
+      const w = widths[i]!;
+      const numeric = NUMERIC.has(c.format) && i > 0;
+      const lines = wrap2(columnHeader(c), TABLE_FS, w - 2);
+      const y0 = y + hh - 1.5 - (lines.length - 1) * (TABLE_FS + 0.6);
+      lines.forEach((l, k) => {
+        const ly = y0 + k * (TABLE_FS + 0.6);
+        out.push(
+          numeric
+            ? txt(x + w - 1, ly, l, TABLE_FS, { anchor: 'end', bold: true })
+            : txt(x + 1, ly, l, TABLE_FS, { bold: true }),
+        );
+      });
+      x += w;
+    });
+    out.push(line(f.cx, y + hh, f.cx + tw, y + hh, 0.1, '#999'));
+    y += hh;
+  }
   for (const r of rows) {
     const cells = s.columns.map((c) => cellText(c, r));
     drawRow(cells, s.columns, {
