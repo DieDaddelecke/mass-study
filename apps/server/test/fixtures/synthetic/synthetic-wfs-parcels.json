@@ -1,0 +1,49 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "flurstueck.1",
+      "properties": {
+        "flstkennz": "05123400100001______",
+        "gemarkung": "Synthetisch",
+        "flstnrzae": "1",
+        "amtlflsfl": 1000
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [7.0, 51.0],
+            [7.001, 51.0],
+            [7.001, 51.001],
+            [7.0, 51.001],
+            [7.0, 51.0]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "flurstueck.2",
+      "properties": {
+        "flstkennz": "05123400100002______",
+        "gemarkung": "Synthetisch",
+        "flstnrzae": "2",
+        "amtlflsfl": 800
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [7.001, 51.0],
+            [7.002, 51.0],
+            [7.002, 51.001],
+            [7.001, 51.001],
+            [7.001, 51.0]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "place_id": 1,
+    "lat": "52.5200000",
+    "lon": "13.4050000",
+    "category": "boundary",
+    "type": "administrative",
+    "addresstype": "city",
+    "importance": 0.85,
+    "display_name": "Synthetic City, Synthetic Country"
+  }
+]

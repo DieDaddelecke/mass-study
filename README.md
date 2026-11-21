@@ -27,13 +27,14 @@ docs/           SPEC, ARCHITECTURE, DECISIONS, KNOWN_LIMITATIONS
 
 ## Konfiguration (Server, ENV)
 
-| Variable          | Default         | Bedeutung                      |
-| ----------------- | --------------- | ------------------------------ |
-| `PORT`            | 8080            | HTTP-Port                      |
-| `STATIC_DIR`      | `../web/dist`   | Web-Build                      |
-| `DATA_DIR`        | `./data`        | Cache der Geodaten             |
-| `CACHE_TTL_DAYS`  | 30              | Cache-Lebensdauer              |
-| `USER_AGENT`      | `Kubatur/0.1 …` | User-Agent für externe Dienste |
-| `ALLOWED_ORIGINS` | –               | CORS-Origins für `/api/*`      |
+| Variable          | Default         | Bedeutung                                                                                                               |
+| ----------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `PORT`            | 8080            | HTTP-Port                                                                                                               |
+| `STATIC_DIR`      | `../web/dist`   | Web-Build                                                                                                               |
+| `DATA_DIR`        | `./data`        | Cache der Geodaten                                                                                                      |
+| `CACHE_TTL_DAYS`  | 30              | Cache-Lebensdauer                                                                                                       |
+| `USER_AGENT`      | `Kubatur/0.1 …` | User-Agent für externe Dienste                                                                                          |
+| `ALLOWED_ORIGINS` | –               | CORS-Origins für `/api/*`                                                                                               |
+| `PARCEL_WFS`      | –               | JSON-Array generischer WFS-Flurstücksprovider (`id`, `url`, `typeName`, `coverage`, `fields.ref`, …), standardmäßig aus |
 
 Siehe `docs/` für Architektur, Entscheidungen und bekannte Grenzen.

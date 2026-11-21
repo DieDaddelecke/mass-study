@@ -4,7 +4,7 @@ import { createApi } from './app.js';
 import { loadConfig } from './config.js';
 
 const config = loadConfig();
-const app = createApi(config);
+const app = createApi(config, { fetch: (url, init) => fetch(url, init) });
 app.use('/*', serveStatic({ root: config.staticDir }));
 // SPA fallback
 app.get('*', serveStatic({ root: config.staticDir, path: 'index.html' }));
