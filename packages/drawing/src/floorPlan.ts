@@ -1,5 +1,6 @@
 import {
   intersection,
+  pointInPolygon,
   polygonArea,
   rect,
   ringCentroid,
@@ -62,6 +63,30 @@ const fmtM = (v: number) => `${v.toFixed(2).replace('.', ',')} m`;
 const defaultFacadeText = (f: number, r: number) => `façade ${fmtM(f)} (min ${fmtM(r)})`;
 
 const rings = (p: Polygon): Vec2[][] => [p.outer, ...(p.holes ?? [])];
+
+/** Distance of the façade band from the outline, m. */
+const FACADE_INSET = 0.3;
+
+/** Segment shifted by `d` towards the inside of `poly` (unchanged if neither side is inside). */
+function insetSegment([a, b]: [Vec2, Vec2], poly: Polygon, d: number): Vec2[] {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (len < 1e-9) return [a, b];
+  const nx = -(b[1] - a[1]) / len;
+  const ny = (b[0] - a[0]) / len;
+  const mid: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const ux = (b[0] - a[0]) / len;
+  const uy = (b[1] - a[1]) / len;
+  // shorten the ends a little so bands of neighbouring units stay apart
+  const t = Math.min(d, len / 4);
+  for (const s of [1, -1]) {
+    if (!pointInPolygon([mid[0] + s * nx * d, mid[1] + s * ny * d], poly)) continue;
+    return [
+      [a[0] + s * nx * d + ux * t, a[1] + s * ny * d + uy * t],
+      [b[0] + s * nx * d - ux * t, b[1] + s * ny * d - uy * t],
+    ];
+  }
+  return [a, b];
+}
 
 function labelPoint(p: Polygon): Vec2 {
   try {
@@ -253,11 +278,14 @@ export function floorPlan(
   }
   // footprint outline of this storey (pen 5)
   for (const p of here) for (const r of rings(p)) items.push(line(r, 5, 'solid', COLORS.ink, true));
-  // façade pieces of each dwelling (subtle, on the outline), failing dwellings in red
+  // façade pieces of each dwelling: a band just inside the outline (so the black wall line
+  // does not hide it), failing dwellings in red
   for (const st of storeys)
     for (const u of st.units) {
-      for (const [a, b] of u.facadeSegments ?? [])
-        items.push(line([a, b], 2, 'solid', FLOOR_PLAN_COLORS.facade));
+      for (const seg of u.facadeSegments ?? [])
+        items.push(
+          line(insetSegment(seg, u.polygon, FACADE_INSET), 4, 'solid', FLOOR_PLAN_COLORS.facade),
+        );
       if (!u.facadeOk)
         for (const r of rings(u.polygon))
           items.push(line(r, 4, 'solid', FLOOR_PLAN_COLORS.facadeFail, true));

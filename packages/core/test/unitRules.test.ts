@@ -46,6 +46,14 @@ describe('facadeOf', () => {
     expect(f.length).toBeCloseTo(6, 6);
     expect(f.segments).toHaveLength(1);
   });
+  it('ignores seams where a hole touches the outer ring', () => {
+    // section 10–18 expressed as 0–18 minus a hole 0–10 that shares three edges with the outer ring
+    const u = {
+      outer: rect(0, 0, 18, 12).outer,
+      holes: [rect(0, 0, 10, 12).outer.slice().reverse()],
+    };
+    expect(facadeOf(u, fp).length).toBeCloseTo(16, 6);
+  });
   it('tolerates 2 cm and ignores interior edges', () => {
     expect(facadeOf(rect(10, 0.015, 18, 6), fp).length).toBeCloseTo(8, 6);
     expect(facadeOf(rect(10, 1, 18, 6), fp).length).toBe(0);

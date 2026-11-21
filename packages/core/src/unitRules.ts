@@ -84,7 +84,9 @@ export function facadeOf(
 ): { length: number; segments: Seg[] } {
   let length = 0;
   const segments: Seg[] = [];
-  for (const e of polygonEdges([unit])) {
+  const own = polygonEdges([unit]);
+  for (let k = 0; k < own.length; k++) {
+    const e = own[k]!;
     const [p, q] = e;
     const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
     if (len < 1e-9) continue;
@@ -98,6 +100,36 @@ export function facadeOf(
       const a = Math.max(0, Math.min(t(f[0]), t(f[1])));
       const b = Math.min(len, Math.max(t(f[0]), t(f[1])));
       if (b > a) iv.push([a, b]);
+    }
+    // Seams: clipping can return a unit as an outer ring with a hole that touches it along
+    // shared edges. Edge pieces lying on another edge of the same polygon are not boundary.
+    const seams: [number, number][] = [];
+    for (let j = 0; j < own.length; j++) {
+      if (j === k) continue;
+      const g = own[j]!;
+      if (overlap(e, g, tol) <= 1e-6) continue;
+      const t = (x: Vec2) => (x[0] - p[0]) * ux + (x[1] - p[1]) * uy;
+      seams.push([
+        Math.max(0, Math.min(t(g[0]), t(g[1]))),
+        Math.min(len, Math.max(t(g[0]), t(g[1]))),
+      ]);
+    }
+    if (seams.length) {
+      const cut: [number, number][] = [];
+      for (const x of iv) {
+        let parts: [number, number][] = [x];
+        for (const [a, b] of seams)
+          parts = parts.flatMap(([c, d]) => {
+            if (b <= c || a >= d) return [[c, d] as [number, number]];
+            const r: [number, number][] = [];
+            if (a > c) r.push([c, a]);
+            if (b < d) r.push([b, d]);
+            return r;
+          });
+        cut.push(...parts.filter(([c, d]) => d - c > 1e-6));
+      }
+      iv.length = 0;
+      iv.push(...cut);
     }
     iv.sort((x, y) => x[0] - y[0]);
     let cur: [number, number] | undefined;
