@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { BoxGeometry, CanvasTexture, SRGBColorSpace, Vector3 } from 'three';
 import { cubeRegion, type V3 } from './scene/cameraFit';
 import { controlsRef } from './scene/controlsRef';
+import { palette } from '../theme/palette';
 import { useViewportStore } from './viewportStore';
 
 function labelTexture(text: string, rotate180 = false): CanvasTexture {
@@ -12,16 +13,16 @@ function labelTexture(text: string, rotate180 = false): CanvasTexture {
   c.width = c.height = 128;
   const g = c.getContext('2d');
   if (g) {
-    g.fillStyle = '#f4f4f4';
+    g.fillStyle = '#fafafa';
     g.fillRect(0, 0, 128, 128);
-    g.strokeStyle = '#9a9a9a';
-    g.lineWidth = 4;
-    g.strokeRect(2, 2, 124, 124);
+    g.strokeStyle = '#e4e4e7';
+    g.lineWidth = 3;
+    g.strokeRect(1.5, 1.5, 125, 125);
     g.translate(64, 64);
     if (rotate180) g.rotate(Math.PI);
-    g.fillStyle = '#333';
-    const size = text.length > 6 ? 24 : 30;
-    g.font = `600 ${size}px system-ui, sans-serif`;
+    g.fillStyle = '#52525b';
+    const size = text.length > 6 ? 20 : 24;
+    g.font = `600 ${size}px 'Inter Variable', system-ui, sans-serif`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(text, 0, 0);
@@ -68,8 +69,8 @@ function CubeScene() {
         c.width = c.height = 64;
         const g = c.getContext('2d');
         if (g) {
-          g.fillStyle = k === 'N' ? '#c0392b' : '#555';
-          g.font = '700 40px system-ui, sans-serif';
+          g.fillStyle = k === 'N' ? palette.accent : '#71717a';
+          g.font = "700 36px 'Inter Variable', system-ui, sans-serif";
           g.textAlign = 'center';
           g.textBaseline = 'middle';
           g.fillText(t(`compass.${k}`), 32, 34);
@@ -130,16 +131,16 @@ function CubeScene() {
       {hl && (
         <mesh position={hl.pos} raycast={() => null}>
           <boxGeometry args={[hl.size[0] + 0.01, hl.size[1] + 0.01, hl.size[2] + 0.01]} />
-          <meshBasicMaterial color="#2F8BE6" transparent opacity={0.45} depthWrite={false} />
+          <meshBasicMaterial color={palette.accent} transparent opacity={0.5} depthWrite={false} />
         </mesh>
       )}
       <lineSegments raycast={() => null}>
         <edgesGeometry args={[box]} />
-        <lineBasicMaterial color="#8a8a8a" />
+        <lineBasicMaterial color="#a1a1aa" />
       </lineSegments>
       <mesh position={[0, 0, -0.55]} raycast={() => null}>
         <ringGeometry args={[0.86, 0.93, 48]} />
-        <meshBasicMaterial color="#b8b8b8" />
+        <meshBasicMaterial color="#a1a1aa" transparent opacity={0.6} />
       </mesh>
       {compass.map(([k, p], i) => (
         <sprite
@@ -171,7 +172,7 @@ export function NavCube() {
         aria-label={t('cube.home')}
         onClick={requestHome}
       >
-        <House size={14} />
+        <House size={15} strokeWidth={1.75} />
       </button>
       <Canvas
         dpr={[1, 2]}

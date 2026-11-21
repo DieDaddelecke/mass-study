@@ -2,19 +2,32 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: linear-gradient(to bottom, #dfeaf5 0%, #f6f9fc 45%, #ffffff 100%);
+  background: var(--sky);
 }
 .vp-canvas {
   position: absolute !important;
   inset: 0;
 }
+
+/* nav cube: top-right, below the top bar, left of the inspector */
 .vp-navcube {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 140px;
-  height: 140px;
+  top: calc(var(--inset) * 2 + var(--bar-h));
+  right: var(--inset);
+  z-index: 1;
+  width: 112px;
+  height: 112px;
   user-select: none;
+  opacity: 0.92;
+  transition:
+    opacity var(--dur) var(--ease),
+    right 220ms var(--ease);
+}
+.vp-navcube:hover {
+  opacity: 1;
+}
+.has-right .vp-navcube {
+  right: calc(var(--inset) * 2 + var(--right-w));
 }
 .vp-navcube-home {
   position: absolute;
@@ -23,97 +36,111 @@
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border: 1px solid var(--border, #cdcdcd);
-  border-radius: var(--radius, 2px);
-  background: #fff;
-  color: #444;
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--r-sm);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  color: var(--text-2);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
+  transition:
+    color var(--dur) var(--ease),
+    background var(--dur) var(--ease);
 }
 .vp-navcube-home:hover {
-  background: var(--hover, #e3eef9);
+  color: var(--accent-text);
+  background: var(--glass-strong);
 }
+
+/* view controls: bottom-left */
 .vp-bar {
   position: absolute;
-  left: 8px;
-  bottom: 8px;
+  left: var(--inset);
+  bottom: var(--inset);
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 2px;
-  height: 26px;
-  padding: 0 4px;
-  border: 1px solid var(--border, #cdcdcd);
-  border-radius: var(--radius, 2px);
-  background: rgba(255, 255, 255, 0.95);
-  font: 12px var(--font, system-ui);
-  color: var(--text, #1f1f1f);
-}
-.vp-bar-scale {
-  padding: 0 6px;
-  color: var(--text-muted, #6b6b6b);
-  opacity: 0.6;
+  height: 44px;
+  padding: 0 5px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
 }
 .vp-bar-sep {
   width: 1px;
-  height: 16px;
-  margin: 0 3px;
-  background: var(--border, #cdcdcd);
+  height: 18px;
+  margin: 0 4px;
+  background: var(--hairline-strong);
 }
-.vp-bar-select {
-  height: 20px;
-  font: inherit;
-  border: 1px solid transparent;
+.vp-style,
+.vp-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--r-sm);
   background: transparent;
-}
-.vp-bar-select:hover {
-  border-color: var(--border, #cdcdcd);
+  color: var(--text-2);
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
 }
 .vp-bar-btn {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 20px;
   padding: 0;
-  border: 1px solid transparent;
-  border-radius: var(--radius, 2px);
-  background: transparent;
-  color: #333;
-  cursor: pointer;
 }
+.vp-proj {
+  padding: 0 8px;
+}
+.vp-style:hover,
+.vp-style[data-state='open'],
 .vp-bar-btn:hover:not(:disabled) {
-  background: var(--hover, #e3eef9);
+  background: var(--hover);
+  color: var(--text);
 }
 .vp-bar-btn.is-on {
-  border-color: var(--accent, #1f7fd0);
-  background: var(--hover, #e3eef9);
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 .vp-bar-btn:disabled {
   opacity: 0.35;
-  cursor: default;
 }
+
+/* usage legend: small glass card, above the view controls */
 .vp-legend {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
-  padding: 6px 8px;
-  border: 1px solid var(--border, #cdcdcd);
-  background: rgba(255, 255, 255, 0.95);
-  font: 12px var(--font, system-ui);
+  left: var(--inset);
+  bottom: calc(var(--inset) * 2 + 44px);
+  z-index: 2;
+  padding: 10px 12px;
+  font-size: var(--fs-sm);
 }
 .vp-legend-title {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  font-size: var(--fs-xs);
   font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
 }
 .vp-legend-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  line-height: 18px;
+  gap: 8px;
+  line-height: 20px;
 }
 .vp-legend-swatch {
-  width: 12px;
-  height: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.35);
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
 }

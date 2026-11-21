@@ -8,7 +8,12 @@
     "west": "WEST",
     "home": "Startansicht"
   },
-  "compass": { "N": "N", "E": "O", "S": "S", "W": "W" },
+  "compass": {
+    "N": "N",
+    "E": "O",
+    "S": "S",
+    "W": "W"
+  },
   "style": {
     "wireframe": "Drahtmodell",
     "hiddenLine": "Verdeckte Kanten",
@@ -25,7 +30,11 @@
     "toPersp": "Perspektivische Ansicht",
     "zoomExtents": "Zoom Grenzen (ZF)",
     "isolate": "Isolieren / Ausblenden",
-    "soon": "in Vorbereitung"
+    "soon": "in Vorbereitung",
+    "persp": "Perspektive",
+    "ortho": "Ortho"
   },
-  "legend": { "title": "Nutzungen" }
+  "legend": {
+    "title": "Nutzungen"
+  }
 }

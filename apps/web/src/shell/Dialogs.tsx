@@ -376,18 +376,3 @@ function WarningsDialog() {
     </Dialog>
   );
 }
-
-export function ErrorBanner() {
-  const { t } = useTranslation();
-  const error = useShellStore((s) => s.error);
-  const setError = useShellStore((s) => s.setError);
-  if (!error) return null;
-  return (
-    <div className="error-banner" role="alert">
-      <span>{error}</span>
-      <button className="btn btn-small" onClick={() => setError(null)}>
-        {t('common:actions.close')}
-      </button>
-    </div>
-  );
-}

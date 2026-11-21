@@ -8,7 +8,12 @@
     "west": "OUEST",
     "home": "Vue d'accueil"
   },
-  "compass": { "N": "N", "E": "E", "S": "S", "W": "O" },
+  "compass": {
+    "N": "N",
+    "E": "E",
+    "S": "S",
+    "W": "O"
+  },
   "style": {
     "wireframe": "Filaire",
     "hiddenLine": "Lignes cachées",
@@ -25,7 +30,11 @@
     "toPersp": "Passer en vue perspective",
     "zoomExtents": "Zoom étendu (ZF)",
     "isolate": "Isoler / masquer",
-    "soon": "en préparation"
+    "soon": "en préparation",
+    "persp": "Perspective",
+    "ortho": "Ortho"
   },
-  "legend": { "title": "Affectations" }
+  "legend": {
+    "title": "Affectations"
+  }
 }

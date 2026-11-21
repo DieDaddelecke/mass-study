@@ -1,34 +1,46 @@
 import { create } from 'zustand';
 
 export type DialogId = 'projectInfo' | 'settings' | 'constraints' | 'warnings';
-export type RibbonTab =
-  'file' | 'site' | 'volume' | 'modify' | 'view' | 'analysis' | 'output' | 'archicad' | 'context';
+export type LeftTab = 'project' | 'layers' | 'views';
 
-/** Shell-local UI state (dialogs, ribbon tab, error banner). Not part of the document. */
+/** Shell-local UI state (dialogs, panels, toasts). Not part of the document. */
 export interface ShellState {
   dialog: DialogId | null;
-  tab: RibbonTab;
-  /** Visible error message (already translated). */
+  /** Visible error message (already translated), shown as a toast. */
   error: string | null;
-  /** Short info message (e.g. "Enregistré"). */
+  /** Short info message (e.g. "Enregistré"), shown as a toast. */
   info: string | null;
   busy: boolean;
+  /** Command palette (Ctrl+K). */
+  paletteOpen: boolean;
+  leftOpen: boolean;
+  leftTab: LeftTab;
+  inspectorOpen: boolean;
   setDialog: (d: DialogId | null) => void;
-  setTab: (t: RibbonTab) => void;
   setError: (e: string | null) => void;
   setInfo: (i: string | null) => void;
   setBusy: (b: boolean) => void;
+  setPaletteOpen: (o: boolean) => void;
+  setLeftOpen: (o: boolean) => void;
+  setLeftTab: (t: LeftTab) => void;
+  setInspectorOpen: (o: boolean) => void;
 }
 
 export const useShellStore = create<ShellState>()((set) => ({
   dialog: null,
-  tab: 'volume',
   error: null,
   info: null,
   busy: false,
+  paletteOpen: false,
+  leftOpen: true,
+  leftTab: 'project',
+  inspectorOpen: true,
   setDialog: (dialog) => set({ dialog }),
-  setTab: (tab) => set({ tab }),
   setError: (error) => set({ error }),
   setInfo: (info) => set({ info }),
   setBusy: (busy) => set({ busy }),
+  setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+  setLeftOpen: (leftOpen) => set({ leftOpen }),
+  setLeftTab: (leftTab) => set({ leftTab }),
+  setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
 }));

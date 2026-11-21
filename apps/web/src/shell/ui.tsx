@@ -1,5 +1,6 @@
 import * as RDialog from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
+import * as Tooltip from '@radix-ui/react-tooltip';
+import { X, type LucideIcon } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../i18n';
@@ -110,8 +111,8 @@ export function Dialog(props: {
         >
           <div className="dlg-head">
             <RDialog.Title className="dlg-title">{props.title}</RDialog.Title>
-            <RDialog.Close className="icon-btn" aria-label={t('common:actions.close')}>
-              <X size={14} />
+            <RDialog.Close className="ibtn" aria-label={t('common:actions.close')}>
+              <X size={16} strokeWidth={1.75} />
             </RDialog.Close>
           </div>
           <div className="dlg-body">{props.children}</div>
@@ -138,5 +139,104 @@ export function Group({ title, children }: { title: string; children: ReactNode 
       <summary>{title}</summary>
       <div className="pgroup-body">{children}</div>
     </details>
+  );
+}
+
+/** Tooltip wrapper (Radix). Needs a <Tooltip.Provider> at the app root. */
+export function Tip(props: {
+  label: ReactNode;
+  side?: 'top' | 'right' | 'bottom' | 'left';
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>{props.children}</Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content className="tip" side={props.side ?? 'bottom'} sideOffset={8}>
+          {props.label}
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+}
+
+export interface IconButtonProps {
+  icon: LucideIcon;
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  /** Tooltip reason for disabled buttons (defaults to "en préparation"). */
+  reason?: string;
+  shortcut?: string;
+  active?: boolean;
+  side?: 'top' | 'right' | 'bottom' | 'left';
+  className?: string;
+  size?: number;
+}
+
+/** Icon-only button with an accessible label and a tooltip that includes the shortcut. */
+export function IconButton(p: IconButtonProps) {
+  const { t } = useTranslation();
+  const Icon = p.icon;
+  const disabled = p.disabled || !p.onClick;
+  const tip = (
+    <span className="tip-row">
+      <span>{p.label}</span>
+      {disabled ? (
+        <span className="tip-muted">{p.reason ?? t('common:inPreparation')}</span>
+      ) : (
+        p.shortcut && <kbd className="kbd">{p.shortcut}</kbd>
+      )}
+    </span>
+  );
+  return (
+    <Tip label={tip} side={p.side}>
+      {/* span keeps the tooltip working on disabled buttons */}
+      <span className="ibtn-wrap">
+        <button
+          type="button"
+          className={`ibtn${p.active ? ' is-active' : ''}${p.className ? ` ${p.className}` : ''}`}
+          aria-label={p.label}
+          aria-pressed={p.active}
+          aria-keyshortcuts={p.shortcut}
+          disabled={disabled}
+          onClick={p.onClick}
+        >
+          <Icon size={p.size ?? 18} strokeWidth={1.75} />
+        </button>
+      </span>
+    </Tip>
+  );
+}
+
+/** Segmented control for small enums. */
+export function Segmented<T extends string>(props: {
+  value: T;
+  options: { value: T; label: string; icon?: LucideIcon }[];
+  onChange: (v: T) => void;
+  ariaLabel: string;
+  iconOnly?: boolean;
+}) {
+  return (
+    <div className="seg" role="radiogroup" aria-label={props.ariaLabel}>
+      {props.options.map((o) => {
+        const Icon = o.icon;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={props.value === o.value}
+            aria-label={props.iconOnly ? o.label : undefined}
+            title={props.iconOnly ? o.label : undefined}
+            className={`seg-btn${props.value === o.value ? ' is-on' : ''}`}
+            onClick={() => props.onChange(o.value)}
+          >
+            {Icon && <Icon size={14} strokeWidth={1.75} />}
+            {!props.iconOnly && <span>{o.label}</span>}
+          </button>
+        );
+      })}
+    </div>
   );
 }
