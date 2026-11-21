@@ -11,7 +11,7 @@ import type { MassResult, SolidResult } from './analysis.js';
 import { parking } from './mix.js';
 import { analyzeProject, type ProjectAnalysis } from './project.js';
 import type { Traffic } from './typologies.js';
-import type { Project, Usage } from './types.js';
+import type { Project, RuleProfileId, Usage } from './types.js';
 
 /** i18n reference: `key` is a namespaced i18next key (e.g. `common:usage.wohnen`). */
 export interface TextRef {
@@ -112,7 +112,8 @@ export interface ScheduleOptions {
 
 const AREA_KEYS = ['bgf', 'kgf', 'nrf', 'nuf', 'vf', 'tf'] as const;
 
-function surfaceColumns(): ScheduleColumn[] {
+/** The DE "Vollgeschoss" column only makes sense for the DE rule profile. */
+function surfaceColumns(profile: RuleProfileId): ScheduleColumn[] {
   const area = (k: string): ScheduleColumn => ({
     key: k,
     label: tr(`col.${k}`),
@@ -126,7 +127,9 @@ function surfaceColumns(): ScheduleColumn[] {
     { key: 'usage', label: tr('col.usage'), format: 'text', width: 14 },
     { key: 'height', label: tr('col.storeyHeight'), unit: 'm', format: 'dec2', width: 9 },
     { key: 'level', label: tr('col.level'), unit: 'm', format: 'dec2', width: 9 },
-    { key: 'fullStorey', label: tr('col.fullStorey'), format: 'bool', width: 8 },
+    ...(profile === 'DE'
+      ? [{ key: 'fullStorey', label: tr('col.fullStorey'), format: 'bool', width: 8 } as const]
+      : []),
     ...AREA_KEYS.map(area),
     { key: 'bri', label: tr('col.bri'), unit: 'm3', format: 'dec2', sum: true, width: 12 },
   ];
@@ -280,7 +283,12 @@ export function surfacesSchedule(project: Project, opts: ScheduleOptions = {}): 
       },
     });
   }
-  return { id: 'surfaces', title: tr('tab.surfaces'), columns: surfaceColumns(), rows };
+  return {
+    id: 'surfaces',
+    title: tr('tab.surfaces'),
+    columns: surfaceColumns(project.settings.profile),
+    rows,
+  };
 }
 
 // ---------------------------------------------------------------------------
