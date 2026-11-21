@@ -52,6 +52,11 @@ export function defaultSettings(profile: RuleProfileId = 'FR'): Settings {
     cores: {
       maxEscapeDistance: 35,
       sectionLength: { zweispaenner: 22, dreispaenner: 28 },
+      coreWidth: 5.5,
+      coreDepth: 6,
+      galleryWidth: 1.6,
+      corridorWidth: 1.8,
+      landingDepth: 1.5,
     },
     unitMix: profile === 'FR' ? DEFAULT_UNIT_MIX_FR : DEFAULT_UNIT_MIX_DE,
     workplaceArea: 12,

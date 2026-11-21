@@ -311,6 +311,16 @@ export interface Settings {
     maxEscapeDistance: number;
     /** Typical section length served by one core per access type, m. */
     sectionLength: Partial<Record<AccessType, number>>;
+    /** Schematic core size (stair + lift) along the building axis, m (default 5.5). */
+    coreWidth?: number;
+    /** Schematic core size across the building depth, m (default 6). */
+    coreDepth?: number;
+    /** Width of the access gallery (coursive / Laubengang), m (default 1.6). */
+    galleryWidth?: number;
+    /** Width of the central corridor (couloir central / Mittelflur), m (default 1.8). */
+    corridorWidth?: number;
+    /** Depth of the landing in front of the core (palier), m (default 1.5). */
+    landingDepth?: number;
   };
   unitMix: UnitType[];
   workplaceArea: number;
