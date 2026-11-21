@@ -25,7 +25,9 @@ import {
 import { requiredCores, resolveAccess } from './typologies.js';
 import {
   facadeOf,
+  minUnitWidth,
   polygonEdges,
+  roomsFit,
   requiredFacade,
   resolveUnitRules,
   unitRooms,
@@ -455,6 +457,8 @@ function rowTypes(
 interface FacadeCtx {
   /** Minimum façade length of a type, m. */
   req: (t: UnitType) => number;
+  /** Minimum width of a type with `sides` equal façades (+ fixed extra pieces), m. */
+  width: (t: UnitType, sides: number, extra?: number[]) => number;
   /** Next smaller type of the mix (fewer rooms), if any. */
   down: (t: UnitType) => UnitType | undefined;
   /** Gallery side counts as façade. */
@@ -562,11 +566,13 @@ function planBar(
             // third unit (behind the landing) = the smallest type
             let wm = (est * (small?.areaTarget ?? 1)) / tot / td;
             wm = Math.min(Math.max(wm, cw), S - 6);
+            // no wider than the type allows (its area), but at least its façade requirement
+            if (small) wm = Math.min(wm, small.areaMax / td);
             wm = Math.max(wm, small ? fc.req(small) : 0);
             const A = S * D - cw * cd - wm * dim.landingDepth;
             const side = (wm - cw) / 2;
-            const lo = Math.max(3, big ? (fc.req(big) - side) / 2 : 0);
-            const hi = S - wm - Math.max(3, mid ? (fc.req(mid) - side) / 2 : 0);
+            const lo = Math.max(3, big ? fc.width(big, 2, [side]) : 0);
+            const hi = S - wm - Math.max(3, mid ? fc.width(mid, 2, [side]) : 0);
             let wl = ((A * (big?.areaTarget ?? 1)) / tot - side * cd) / D;
             wl = Math.min(Math.max(wl, 3), S - wm - 3);
             wl = Math.min(Math.max(wl, lo), hi);
@@ -593,8 +599,8 @@ function planBar(
           // right unit 2 (s1 − c − cw / 2); the core moves within these bounds
           const noBack = D - kb1 < 1e-6 ? cw : 0;
           const bounds = (x: (UnitType | undefined)[]) => [
-            s0 + ((x[0] ? fc.req(x[0]) : 0) + noBack) / 2,
-            s1 - cw / 2 - (x[1] ? fc.req(x[1]) : 0) / 2,
+            s0 + (x[0] ? fc.width(x[0], 2) : 0) + noBack / 2,
+            s1 - cw / 2 - (x[1] ? fc.width(x[1], 2) : 0),
           ];
           const ts = fitTypes(pick(A, 2), fc, (x) => {
             const [lo, hi] = bounds(x);
@@ -792,6 +798,7 @@ export function storeyLayout(
   const rules = resolveUnitRules(settings);
   const fc: FacadeCtx = {
     req: (t) => requiredFacade(t, rules),
+    width: (t, sides, extra = []) => minUnitWidth(t, sides, rules, extra),
     down: (t) => {
       const r = unitRooms(t);
       return [...mix]
@@ -915,7 +922,8 @@ export function storeyLayout(
       rows.forEach((row, ri) => {
         const [a0, b0, a1, b1] = row.rect;
         // each unit at least as wide as its façade requirement (per façade side)
-        const minWidth = (t: UnitType) => fc.req(t) / Math.max(1, row.sides);
+        // rooms are not split over two façades (séjour, chambre PMR, chambres each on one side)
+        const minWidth = (t: UnitType) => minUnitWidth(t, row.sides, rules);
         const len = a1 - a0;
         let ordered = rowTypes(rowAreas[ri]!, pool, mix, avgTarget, undefined, {
           length: len,
@@ -1041,7 +1049,10 @@ export function storeyLayout(
       const polygon = polys[i]!;
       const area = polygonArea(polygon);
       const facade = facadeOf(polygon, facadeSegs);
-      const allowed = mix.filter((t) => fc.req(t) <= facade.length + 1e-6);
+      const pieces = facade.segments.map(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]));
+      const allowed = mix.filter(
+        (t) => fc.req(t) <= facade.length + 1e-6 && roomsFit(t, pieces, rules),
+      );
       const pool = allowed.length ? allowed : mix;
       let choice = u.type ?? typeByArea(area, pool, new Map());
       const t = choice.type;
@@ -1062,7 +1073,7 @@ export function storeyLayout(
         outOfRange: choice.outOfRange,
         facade: facade.length,
         facadeRequired: need,
-        facadeOk: facade.length >= need - 1e-6,
+        facadeOk: facade.length >= need - 1e-6 && roomsFit(choice.type, pieces, rules),
         facadeSegments: facade.segments,
         rooms: unitRoomLayout(polygon, facade.segments, unitRooms(choice.type), rules, (seg) => {
           // séjour preferably on the outer façade, where the outdoor space can go
