@@ -303,9 +303,13 @@ function distributeCores(
   access: AccessType,
   settings: Settings,
   dim: LayoutDimensions,
+  avgTarget: number,
 ): number[] {
   if (access === 'reihenhaus' || !bars.length) return bars.map(() => 0);
-  const total = requiredCores(mass, access, settings);
+  const total = Math.max(
+    requiredCores(mass, access, settings),
+    mixCores(bars, access, dim, avgTarget),
+  );
   const fits = bars.map((b) => b.length >= dim.coreWidth + 4);
   const weights = bars.map((b, i) => (fits[i] ? b.length : 0));
   if (!weights.some((w) => w > 0)) {
@@ -318,6 +322,35 @@ function distributeCores(
   return out.map((n, i) =>
     fits[i] ? Math.min(n, Math.max(1, Math.floor(bars[i]!.length / (dim.coreWidth + 8)))) : 0,
   );
+}
+
+/** Gross-to-net factor of a dwelling (walls, shafts) used to size spänner sections. */
+const UNIT_GROSS_FACTOR = 1.12;
+
+/**
+ * Cores needed so that the units of a spänner type (2 or 3 per landing) get the average target
+ * area of the unit mix: section length = (units × target × wall factor + core + landing) / depth.
+ * The regulatory minimum (`requiredCores`) still applies on top.
+ */
+export function mixCores(
+  bars: readonly { length: number; depth: number }[],
+  access: AccessType,
+  dim: LayoutDimensions,
+  avgTarget: number,
+): number {
+  const perCore = access === 'zweispaenner' ? 2 : access === 'dreispaenner' ? 3 : 0;
+  if (!perCore || !(avgTarget > 0)) return 0;
+  let n = 0;
+  for (const b of bars) {
+    if (b.depth <= 0) continue;
+    const section =
+      (perCore * avgTarget * UNIT_GROSS_FACTOR +
+        dim.coreWidth * dim.coreDepth +
+        dim.coreWidth * dim.landingDepth) /
+      b.depth;
+    n += b.length / section;
+  }
+  return Math.max(1, Math.round(n));
 }
 
 /** Types for a row of area `area`: count and combination closest to the area. */
@@ -663,7 +696,7 @@ export function storeyLayout(
     : [];
   const pick = (area: number, count: number): UnitType[] =>
     mix.length ? rowTypes(area, typePool, mix, avgTarget, count) : [];
-  const coresPerBar = distributeCores(bars, mass, effAccess, settings, dim);
+  const coresPerBar = distributeCores(bars, mass, effAccess, settings, dim, avgTarget);
   for (const [bi, bar] of bars.entries()) {
     {
       regions.push(...bar.region);

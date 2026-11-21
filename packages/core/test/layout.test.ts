@@ -6,6 +6,8 @@ import {
   massToSolids,
   polygonArea,
   storeyLayout,
+  layoutDimensions,
+  mixCores,
   massLayout,
   massLayouts,
   union,
@@ -65,12 +67,24 @@ describe('storeyLayout', () => {
     checkPartition(l);
   });
 
-  it('Dreispänner: 3 units per core', () => {
+  it('Dreispänner: 3 units per core, cores sized from the unit mix', () => {
     const l = layoutOf({ kind: 'solitaer', length: 50, depth: 14 }, 'dreispaenner');
-    expect(l.cores).toHaveLength(2);
-    expect(l.units).toHaveLength(6);
-    for (let c = 0; c < 2; c++) expect(l.units.filter((u) => u.coreIndex === c)).toHaveLength(3);
+    // 50 m bar: the regulatory minimum is 2 cores, the mix (avg. target area) asks for 3
+    expect(l.cores).toHaveLength(3);
+    expect(l.units).toHaveLength(9);
+    for (let c = 0; c < 3; c++) expect(l.units.filter((u) => u.coreIndex === c)).toHaveLength(3);
+    const avgUnit = l.summary.unitArea / l.units.length;
+    expect(avgUnit).toBeLessThan(90);
     checkPartition(l);
+  });
+
+  it('mixCores: section length follows units per landing and the average target area', () => {
+    const dim = layoutDimensions(defaultSettings('FR'));
+    const bars = [{ length: 60, depth: 13 }];
+    expect(mixCores(bars, 'zweispaenner', dim, 65)).toBeGreaterThan(
+      mixCores(bars, 'dreispaenner', dim, 65),
+    );
+    expect(mixCores(bars, 'laubengang', dim, 65)).toBe(0);
   });
 
   it('Laubengang follows the mix within ±5 %', () => {
