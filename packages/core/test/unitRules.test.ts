@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  assignRooms,
+  minUnitWidth,
+  roomMinWidths,
+  roomsFit,
   DEFAULT_UNIT_MIX_DE,
   DEFAULT_UNIT_MIX_FR,
   DEFAULT_UNIT_RULES,
@@ -69,6 +73,25 @@ function layout(t: Typology, access: AccessType, settings: Settings = defaultSet
   );
 }
 
+describe('room-based widths', () => {
+  const t = (n: number) => ({ id: `T${n}`, label: `T${n}` });
+  it('assigns rooms to façade pieces without splitting them', () => {
+    expect(roomMinWidths(t(4))).toEqual([3.6, 2.8, 2.5, 2.5]);
+    expect(assignRooms([3.6, 2.8], [3.5, 3.5], 0.1)).toBeNull();
+    expect(assignRooms([3.6, 2.8], [3.6, 2.8], 0.1)).toEqual([0, 1]);
+    expect(roomsFit(t(3), [6.2, 2.8])).toBe(true);
+    expect(roomsFit(t(3), [4.5, 4.6])).toBe(false);
+  });
+  it('minimum widths with one or two façades', () => {
+    expect(minUnitWidth(t(1), 1)).toBeCloseTo(3.6);
+    expect(minUnitWidth(t(1), 2)).toBeCloseTo(3.6);
+    expect(minUnitWidth(t(2), 2)).toBeCloseTo(3.6);
+    // T3: séjour on one side, PMR + chambre (2.80 + 0.10 + 2.50) on the other
+    expect(minUnitWidth(t(3), 2)).toBeCloseTo(5.4);
+    expect(minUnitWidth(t(4), 1)).toBeCloseTo(11.7);
+  });
+});
+
 describe('layout meets the façade rules', () => {
   const cases: [AccessType, number, number][] = [
     ['zweispaenner', 40, 12],
@@ -129,7 +152,10 @@ describe('layout meets the façade rules', () => {
       ...s,
       unitRules: { ...DEFAULT_UNIT_RULES, livingMinFacade: 9 },
     });
-    for (const u of l.units) expect(u.facadeOk || u.facade < 9).toBe(true);
+    // a séjour needs 9 m on one façade piece: units without such a piece are flagged
+    const longest = (u: (typeof l.units)[number]) =>
+      Math.max(...u.facadeSegments.map(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1])));
+    for (const u of l.units) expect(u.facadeOk || longest(u) < 9).toBe(true);
     expect(l.summary.facadeViolations).toBe(l.units.filter((u) => !u.facadeOk).length);
   });
 });

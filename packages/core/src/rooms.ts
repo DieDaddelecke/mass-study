@@ -12,7 +12,7 @@ import {
   pointInPolygon,
   polygonArea,
 } from './geometry.js';
-import { facadeOf } from './unitRules.js';
+import { assignRooms, facadeOf } from './unitRules.js';
 import type { Polygon, UnitRules, Vec2 } from './types.js';
 
 export type RoomKind = 'sejour' | 'chambrePmr' | 'chambre';
@@ -142,79 +142,128 @@ export function unitRoomLayout(
   const program = roomProgram(rooms, rules);
   const free = (r: Run) => r.length - r.used - (r.rooms.length ? wall : 0);
 
-  // 1. minimum widths: each room on the façade piece with the most free length that fits it
-  const placed: { i: number; run: Run }[] = [];
-  program.forEach((room, i) => {
-    const fits = runs.filter((r) => free(r) >= room.min - 1e-6);
-    const better = (x: Run, y: Run) =>
-      i === 0 && y.pref !== x.pref ? y.pref > x.pref : free(y) > free(x);
-    const run = (fits.length ? fits : runs).reduce((x, y) => (better(x, y) ? y : x));
-    const w = Math.min(room.min, free(run));
-    if (w < MIN_RUN) return;
-    run.used += w + (run.rooms.length ? wall : 0);
-    run.rooms.push({ i, width: w });
-    placed.push({ i, run });
-  });
-  // 2. grow rooms towards their preferred widths with the remaining façade (séjour first)
-  for (const run of runs)
-    for (const kind of ['sejour', 'chambrePmr', 'chambre'] as const)
-      for (const rm of run.rooms) {
-        if (program[rm.i]!.kind !== kind) continue;
-        const add = Math.max(0, Math.min(PREFERRED[kind] - rm.width, run.length - run.used));
-        rm.width += add;
-        run.used += add;
-      }
+  const attempt = (caps: readonly number[], grow = true): LayoutRoom[] => {
+    for (const r of runs) {
+      r.used = 0;
+      r.rooms = [];
+    }
+    // 1. minimum widths: an exact assignment of the rooms to the façade pieces when one exists
+    //    (séjour on the preferred piece), else each room where the most free length is left
+    const exact = assignRooms(
+      program.map((r) => r.min),
+      caps,
+      wall,
+      runs.map((r) => r.pref),
+    );
+    if (exact)
+      program.forEach((room, i) => {
+        const run = runs[exact[i]!]!;
+        run.used += room.min + (run.rooms.length ? wall : 0);
+        run.rooms.push({ i, width: room.min });
+      });
+    else
+      program.forEach((room, i) => {
+        const fits = runs.filter((r) => free(r) >= room.min - 1e-6);
+        const better = (x: Run, y: Run) =>
+          i === 0 && y.pref !== x.pref ? y.pref > x.pref : free(y) > free(x);
+        const run = (fits.length ? fits : runs).reduce((x, y) => (better(x, y) ? y : x));
+        const w = Math.min(room.min, free(run));
+        if (w < MIN_RUN) return;
+        run.used += w + (run.rooms.length ? wall : 0);
+        run.rooms.push({ i, width: w });
+      });
+    // 2. grow rooms towards their preferred widths with the remaining façade (séjour first)
+    for (const run of grow ? runs : [])
+      for (const kind of ['sejour', 'chambrePmr', 'chambre'] as const)
+        for (const rm of run.rooms) {
+          if (program[rm.i]!.kind !== kind) continue;
+          const add = Math.max(0, Math.min(PREFERRED[kind] - rm.width, run.length - run.used));
+          rm.width += add;
+          run.used += add;
+        }
 
-  // 3. rectangles: rooms one after the other in the largest part of each façade piece that is
-  //    not taken by rooms of another piece (corners), from whichever end fits better
-  const out: LayoutRoom[] = [];
-  const taken: Polygon[] = [];
-  for (const run of runs) {
-    const order = [...run.rooms].sort((x, y) => x.i - y.i);
-    if (!order.length) continue;
-    const [g0, g1] = freeGap(run, taken);
-    const place = (reverse: boolean) => {
-      const res: { room: LayoutRoom; block: Polygon }[] = [];
-      let s = reverse ? g1 : g0;
-      for (const rm of order) {
-        const room = program[rm.i]!;
-        const [share, lo, hi] = DEPTH[room.kind];
-        const d = Math.min(
-          Math.max(run.depth * share, lo),
-          hi,
-          Math.max(run.depth - 1, run.depth * 0.7),
-        );
-        const s0 = reverse ? s - rm.width : s;
-        const s1 = s0 + rm.width;
-        s = reverse ? s0 - wall : s1 + wall;
-        let pieces = intersection([unit], [box(run, s0, s1, 0, d)]);
-        if (taken.length) pieces = difference(pieces, taken);
-        pieces = pieces.filter((p) => polygonArea(p) > 1);
-        if (!pieces.length) continue;
-        const polygon = pieces.reduce((x, y) => (polygonArea(y) > polygonArea(x) ? y : x));
-        const facade = facadeOf(polygon, facadeSegments).length;
-        res.push({
-          room: {
-            kind: room.kind,
-            polygon,
-            area: polygonArea(polygon),
-            facade,
-            facadeRequired: room.min,
-            facadeOk: facade >= room.min - 0.02,
-          },
-          // keeps a partition between this room and rooms placed later on other façades
-          block: box(run, s0 - wall, s1 + wall, -wall, d + wall),
-        });
+    // 3. rectangles: rooms one after the other in the largest part of each façade piece that is
+    //    not taken by rooms of another piece (corners), from whichever end fits better
+    const out: LayoutRoom[] = [];
+    const taken: Polygon[] = [];
+    for (const run of runs) {
+      const order = [...run.rooms].sort((x, y) => x.i - y.i);
+      if (!order.length) continue;
+      const [g0, g1] = freeGap(run, taken);
+      const total = order.reduce((x, rm) => x + rm.width, 0) + wall * (order.length - 1);
+      const place = (reverse: boolean, centre = false) => {
+        const res: { room: LayoutRoom; block: Polygon }[] = [];
+        let s = centre ? g0 + Math.max(0, (g1 - g0 - total) / 2) : reverse ? g1 : g0;
+        for (const rm of order) {
+          const room = program[rm.i]!;
+          const [share, lo, hi] = DEPTH[room.kind];
+          const d = Math.min(
+            Math.max(run.depth * share, lo),
+            hi,
+            Math.max(run.depth - 1, run.depth * 0.7),
+          );
+          const s0 = reverse ? s - rm.width : s;
+          const s1 = s0 + rm.width;
+          s = reverse ? s0 - wall : s1 + wall;
+          let pieces = intersection([unit], [box(run, s0, s1, 0, d)]);
+          if (taken.length) pieces = difference(pieces, taken);
+          pieces = pieces.filter((p) => polygonArea(p) > 1);
+          if (!pieces.length) continue;
+          const polygon = pieces.reduce((x, y) => (polygonArea(y) > polygonArea(x) ? y : x));
+          const facade = facadeOf(polygon, facadeSegments).length;
+          res.push({
+            room: {
+              kind: room.kind,
+              polygon,
+              area: polygonArea(polygon),
+              facade,
+              facadeRequired: room.min,
+              facadeOk: facade >= room.min - 0.02,
+            },
+            // keeps a partition between this room and rooms placed later on other façades
+            block: box(run, s0 - wall, s1 + wall, -wall, d + wall),
+          });
+        }
+        return res;
+      };
+      const score = (r: ReturnType<typeof place>) =>
+        r.reduce((a, x) => a + (x.room.facadeOk ? 1000 : 0) + Math.min(x.room.facade, 1), 0);
+      // centred first (keeps the corners free for the rooms of the other façade), on a tie
+      const best = [place(false, true), place(false), place(true)].sort(
+        (a, b) => score(b) - score(a),
+      )[0]!;
+      for (const x of best) {
+        out.push(x.room);
+        taken.push(x.block);
       }
-      return res;
-    };
-    const score = (r: ReturnType<typeof place>) =>
-      r.reduce((a, x) => a + (x.room.facadeOk ? 1000 : 0) + x.room.facade, 0);
-    const fwd = place(false);
-    const best = taken.length ? [fwd, place(true)].sort((a, b) => score(b) - score(a))[0]! : fwd;
-    for (const x of best) {
-      out.push(x.room);
-      taken.push(x.block);
+    }
+    return out;
+  };
+  // pieces meeting at a corner lose the depth of the rooms of the other piece: try the plain
+  // lengths first, then with that loss, and keep the layout with the most compliant rooms
+  const corner = (r: Run): number =>
+    [r.o, at(r, r.length, 0)].filter((p) =>
+      runs.some(
+        (q) =>
+          q !== r &&
+          Math.abs(q.u[0] * r.u[0] + q.u[1] * r.u[1]) < 0.5 &&
+          [q.o, at(q, q.length, 0)].some((x) => Math.hypot(p[0] - x[0], p[1] - x[1]) < 0.05),
+      ),
+    ).length;
+  const ok = (rs: LayoutRoom[]) =>
+    rs.filter((r) => r.facadeOk).length * 1000 +
+    rs.length * 100 +
+    rs.reduce((x, r) => x + r.facade, 0);
+  let out = attempt(runs.map((r) => r.length));
+  if (out.some((r) => !r.facadeOk) && runs.some((r) => corner(r) > 0)) {
+    const loss = DEPTH.sejour[2] + wall;
+    for (const [caps, grow] of [
+      [runs.map((r) => r.length), false],
+      [runs.map((r) => Math.max(0, r.length - corner(r) * loss)), true],
+      [runs.map((r) => Math.max(0, r.length - corner(r) * loss)), false],
+    ] as const) {
+      const alt = attempt(caps, grow);
+      if (ok(alt) > ok(out)) out = alt;
     }
   }
   const rank: Record<RoomKind, number> = { sejour: 0, chambrePmr: 1, chambre: 2 };
