@@ -423,6 +423,20 @@ export function getCommands(): Command[] {
       icon: Download,
       run: () => exportActiveCsv(),
     }),
+    proj({
+      id: 'output.dossier',
+      group: 'output',
+      label: t('ribbon.dossier'),
+      icon: FileText,
+      run: () => shell.setDialog('dossier'),
+    }),
+    proj({
+      id: 'output.pdf',
+      group: 'output',
+      label: i18n.t('dossier:title') + ' (PDF)',
+      icon: Download,
+      run: () => shell.setDialog('dossier'),
+    }),
   ]) {
     const i = cmds.findIndex((x) => x.id === c.id);
     if (i >= 0) cmds[i] = c;

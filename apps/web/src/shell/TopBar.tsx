@@ -174,7 +174,9 @@ function FileMenu() {
                     ? () => void exportAllXlsx()
                     : f === 'csv'
                       ? () => exportActiveCsv()
-                      : undefined
+                      : f === 'pdf'
+                        ? () => setDialog('dossier')
+                        : undefined
               }
             />
           ))}

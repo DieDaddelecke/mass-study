@@ -1,0 +1,80 @@
+/* "Créer le dossier" dialog: options column + page preview. */
+.dlg:has(.dossier-grid) {
+  width: min(1240px, calc(100vw - 32px));
+}
+.dossier-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 20px;
+  min-height: 0;
+}
+.dossier-options {
+  max-height: min(72vh, 760px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.dossier-h {
+  margin: 14px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.dossier-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.dossier-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.dossier-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.dossier-dot {
+  min-width: 24px;
+  height: 24px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.3));
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.dossier-dot.active {
+  background: var(--accent, #4f7cff);
+  border-color: transparent;
+  color: #fff;
+}
+.dossier-page {
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+}
+.dossier-page svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.dossier-caption {
+  font-size: 12px;
+}
+.dossier-logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dossier-logo img {
+  max-height: 28px;
+  max-width: 80px;
+  object-fit: contain;
+}
