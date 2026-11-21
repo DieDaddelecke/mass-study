@@ -1,3 +1,4 @@
+/* Design tokens (SPEC §9) – light theme, dense professional tool. */
 :root {
   --bg: #f3f3f3;
   --panel: #ffffff;
@@ -5,49 +6,99 @@
   --border: #cdcdcd;
   --text: #1f1f1f;
   --text-muted: #6b6b6b;
+  --hover: #e3eef9;
   --accent: #1f7fd0;
-  font:
-    12px/1.4 'Segoe UI',
-    system-ui,
-    sans-serif;
+  --selection: #2f8be6;
+  --temp-dim: #1559d6;
+  --warning: #e8a600;
+  --error: #d23b2f;
+  --ok: #2e9e4f;
+  --radius: 2px;
+  --gap-1: 4px;
+  --gap-2: 8px;
+  --font: 'Segoe UI', Selawik, system-ui, -apple-system, sans-serif;
+  font: 12px/1.35 var(--font);
   color: var(--text);
   background: var(--bg);
+  color-scheme: light;
 }
-body {
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
   margin: 0;
+  overflow: hidden;
 }
-.shell {
-  max-width: 640px;
-  margin: 32px auto;
-  padding: 16px;
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+.app {
+  display: grid;
+  height: 100%;
+  grid-template-columns: 280px 1fr;
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-areas:
+    'ribbon ribbon'
+    'options options'
+    'side main'
+    'footer footer';
+}
+.app-ribbon {
+  grid-area: ribbon;
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 2px;
+  border-bottom: 1px solid var(--border);
 }
-h1 {
-  font-size: 18px;
-  margin: 0 0 4px;
+.app-options {
+  grid-area: options;
+  background: var(--panel-header);
+  border-bottom: 1px solid var(--border);
+  min-height: 28px;
 }
-.muted {
+.app-side {
+  grid-area: side;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+}
+.app-properties,
+.app-browser {
+  min-height: 0;
+  overflow: auto;
+}
+.app-browser {
+  border-top: 1px solid var(--border);
+}
+.app-main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.app-view {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #fff;
+}
+.app-footer {
+  grid-area: footer;
+  background: var(--panel-header);
+  border-top: 1px solid var(--border);
+}
+.placeholder {
+  display: grid;
+  place-items: center;
+  height: 100%;
   color: var(--text-muted);
-}
-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 11px;
-}
-caption {
-  text-align: left;
-  padding: 4px 0;
-  font-weight: 600;
-}
-th,
-td {
-  border: 1px solid var(--border);
-  padding: 2px 6px;
-  text-align: left;
-}
-td {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
 }

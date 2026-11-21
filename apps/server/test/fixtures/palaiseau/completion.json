@@ -1,0 +1,31 @@
+{
+  "status": "OK",
+  "results": [
+    {
+      "x": 2.197965,
+      "y": 48.713064,
+      "country": "StreetAddress",
+      "city": "Palaiseau",
+      "oldcity": "",
+      "kind": "housenumber",
+      "zipcode": "91120",
+      "street": "Boulevard Thomas Gobert",
+      "metropole": true,
+      "fulltext": "27 Boulevard Thomas Gobert, 91120 Palaiseau",
+      "classification": 7
+    },
+    {
+      "x": 2.158991,
+      "y": 48.713873,
+      "country": "StreetAddress",
+      "city": "Gif-sur-Yvette",
+      "oldcity": "",
+      "kind": "street",
+      "zipcode": "91190",
+      "street": "Rue Thomas Gobert",
+      "metropole": true,
+      "fulltext": "Rue Thomas Gobert, 91190 Gif-sur-Yvette",
+      "classification": 7
+    }
+  ]
+}

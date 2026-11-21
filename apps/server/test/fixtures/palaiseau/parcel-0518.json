@@ -1,0 +1,45 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "parcelle.67684594",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [2.19788422, 48.71317102],
+              [2.1987887, 48.71307023],
+              [2.19869012, 48.71268253],
+              [2.19867704, 48.71263117],
+              [2.19777258, 48.71273195],
+              [2.19777885, 48.712757],
+              [2.19788422, 48.71317102]
+            ]
+          ]
+        ]
+      },
+      "geometry_name": "geom",
+      "properties": {
+        "gid": 66974747,
+        "numero": "0518",
+        "feuille": 2,
+        "section": "0H",
+        "code_dep": "91",
+        "nom_com": "Palaiseau",
+        "code_com": "477",
+        "com_abs": "000",
+        "code_arr": "000",
+        "idu": "914770000H0518",
+        "contenance": 3341,
+        "code_insee": "91477"
+      }
+    }
+  ],
+  "totalFeatures": 1,
+  "numberMatched": 1,
+  "numberReturned": 1,
+  "timeStamp": "2026-11-21T11:52:01.417Z",
+  "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::4326" } }
+}
