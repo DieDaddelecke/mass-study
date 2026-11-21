@@ -7,14 +7,26 @@ import type { TapirStory } from './tapir';
  * (same commands, same shapes, same "kubatur.projectId" guard on deletes). For tests only.
  */
 export class FakeArchicad implements ArchicadCaller {
-  elements = new Map<string, { type: string; data?: unknown; details?: Record<string, unknown> }>();
+  elements = new Map<
+    string,
+    { type: string; data?: unknown; details?: Record<string, unknown>; layer?: string }
+  >();
   userData = new Map<string, Record<string, string>>();
   attributes: Record<string, { attributeId: { guid: string }; index: number; name: string }[]> = {
-    Layer: [{ attributeId: { guid: 'L-1' }, index: 1, name: 'Calque Archicad' }],
+    Layer: [
+      { attributeId: { guid: 'L-1' }, index: 1, name: 'Calque Archicad' },
+      { attributeId: { guid: 'L-Z' }, index: 2, name: '8 - ZONES_SDP' },
+    ],
     ZoneCategory: [{ attributeId: { guid: 'C-1' }, index: 1, name: 'Zone' }],
   };
   log: string[] = [];
   refuseZones = false;
+  /** Layer of the zone tool defaults (guid). */
+  zoneDefaultLayer = 'L-Z';
+  /** Hidden layers: elements on them cannot be tagged, changed or deleted. */
+  hiddenLayers = new Set<string>(['L-Z']);
+  /** Untitled (test) project: SetStories allowed. */
+  untitled = true;
   private n = 0;
 
   constructor(
@@ -23,6 +35,9 @@ export class FakeArchicad implements ArchicadCaller {
       { index: 0, name: 'RDC', level: 0 },
       { index: 1, name: 'R+1', level: 3.5 },
       { index: 2, name: 'R+2', level: 6.5 },
+      { index: 3, name: 'R+3', level: 9.5 },
+      { index: 4, name: 'R+4', level: 12.5 },
+      { index: 5, name: 'R+5', level: 15.5 },
     ],
   ) {}
 
@@ -48,7 +63,8 @@ export class FakeArchicad implements ArchicadCaller {
         const err = check(it);
         if (err) return { error: { code: -2130313112, message: err } };
         const g = this.guid();
-        this.elements.set(g, { type, data: it });
+        const layer = type === 'Zone' ? this.zoneDefaultLayer : 'L-1';
+        this.elements.set(g, { type, data: it, layer });
         return { elementId: { guid: g } };
       }),
     };
@@ -57,7 +73,12 @@ export class FakeArchicad implements ArchicadCaller {
   private handle(command: string, p: any): unknown {
     switch (command) {
       case 'GetStories':
-        return { firstStory: -1, lastStory: 2, actStory: 0, stories: this.stories };
+        return {
+          firstStory: -1,
+          lastStory: this.stories.length - 2,
+          actStory: 0,
+          stories: this.stories,
+        };
       case 'GetLibraries':
         return {
           libraries: [
@@ -69,7 +90,40 @@ export class FakeArchicad implements ArchicadCaller {
           ],
         };
       case 'GetProjectInfo':
-        return { isUntitled: true, isTeamwork: false };
+        return { isUntitled: this.untitled, isTeamwork: false };
+      case 'GetLayerOfElementDefaults':
+        return {
+          layersOfElementDefaults: p.elementTypes.map((t: string) =>
+            t === 'Zone'
+              ? {
+                  elementType: t,
+                  layerId: { guid: this.zoneDefaultLayer },
+                  layerName: this.attributes.Layer!.find(
+                    (l) => l.attributeId.guid === this.zoneDefaultLayer,
+                  )?.name,
+                }
+              : { error: { code: 1, message: 'unsupported' } },
+          ),
+        };
+      case 'SetLayerOfElementDefaults':
+        return {
+          executionResults: p.layersOfElementDefaults.map((it: any) => {
+            if (it.elementType === 'Zone') this.zoneDefaultLayer = it.layerId.guid;
+            return { success: it.elementType === 'Zone' };
+          }),
+        };
+      case 'SetStories':
+        if (!this.untitled) throw new Error('refused: SetStories only in an untitled project');
+        {
+          const base = p.stories[0]?.index ?? this.stories[0]?.index ?? 0;
+          this.stories = p.stories.map((s: any, i: number) => ({
+            index: base + i,
+            name: s.name,
+            level: s.level,
+            dispOnSections: s.dispOnSections,
+          }));
+        }
+        return {};
       case 'GetAttributesByType':
         return { attributes: this.attributes[p.attributeType] ?? [] };
       case 'CreateLayers':
@@ -100,9 +154,11 @@ export class FakeArchicad implements ArchicadCaller {
         return this.create('Zone', p.zonesData, (z) =>
           this.refuseZones
             ? 'Failed to create new Zone'
-            : this.stories.some((s) => s.index === z.floorIndex)
-              ? null
-              : 'bad floor',
+            : !this.stories.some((s) => s.index === z.floorIndex)
+              ? 'bad floor'
+              : this.overlaps(z)
+                ? 'Zones overlap'
+                : null,
         );
       case 'CreateSlabs':
         return this.create('Slab', p.slabsData, () => null);
@@ -118,6 +174,11 @@ export class FakeArchicad implements ArchicadCaller {
       case 'SetElementUserData':
         return {
           executionResults: p.elementUserData.map((it: any) => {
+            if (this.hidden(it.elementId.guid))
+              return {
+                success: false,
+                error: { code: -2130312912, message: 'the element is not editable' },
+              };
             const d = this.userData.get(it.elementId.guid) ?? {};
             for (const kv of it.userData) d[kv.key] = kv.value;
             this.userData.set(it.elementId.guid, d);
@@ -139,6 +200,7 @@ export class FakeArchicad implements ArchicadCaller {
         return {
           executionResults: p.elementsWithDetails.map((it: any) => {
             const e = this.elements.get(it.elementId.guid);
+            if (this.hidden(it.elementId.guid)) return { success: false };
             if (e) e.details = { ...e.details, ...it.details };
             return { success: !!e };
           }),
@@ -157,6 +219,25 @@ export class FakeArchicad implements ArchicadCaller {
       default:
         throw new Error(`fake: ${command} not implemented`);
     }
+  }
+
+  private hidden(guid: string) {
+    const l = this.elements.get(guid)?.layer;
+    return !!l && this.hiddenLayers.has(l);
+  }
+
+  /** Same floor and same first vertex = overlap (enough for tests). */
+  private overlaps(z: any) {
+    const p = z.geometry.polygonCoordinates[0];
+    return [...this.elements.values()].some((e: any) => {
+      if (e.type !== 'Zone' || !e.data) return false;
+      const q = e.data.geometry.polygonCoordinates[0];
+      return e.data.floorIndex === z.floorIndex && q.x === p.x && q.y === p.y;
+    });
+  }
+
+  layerOf(guid: string) {
+    return this.elements.get(guid)?.layer;
   }
 
   count(type: string) {

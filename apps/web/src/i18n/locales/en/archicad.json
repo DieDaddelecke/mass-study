@@ -38,6 +38,19 @@
     "replace": "Replace previously transferred elements ({{count}})",
     "create": "Add, delete nothing"
   },
+  "prepare": {
+    "title": "Prepare Archicad",
+    "zoneLayer": "The Zone tool's default layer is “{{layer}}”. During the transfer zones are created on “MS - Massenstudie”, then that setting is restored.",
+    "storiesDiffer": "Archicad's stories do not match the project levels. Several levels fall on the same story, so their zones overlap.",
+    "before": "Current Archicad story",
+    "after": "Proposed",
+    "newStory": "(new story)",
+    "storiesTestOnly": "Untitled project: the stories can be adjusted. Elements already placed on a story follow its new height.",
+    "storiesManual": "Stories are only adjusted automatically in an untitled (test) project. In a saved project, adjust them in Archicad (Design › Story Settings) or keep the offset placement.",
+    "adjust": "Adjust Archicad stories…",
+    "confirm": "Confirm: change {{count}} stories",
+    "storiesDone": "Archicad stories adjusted. The preview below reflects them."
+  },
   "preview": {
     "title": "Preview",
     "summary": "{{zones}} zones, {{morphs}} volumes, {{slabs}} slabs on {{storeys}} levels, on layer “MS - Massenstudie”.",
@@ -45,7 +58,7 @@
     "storey": "Storey",
     "archicadStory": "Archicad story",
     "offset": "Offset",
-    "storiesUnchanged": "The Archicad story structure is never changed: each level goes onto the nearest Archicad story below it."
+    "storiesUnchanged": "Each level goes on the nearest Archicad story below it, with an offset where needed."
   },
   "warning": {
     "noStories": "The Archicad project has no stories.",
@@ -53,7 +66,8 @@
     "teamwork": "Teamwork project: elements must be reservable.",
     "librariesMissing": "Libraries unavailable in Archicad: {{names}}. If the zone stamp is in one of them, Archicad refuses zones; they are then replaced by volumes.",
     "levelWithoutStory": "Level {{level}} m ({{label}}) has no Archicad story at that height: placed on “{{story}}” with an offset.",
-    "belowLowestStory": "Level {{level}} m ({{label}}) is below the lowest Archicad story."
+    "belowLowestStory": "Level {{level}} m ({{label}}) is below the lowest Archicad story.",
+    "sharedStory": "Levels {{labels}} all fall on story “{{story}}”: their zones overlap and Archicad refuses them. They will be created as morphs. Adjust the stories to avoid this."
   },
   "progress": {
     "prepare": "Preparing (layer, categories)…",
@@ -68,7 +82,8 @@
     "created": "Created: {{zones}} zones, {{morphs}} volumes, {{slabs}} slabs.",
     "deleted": "{{count}} previous elements deleted.",
     "zoneFallback": "Archicad refused every zone (zone stamp or library missing). Volumes were created instead. Load the project's Archicad library and transfer again.",
-    "removed": "{{count}} elements removed from Archicad."
+    "removed": "{{count}} elements removed from Archicad.",
+    "standIns": "{{count}} zones refused by Archicad (overlap) were replaced by morphs."
   },
   "pill": {
     "ready": "Archicad: connected – open transfer"

@@ -32,15 +32,19 @@ Standardmäßig erlaubte Origins: `http://localhost:5173`, `:8787`, `:8080` (jew
 
 ## Was übertragen wird
 
-| Kubatur                                 | Archicad                                                                                                        | Tapir                                  |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| Geschoss eines Baukörpers (StoreySolid) | **Zone**: Name = Nutzung, Nummer `MS-<Baukörper>-<Geschoss>`, Höhe, Kategorie `MS - <Nutzung>`, Höfe als Löcher | `CreateZones`                          |
-| dasselbe Volumen                        | **Morph** (geschlossener Körper, Höfe ausgespart)                                                               | `CreateMorphs`                         |
-| Geschossdecke (optional)                | **Decke** mit Oberkante auf OKFF, Dicke aus dem Geschossstapel                                                  | `CreateSlabs`                          |
-| –                                       | Ebene `MS - Massenstudie` für alle Elemente                                                                     | `CreateLayers`, `SetDetailsOfElements` |
-| Projekt-ID                              | unsichtbare Element-Benutzerdaten `kubatur.projectId`, `kubatur.item`, `kubatur.rev`                            | `SetElementUserData`                   |
+| Kubatur                                 | Archicad                                                                                                        | Tapir                                                                              |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Geschoss eines Baukörpers (StoreySolid) | **Zone**: Name = Nutzung, Nummer `MS-<Baukörper>-<Geschoss>`, Höhe, Kategorie `MS - <Nutzung>`, Höfe als Löcher | `CreateZones`                                                                      |
+| dasselbe Volumen                        | **Morph** (geschlossener Körper, Höfe ausgespart)                                                               | `CreateMorphs`                                                                     |
+| Geschossdecke (optional)                | **Decke** mit Oberkante auf OKFF, Dicke aus dem Geschossstapel                                                  | `CreateSlabs`                                                                      |
+| –                                       | Ebene `MS - Massenstudie` für alle Elemente                                                                     | `CreateLayers`, `SetLayerOfElementDefaults` (Zonen), `layerIndex` (Decken, Morphs) |
+| Projekt-ID                              | unsichtbare Element-Benutzerdaten `kubatur.projectId`, `kubatur.item`, `kubatur.rev`                            | `SetElementUserData`                                                               |
 
-**Geschosse:** Die Archicad-Geschossstruktur wird nie verändert. Jede Ebene kommt auf das höchste Archicad-Geschoss, das auf oder unter ihr liegt; die Differenz wird als Versatz übernommen (Zone `bottomOffset`, Decke und Morph mit absoluter Höhe). Die Vorschau zeigt die Zuordnung und warnt bei Ebenen ohne passendes Geschoss.
+**Geschosse:** Jede Ebene kommt auf das höchste Archicad-Geschoss, das auf oder unter ihr liegt; die Differenz wird als Versatz übernommen (Zone `bottomOffset`, Decke und Morph mit absoluter Höhe). Die Vorschau zeigt die Zuordnung und warnt bei Ebenen ohne passendes Geschoss. Fallen mehrere Ebenen auf dasselbe Geschoss, überlappen ihre Zonen und Archicad lehnt sie ab (Warnung `sharedStory`); diese Zonen werden einzeln durch Morphs ersetzt.
+
+**Archicad vorbereiten:** Passen die Geschosse nicht, schlägt der Dialog eine Geschossliste vor, in der jede App-Ebene ein eigenes Geschoss auf exakter Höhe bekommt (Geschosse darunter bleiben, überzählige darüber bleiben erhalten und werden nur bei Bedarf gemeinsam angehoben; es wird nie ein Geschoss entfernt). Übernommen wird sie erst nach einer zweiten Bestätigung und nur in einem **unbenannten Projekt** (Testprojekt); in einem gespeicherten Projekt erklärt der Dialog, wie man die Geschosse in Archicad selbst anpasst.
+
+**Ebene der Zonen:** Tapir 2.0 kennt für `CreateZones` keinen `layerIndex`; Zonen landen auf der Standard-Ebene des Zonenwerkzeugs. In der Bürovorlage ist das „8 - ZONES_SDP“, und die ist ausgeblendet: Archicad verweigert dann Benutzerdaten, Ebenenwechsel und Löschen. Folge waren ungekennzeichnete Zonen, die beim Aktualisieren doppelt entstanden. Deshalb wird die Standard-Ebene der Zonen nur für die Dauer der Übertragung auf `MS - Massenstudie` gestellt und danach zurückgesetzt. Schlägt das Kennzeichnen trotzdem fehl, meldet der Bericht jedes betroffene Element („not tagged“).
 
 **Lage:** App-Koordinaten (Ursprung = Grundstücksschwerpunkt) plus Versatz X/Y und Drehung aus dem Dialog.
 
@@ -53,7 +57,9 @@ Standardmäßig erlaubte Origins: `http://localhost:5173`, `:8787`, `:8080` (jew
 Unabhängig von der Web-App erzwungen (`bridge.py`, getestet in `test_bridge.py`):
 
 - bindet nur an `127.0.0.1`; nur erlaubte Origins; jede Anfrage außer `/health` braucht den Pairing-Code;
-- nur eine Positivliste von Tapir-Befehlen; `SetStories`, `DeleteSelectedElements`, IFC-Operationen u. a. sind gesperrt;
+- nur eine Positivliste von Tapir-Befehlen; `DeleteSelectedElements`, IFC-Operationen u. a. sind gesperrt;
+- `SetStories` nur in einem unbenannten Nicht-Teamwork-Projekt und nie mit weniger Geschossen als vorhanden;
+- `SetLayerOfElementDefaults` nur für das Zonenwerkzeug, nur auf eine `MS - `-Ebene und zurück auf genau die Ebene, die vorher eingestellt war;
 - `DeleteElements` und `SetDetailsOfElements` nur für Elemente mit `kubatur.projectId`; bei `SetDetailsOfElements` nur Ebene und ID;
 - Ebenen und Zonenkategorien nur mit Präfix `MS - ` und ohne Überschreiben bestehender.
 
@@ -73,11 +79,12 @@ Die Übertragungslogik (Zuordnung, Befehle, Ausweichweg) liegt in der App (`apps
 - `python3 -m unittest discover -s tools/archicad-bridge` – Bridge gegen `mock_archicad.py` (CORS, Code, Positivliste, Löschschutz).
 - `python tools/archicad-bridge/mock_archicad.py [--refuse-zones]` simuliert Archicad auf Port 19723 zum Ausprobieren ohne Archicad.
 
-Live geprüft am 21.11.2026 mit Archicad 28 (3110) + Tapir 2.0.0 in einem leeren Projekt: Decken (absolute Höhe, Höfe), Morphs (Volumen exakt, z. B. 336 m² × 3,5 m = 1 176 m³), Ebene, Kategorien, Benutzerdaten, Ersetzen und Entfernen. Zonen wurden in der verwendeten Bürovorlage von Archicad abgelehnt (fehlender Zonenstempel) – der Ausweichweg griff wie vorgesehen.
+Live geprüft am 21.11.2026 mit Archicad 28 (3110) + Tapir 2.0.0 in einem leeren Projekt: Decken (absolute Höhe, Höfe), Morphs (Volumen exakt, z. B. 336 m² × 3,5 m = 1 176 m³), Ebene, Kategorien, Benutzerdaten, Ersetzen und Entfernen. Zonen wurden in der verwendeten Bürovorlage von Archicad abgelehnt (fehlender Zonenstempel) – der Ausweichweg griff wie vorgesehen. Am selben Tag mit geladener Bibliothek: Geschosse angepasst (17 Geschosse bleiben 17), 8 Zonen auf eigenen Geschossen auf `MS - Massenstudie` erzeugt und gekennzeichnet, Ersetzen (8 gelöscht, 8 neu, keine Duplikate) und Entfernen; Standard-Ebene des Zonenwerkzeugs danach wieder „8 - ZONES_SDP“.
 
 ## Grenzen
 
 - Kein Rückweg Archicad → App (geplant: `CaptureElementState` / `GetElementChangesSince`).
-- Fehlende Archicad-Geschosse werden nicht angelegt.
+- Geschosse werden nur im unbenannten Testprojekt automatisch angepasst.
+- Flächen: Die Zone zeigt die Polygonfläche (z. B. 1 165,66 m²); die „berechnete Fläche“ in Archicad folgt den Flächenregeln der Vorlage (Abzüge, Raumhöhen) und kann kleiner sein (1 049,09 m²). Eine Decke mit Oberkante auf dem Rohbau kann leicht abweichen. Maßgeblich für die App-Kennzahlen ist die Polygonfläche.
 - Teamwork: Elemente müssen reservierbar sein; Fehler werden je Element gemeldet.
 - Skript-Export (Übertragung ohne laufende Bridge) noch nicht umgesetzt.

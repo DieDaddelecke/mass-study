@@ -12,7 +12,10 @@ Python >= 3.10, standard library only.
 
 Safety rules enforced here, independent of the web app:
   * binds to 127.0.0.1 only, answers only allowed browser origins, needs the pairing token;
-  * only an allow-list of Tapir commands can be called; SetStories and the like cannot;
+  * only an allow-list of Tapir commands can be called;
+  * SetStories only in an untitled (never saved, test) project, and never with fewer stories;
+  * the Zone tool's default layer can only be switched to an "MS - " layer and back to the
+    layer it had before (zones have no layer parameter in Tapir 2.0);
   * DeleteElements / SetDetailsOfElements only act on elements that carry Kubatur's
     user data (key "kubatur.projectId"), so the bridge can never delete or change
     anything Kubatur did not create;
@@ -34,7 +37,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 NAME = "kubatur-archicad-bridge"
 DEFAULT_PORT = 19780
 ARCHICAD_PORTS = range(19723, 19745)
@@ -64,9 +67,17 @@ READ_COMMANDS = {
     "GetGeoLocation",
     "GetSurveyPointTransformation",
     "GetCoordinateOrigins",
+    "GetLayerOfElementDefaults",
 }
 CREATE_COMMANDS = {"CreateZones", "CreateSlabs", "CreateMorphs", "SetElementUserData"}
-GUARDED_COMMANDS = {"DeleteElements", "SetDetailsOfElements", "CreateLayers", "CreateZoneCategories"}
+GUARDED_COMMANDS = {
+    "DeleteElements",
+    "SetDetailsOfElements",
+    "CreateLayers",
+    "CreateZoneCategories",
+    "SetLayerOfElementDefaults",
+    "SetStories",
+}
 API_COMMANDS = {"API.IsAlive", "API.GetProductInfo"}
 
 
@@ -168,6 +179,46 @@ def _require_own(ac: Archicad, port: int, elements: list[dict[str, Any]]) -> Non
         raise BridgeRefusal("refused: could not verify all elements")
 
 
+# Zone tool default layer seen before the bridge switched it to an "MS - " layer, per port.
+_previous_zone_layer: dict[int, str] = {}
+_previous_lock = threading.Lock()
+
+
+def _guard_layer_defaults(ac: Archicad, port: int, p: dict[str, Any]) -> None:
+    items = p.get("layersOfElementDefaults") or []
+    if not isinstance(items, list) or len(items) != 1 or not isinstance(items[0], dict):
+        raise BridgeRefusal("refused: exactly one layer default can be set")
+    it = items[0]
+    guid = (it.get("layerId") or {}).get("guid") if isinstance(it.get("layerId"), dict) else None
+    if it.get("elementType") != "Zone" or not guid:
+        raise BridgeRefusal("refused: only the Zone tool's default layer can be set")
+    layers = ac.tapir(port, "GetAttributesByType", {"attributeType": "Layer"}).get("attributes", [])
+    target = next((a for a in layers if (a.get("attributeId") or {}).get("guid") == guid), None)
+    if target is None:
+        raise BridgeRefusal("refused: unknown layer")
+    with _previous_lock:
+        if str(target.get("name", "")).startswith(NAME_PREFIX):
+            current = ac.tapir(port, "GetLayerOfElementDefaults", {"elementTypes": ["Zone"]})
+            cur = (current.get("layersOfElementDefaults") or [{}])[0]
+            cur_guid = (cur.get("layerId") or {}).get("guid")
+            if cur_guid and not str(cur.get("layerName", "")).startswith(NAME_PREFIX):
+                _previous_zone_layer[port] = cur_guid
+        elif _previous_zone_layer.get(port) == guid:
+            _previous_zone_layer.pop(port, None)
+        else:
+            raise BridgeRefusal("refused: the Zone default layer can only be restored to its previous layer")
+
+
+def _guard_stories(ac: Archicad, port: int, p: dict[str, Any]) -> None:
+    info = ac.tapir(port, "GetProjectInfo")
+    if not info.get("isUntitled") or info.get("isTeamwork"):
+        raise BridgeRefusal("refused: stories are only changed in an untitled test project")
+    new = p.get("stories")
+    current = ac.tapir(port, "GetStories").get("stories", [])
+    if not isinstance(new, list) or len(new) < len(current):
+        raise BridgeRefusal("refused: SetStories must not remove stories")
+
+
 def execute(ac: Archicad, port: int, command: str, parameters: Any) -> Any:
     if port not in ARCHICAD_PORTS:
         raise BridgeRefusal(f"port {port} outside {ARCHICAD_PORTS.start}-{ARCHICAD_PORTS.stop - 1}")
@@ -194,6 +245,10 @@ def execute(ac: Archicad, port: int, command: str, parameters: Any) -> Any:
         for it in p.get(key) or []:
             if not str(it.get("name", "")).startswith(NAME_PREFIX) or "attributeId" in it or "index" in it:
                 raise BridgeRefusal(f"refused: names must start with '{NAME_PREFIX}'")
+    elif command == "SetLayerOfElementDefaults":
+        _guard_layer_defaults(ac, port, p)
+    elif command == "SetStories":
+        _guard_stories(ac, port, p)
     return ac.tapir(port, command, parameters)
 
 

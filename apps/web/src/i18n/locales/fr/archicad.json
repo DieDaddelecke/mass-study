@@ -38,6 +38,19 @@
     "replace": "Remplacer les éléments déjà transférés ({{count}})",
     "create": "Ajouter sans supprimer"
   },
+  "prepare": {
+    "title": "Préparer Archicad",
+    "zoneLayer": "Le calque par défaut de l'outil Zone est « {{layer}} ». Pendant le transfert, les zones sont créées sur « MS - Massenstudie », puis ce réglage est rétabli.",
+    "storiesDiffer": "Les étages d'Archicad ne correspondent pas aux niveaux du projet. Plusieurs niveaux tombent sur le même étage, ce qui fait se chevaucher les zones.",
+    "before": "Étage Archicad actuel",
+    "after": "Proposé",
+    "newStory": "(nouvel étage)",
+    "storiesTestOnly": "Projet sans titre : les étages peuvent être adaptés. Les éléments déjà placés sur un étage suivent sa nouvelle hauteur.",
+    "storiesManual": "Les étages ne sont adaptés automatiquement que dans un projet sans titre (projet de test). Dans un projet enregistré, adaptez-les dans Archicad (Création › Réglages des étages) ou laissez le placement avec décalage.",
+    "adjust": "Adapter les étages d'Archicad…",
+    "confirm": "Confirmer : modifier {{count}} étages",
+    "storiesDone": "Étages d'Archicad adaptés. L'aperçu ci-dessous en tient compte."
+  },
   "preview": {
     "title": "Aperçu",
     "summary": "{{zones}} zones, {{morphs}} volumes, {{slabs}} dalles sur {{storeys}} niveaux, sur le calque « MS - Massenstudie ».",
@@ -45,7 +58,7 @@
     "storey": "Étage",
     "archicadStory": "Étage Archicad",
     "offset": "Décalage",
-    "storiesUnchanged": "La structure des étages d'Archicad n'est jamais modifiée : chaque niveau est placé sur l'étage Archicad le plus proche en dessous."
+    "storiesUnchanged": "Chaque niveau est placé sur l'étage Archicad le plus proche en dessous, avec un décalage si besoin."
   },
   "warning": {
     "noStories": "Le projet Archicad n'a pas d'étages.",
@@ -53,7 +66,8 @@
     "teamwork": "Projet Teamwork : les éléments doivent pouvoir être réservés.",
     "librariesMissing": "Bibliothèques indisponibles dans Archicad : {{names}}. Si le tampon de zone en fait partie, Archicad refuse les zones ; elles seront alors remplacées par des volumes.",
     "levelWithoutStory": "Niveau {{level}} m ({{label}}) sans étage Archicad à cette hauteur : placé sur « {{story}} » avec décalage.",
-    "belowLowestStory": "Niveau {{level}} m ({{label}}) sous l'étage Archicad le plus bas."
+    "belowLowestStory": "Niveau {{level}} m ({{label}}) sous l'étage Archicad le plus bas.",
+    "sharedStory": "Les niveaux {{labels}} tombent tous sur l'étage « {{story}} » : leurs zones se chevauchent et Archicad les refuse. Elles seront créées comme volumes. Adaptez les étages pour l'éviter."
   },
   "progress": {
     "prepare": "Préparation (calque, catégories)…",
@@ -68,7 +82,8 @@
     "created": "Créés : {{zones}} zones, {{morphs}} volumes, {{slabs}} dalles.",
     "deleted": "{{count}} éléments précédents supprimés.",
     "zoneFallback": "Archicad a refusé toutes les zones (tampon de zone ou bibliothèque manquants). Des volumes ont été créés à la place. Chargez la bibliothèque Archicad du projet puis relancez.",
-    "removed": "{{count}} éléments retirés d'Archicad."
+    "removed": "{{count}} éléments retirés d'Archicad.",
+    "standIns": "{{count}} zones refusées par Archicad (chevauchement) ont été remplacées par des volumes."
   },
   "pill": {
     "ready": "Archicad : connecté – ouvrir le transfert"

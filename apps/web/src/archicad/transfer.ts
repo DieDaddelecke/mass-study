@@ -9,6 +9,7 @@ import {
   morphForZone,
   USAGE_COLORS,
   type PlanItem,
+  type StorySetting,
   type TransferPlan,
 } from './plan';
 import {
@@ -16,6 +17,7 @@ import {
   type AttributeHeader,
   type ElementIdOrError,
   type ElementRef,
+  type ErrorItem,
   type GetStoriesResult,
   type GuidRef,
   type MorphData,
@@ -32,6 +34,8 @@ export interface ArchicadSnapshot {
   projectName?: string;
   /** Elements Kubatur created earlier for this project (any revision). */
   ownElements: number;
+  /** Layer of the zone tool defaults; new zones land there (Tapir 2.0 has no layerIndex for zones). */
+  zoneLayer?: { guid: string; name: string };
 }
 
 export interface TransferReport {
@@ -39,6 +43,8 @@ export interface TransferReport {
   deleted: number;
   /** Zones were refused by Archicad as a whole and replaced by morphs. */
   zoneFallback: boolean;
+  /** Zones refused one by one (e.g. overlap) and replaced by morphs. */
+  standIns: number;
   errors: { item?: string; message: string }[];
 }
 
@@ -67,7 +73,9 @@ export async function readSnapshot(
     ),
   ]);
   const own = await findOwnElements(c, port, projectId);
+  const zoneLayer = await getZoneLayer(c, port);
   return {
+    zoneLayer,
     stories: stories.stories,
     libraries: libs.libraries,
     isUntitled: !!info.isUntitled,
@@ -75,6 +83,54 @@ export async function readSnapshot(
     projectName: info.projectName,
     ownElements: own.length,
   };
+}
+
+interface LayerOfDefaults {
+  elementType: string;
+  layerId: GuidRef;
+  layerName?: string;
+}
+
+async function getZoneLayer(
+  c: ArchicadCaller,
+  port: number,
+): Promise<{ guid: string; name: string } | undefined> {
+  try {
+    const r = await c.call<{ layersOfElementDefaults: (LayerOfDefaults | { error: unknown })[] }>(
+      port,
+      'GetLayerOfElementDefaults',
+      { elementTypes: ['Zone'] },
+    );
+    const d = r.layersOfElementDefaults[0];
+    return d && 'layerId' in d ? { guid: d.layerId.guid, name: d.layerName ?? '' } : undefined;
+  } catch {
+    return undefined; // older Tapir or bridge
+  }
+}
+
+async function setZoneLayer(c: ArchicadCaller, port: number, guid: string): Promise<boolean> {
+  try {
+    const r = await c.call<{ executionResults: { success: boolean }[] }>(
+      port,
+      'SetLayerOfElementDefaults',
+      { layersOfElementDefaults: [{ elementType: 'Zone', layerId: { guid } }] },
+    );
+    return !!r.executionResults[0]?.success;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Replaces the Archicad story structure (Tapir SetStories). Only for test projects:
+ * the bridge refuses it unless the open project is untitled.
+ */
+export async function applyStories(
+  c: ArchicadCaller,
+  port: number,
+  stories: readonly StorySetting[],
+): Promise<void> {
+  await c.call(port, 'SetStories', { stories });
 }
 
 /** Elements carrying our project id in their Tapir user data. */
@@ -118,7 +174,7 @@ export async function removeOwnElements(
   return deleted;
 }
 
-async function ensureLayer(c: ArchicadCaller, port: number): Promise<number | undefined> {
+async function ensureLayer(c: ArchicadCaller, port: number): Promise<AttributeHeader | undefined> {
   const find = async () =>
     (
       await c.call<{ attributes: AttributeHeader[] }>(port, 'GetAttributesByType', {
@@ -130,7 +186,7 @@ async function ensureLayer(c: ArchicadCaller, port: number): Promise<number | un
     await c.call(port, 'CreateLayers', { layerDataArray: [{ name: LAYER_NAME }] });
     layer = await find();
   }
-  return layer?.index;
+  return layer;
 }
 
 async function ensureCategories(
@@ -171,6 +227,8 @@ async function ensureCategories(
 }
 
 const ZONE_REFUSED = /Failed to create new Zone/i;
+/** Prefix of the error for elements that could not be tagged (and so cannot be replaced later). */
+export const TAG_FAILED = 'not tagged:';
 
 /**
  * Executes a plan. Order: layer and categories → (replace) delete our previous elements →
@@ -193,6 +251,7 @@ export async function executePlan(
     created: { zones: 0, slabs: 0, morphs: 0 },
     deleted: 0,
     zoneFallback: false,
+    standIns: 0,
     errors: [],
   };
   const rev = ctx.rev ?? new Date().toISOString();
@@ -201,7 +260,8 @@ export async function executePlan(
   const progress = (step: string) => ctx.onProgress?.(step, done, total);
 
   progress('prepare');
-  const layerIndex = await ensureLayer(c, port);
+  const layer = await ensureLayer(c, port);
+  const layerIndex = layer?.index;
   const zones = plan.items.filter((i) => i.kind === 'zone');
   const categories = zones.length
     ? await ensureCategories(c, port, plan.usages, ctx.usageLabel)
@@ -213,6 +273,7 @@ export async function executePlan(
   }
 
   const created: { ref: ElementRef; item: PlanItem; kind: PlanItem['kind'] }[] = [];
+  let restoreZoneLayer: string | undefined;
   const collect = (items: PlanItem[], res: ElementIdOrError[], kind: PlanItem['kind']) => {
     res.forEach((r, i) => {
       const item = items[i]!;
@@ -225,37 +286,45 @@ export async function executePlan(
     });
   };
 
-  // zones
+  // zones: Tapir 2.0 cannot give zones a layer, they take the zone tool's default layer.
+  // When that layer is hidden or locked (office templates), Archicad refuses to tag,
+  // move or delete them. So the default is switched to our layer only while zones are
+  // created, and then restored.
   const refusedZones: PlanItem[] = [];
-  for (const part of chunks(zones)) {
-    progress('zones');
-    const res = await c.call<{ elements: ElementIdOrError[] }>(port, 'CreateZones', {
-      zonesData: part.map((i) => {
-        const cat = categories.get(i.usage);
-        return { ...i.zone!, ...(cat ? { categoryAttributeId: cat } : {}) };
-      }),
-    });
-    res.elements.forEach((r, k) => {
-      const item = part[k]!;
-      if (isError(r) && ZONE_REFUSED.test(r.error.message)) refusedZones.push(item);
-      else if (isError(r))
-        report.errors.push({
-          item: `${item.massName} ${item.storeyLabel}`,
-          message: r.error.message,
-        });
-      else created.push({ ref: r, item, kind: 'zone' });
-    });
-    done += part.length;
+  let zoneLayerSet = false;
+  if (zones.length && layer) {
+    const before = await getZoneLayer(c, port);
+    if (before && before.guid !== layer.attributeId.guid) {
+      zoneLayerSet = await setZoneLayer(c, port, layer.attributeId.guid);
+      if (zoneLayerSet) restoreZoneLayer = before.guid;
+    } else zoneLayerSet = !!before;
   }
-  if (refusedZones.length) {
-    report.zoneFallback = refusedZones.length === zones.length;
-    if (!report.zoneFallback)
-      for (const z of refusedZones)
-        report.errors.push({
-          item: `${z.massName} ${z.storeyLabel}`,
-          message: 'Failed to create new Zone',
-        });
+  try {
+    for (const part of chunks(zones)) {
+      progress('zones');
+      const res = await c.call<{ elements: ElementIdOrError[] }>(port, 'CreateZones', {
+        zonesData: part.map((i) => {
+          const cat = categories.get(i.usage);
+          return { ...i.zone!, ...(cat ? { categoryAttributeId: cat } : {}) };
+        }),
+      });
+      res.elements.forEach((r, k) => {
+        const item = part[k]!;
+        if (isError(r)) {
+          refusedZones.push(item);
+          if (!ZONE_REFUSED.test(r.error.message))
+            report.errors.push({
+              item: `${item.massName} ${item.storeyLabel}`,
+              message: r.error.message,
+            });
+        } else created.push({ ref: r, item, kind: 'zone' });
+      });
+      done += part.length;
+    }
+  } finally {
+    if (restoreZoneLayer) await setZoneLayer(c, port, restoreZoneLayer);
   }
+  report.zoneFallback = zones.length > 0 && refusedZones.length === zones.length;
 
   // slabs
   const slabs = plan.items.filter((i) => i.kind === 'slab');
@@ -271,16 +340,15 @@ export async function executePlan(
   // morphs (+ stand-ins for refused zones when morphs are not already planned for them)
   const morphs = plan.items.filter((i) => i.kind === 'morph');
   const planned = new Set(morphs.map((m) => m.key.replace(/\|morph$/, '')));
-  const standIns: PlanItem[] = report.zoneFallback
-    ? refusedZones
-        .filter((z) => !planned.has(z.key.replace(/\|zone$/, '')))
-        .map((z) => ({
-          ...z,
-          kind: 'morph' as const,
-          key: z.key.replace(/\|zone$/, '|morph'),
-          morph: morphForZone(z)!,
-        }))
-    : [];
+  const standIns: PlanItem[] = refusedZones
+    .filter((z) => !planned.has(z.key.replace(/\|zone$/, '')))
+    .map((z) => ({
+      ...z,
+      kind: 'morph' as const,
+      key: z.key.replace(/\|zone$/, '|morph'),
+      morph: morphForZone(z)!,
+    }));
+  report.standIns = report.zoneFallback ? 0 : standIns.length;
   const allMorphs = [...morphs, ...standIns];
   for (const part of chunks(allMorphs)) {
     progress('morphs');
@@ -297,19 +365,31 @@ export async function executePlan(
   // tags + layer for zones
   progress('tag');
   for (const part of chunks(created, 200)) {
-    await c.call(port, 'SetElementUserData', {
-      elementUserData: part.map((x) => ({
-        elementId: x.ref.elementId,
-        userData: [
-          { key: KEY_PROJECT, value: ctx.projectId },
-          { key: KEY_ITEM, value: x.item.key.replace(/\|(zone|morph|slab)$/, `|${x.kind}`) },
-          { key: KEY_REV, value: rev },
-        ],
-      })),
+    const r = await c.call<{ executionResults?: ({ success: boolean } & Partial<ErrorItem>)[] }>(
+      port,
+      'SetElementUserData',
+      {
+        elementUserData: part.map((x) => ({
+          elementId: x.ref.elementId,
+          userData: [
+            { key: KEY_PROJECT, value: ctx.projectId },
+            { key: KEY_ITEM, value: x.item.key.replace(/\|(zone|morph|slab)$/, `|${x.kind}`) },
+            { key: KEY_REV, value: rev },
+          ],
+        })),
+      },
+    );
+    (r.executionResults ?? []).forEach((x, i) => {
+      if (x.success) return;
+      const it = part[i]!;
+      report.errors.push({
+        item: `${it.item.massName} ${it.item.storeyLabel}`,
+        message: `${TAG_FAILED} ${x.error?.message ?? ''}`.trim(),
+      });
     });
   }
   const createdZones = created.filter((x) => x.kind === 'zone');
-  if (layerIndex && createdZones.length)
+  if (layerIndex && createdZones.length && !zoneLayerSet)
     for (const part of chunks(createdZones, 200))
       await c
         .call(port, 'SetDetailsOfElements', {

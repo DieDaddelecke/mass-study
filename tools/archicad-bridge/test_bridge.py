@@ -39,6 +39,10 @@ class BridgeTest(unittest.TestCase):
         self.mock.elements.clear()
         self.mock.user_data.clear()
         self.mock.refuse_zones = False
+        self.mock.untitled = True
+        self.mock.stories = [dict(x) for x in __import__("mock_archicad").DEFAULT_STORIES]
+        self.mock.zone_default_layer = self.mock.attributes["Layer"][1]["attributeId"]["guid"]
+        bridge._previous_zone_layer.clear()
 
     # -- helpers -----------------------------------------------------------
     def req(self, path, body=None, token=TOKEN, origin=ORIGIN, method=None):
@@ -98,7 +102,7 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual([s["name"] for s in body["result"]["stories"]], ["R-1", "RDC", "R+1", "R+2"])
 
     def test_disallowed_commands(self):
-        for cmd in ("SetStories", "DeleteSelectedElements", "IFCFileOperation", "API.GetAllElements"):
+        for cmd in ("DeleteSelectedElements", "IFCFileOperation", "API.GetAllElements"):
             self.assertEqual(self.call(cmd)[0], 403, cmd)
 
     def test_port_outside_range_refused(self):
@@ -151,6 +155,53 @@ class BridgeTest(unittest.TestCase):
         status, _, body = self.call("CreateZones", {"zonesData": [zone]})
         self.assertEqual(status, 200)
         self.assertIn("Failed to create new Zone", body["result"]["elements"][0]["error"]["message"])
+
+    def _layer(self, name):
+        if not any(a["name"] == name for a in self.mock.attributes["Layer"]):
+            self.call("CreateLayers", {"layerDataArray": [{"name": name}]})
+        return next(a for a in self.mock.attributes["Layer"] if a["name"] == name)["attributeId"]
+
+    def _set_zone_layer(self, layer_id):
+        return self.call(
+            "SetLayerOfElementDefaults", {"layersOfElementDefaults": [{"elementType": "Zone", "layerId": layer_id}]}
+        )[0]
+
+    def test_zone_default_layer_switch_and_restore(self):
+        original = {"guid": self.mock.zone_default_layer}
+        ms = self._layer("MS - Massenstudie")
+        foreign = self.mock.attributes["Layer"][0]["attributeId"]
+        # cannot switch to an arbitrary layer
+        self.assertEqual(self._set_zone_layer(foreign), 403)
+        self.assertEqual(self._set_zone_layer(ms), 200)
+        self.assertEqual(self.mock.zone_default_layer, ms["guid"])
+        # back to the previous one is allowed, once; anything else is not
+        self.assertEqual(self._set_zone_layer(foreign), 403)
+        self.assertEqual(self._set_zone_layer(original), 200)
+        self.assertEqual(self.mock.zone_default_layer, original["guid"])
+        self.assertEqual(self._set_zone_layer(original), 403)
+        # only the Zone tool
+        status = self.call(
+            "SetLayerOfElementDefaults", {"layersOfElementDefaults": [{"elementType": "Wall", "layerId": ms}]}
+        )[0]
+        self.assertEqual(status, 403)
+
+    def test_set_stories_only_in_untitled_project(self):
+        new = [
+            {"index": -1, "name": "R-1", "level": -3, "dispOnSections": True},
+            {"name": "RDC", "level": 0, "dispOnSections": True},
+            {"name": "R+1", "level": 3.0, "dispOnSections": True},
+            {"name": "R+2", "level": 6.0, "dispOnSections": True},
+            {"name": "R+3", "level": 9.0, "dispOnSections": True},
+        ]
+        # never fewer stories
+        self.assertEqual(self.call("SetStories", {"stories": new[:2]})[0], 403)
+        self.mock.untitled = False
+        self.assertEqual(self.call("SetStories", {"stories": new})[0], 403)
+        self.assertEqual(self.mock.stories[2]["level"], 3.5)
+        self.mock.untitled = True
+        status, _, body = self.call("SetStories", {"stories": new})
+        self.assertEqual(status, 200, body)
+        self.assertEqual([s["level"] for s in self.mock.stories], [-3, 0, 3.0, 6.0, 9.0])
 
     def test_archicad_unreachable(self):
         status, _, body = self.req("/call", {"port": 19744, "command": "GetStories"})
