@@ -102,13 +102,15 @@ describe('layout meets the façade rules', () => {
     for (const u of back) expect(u.facade).toBeGreaterThanOrEqual(u.facadeRequired);
   });
 
-  it('gallery side counts only when enabled', () => {
+  it('gallery side counts by default and can be switched off', () => {
     const s = defaultSettings('FR');
-    const off = layout({ kind: 'solitaer', length: 60, depth: 10 }, 'laubengang', s);
-    const on = layout({ kind: 'solitaer', length: 60, depth: 10 }, 'laubengang', {
+    expect(DEFAULT_UNIT_RULES.galleryCountsAsFacade).toBe(true);
+    const on = layout({ kind: 'solitaer', length: 60, depth: 10 }, 'laubengang', s);
+    const off = layout({ kind: 'solitaer', length: 60, depth: 10 }, 'laubengang', {
       ...s,
-      unitRules: { ...DEFAULT_UNIT_RULES, galleryCountsAsFacade: true },
+      unitRules: { ...DEFAULT_UNIT_RULES, galleryCountsAsFacade: false },
     });
+    expect(off.summary.facadeViolations).toBe(0);
     const sum = (l: typeof on) => l.units.reduce((a, u) => a + u.facade, 0);
     expect(sum(on)).toBeGreaterThan(sum(off) * 1.5);
     expect(on.summary.facadeViolations).toBe(0);

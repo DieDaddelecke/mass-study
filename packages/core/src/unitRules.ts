@@ -12,7 +12,8 @@ export const DEFAULT_UNIT_RULES: UnitRules = {
   pmrBedroomMinFacade: 2.8,
   bedroomMinFacade: 2.5,
   interiorWall: 0.1,
-  galleryCountsAsFacade: false,
+  // office decision 2026-11-21: the coursive side counts as façade
+  galleryCountsAsFacade: true,
 };
 
 /** Rules of the settings with defaults for missing values (older project files). */

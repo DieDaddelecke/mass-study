@@ -50,14 +50,17 @@ function checkPartition(l: StoreyLayout): void {
   expect(Math.abs(inside - u) / fp).toBeLessThan(0.005);
 }
 
-/** Deviation of the unit area from the targets (raised to façade width × row depth). */
-function mixDeviation(l: StoreyLayout, rowDepth: number): number {
+/**
+ * Deviation of the unit area from the targets, raised to the minimum width × row depth
+ * (minimum width = required façade / number of façade sides of the row).
+ */
+function mixDeviation(l: StoreyLayout, rowDepth: number, sides = 1): number {
   const target = l.units.reduce(
     (s, u) =>
       s +
       Math.max(
         settings.unitMix.find((t) => t.id === u.typeId)!.areaTarget,
-        u.facadeRequired * rowDepth,
+        (u.facadeRequired / sides) * rowDepth,
       ),
     0,
   );
@@ -97,7 +100,8 @@ describe('storeyLayout', () => {
     const l = layoutOf({ kind: 'solitaer', length: 60, depth: 10 }, 'laubengang');
     expect(l.circulation.some((c) => c.kind === 'gallery')).toBe(true);
     expect(l.units.length).toBeGreaterThan(5);
-    expect(mixDeviation(l, 10 - 1.6)).toBeLessThan(0.05);
+    // the coursive side counts as façade by default → two façade sides
+    expect(mixDeviation(l, 10 - 1.6, 2)).toBeLessThan(0.05);
     checkPartition(l);
   });
 
