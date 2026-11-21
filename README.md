@@ -16,6 +16,8 @@ pnpm typecheck && pnpm lint && pnpm build
 docker compose up --build   # http://localhost:8080
 ```
 
+Die App läuft dann unter `http://localhost:5173`, die API auf Port 8787. Ist der Port belegt: `PORT=8788 pnpm dev` (PowerShell: `$env:PORT=8788; pnpm dev`). Unter Windows scheitert `corepack enable` ohne Adminrechte mit `EPERM`; dann `npm i -g pnpm@10.28.0`.
+
 ## Struktur
 
 ```
@@ -29,7 +31,7 @@ docs/           SPEC, ARCHITECTURE, DECISIONS, KNOWN_LIMITATIONS
 
 | Variable          | Default         | Bedeutung                                                                                                               |
 | ----------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `PORT`            | 8080            | HTTP-Port                                                                                                               |
+| `PORT`            | 8787            | HTTP-Port des Servers (Docker-Image: 8080). `pnpm dev` leitet `/api` von Vite an diesen Port weiter                     |
 | `STATIC_DIR`      | `../web/dist`   | Web-Build                                                                                                               |
 | `DATA_DIR`        | `./data`        | Cache der Geodaten                                                                                                      |
 | `CACHE_TTL_DAYS`  | 30              | Cache-Lebensdauer                                                                                                       |

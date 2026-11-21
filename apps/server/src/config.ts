@@ -14,9 +14,12 @@ export interface ServerConfig {
   wfsParcelProviders: WfsParcelConfig[];
 }
 
+/** Default port outside Docker; 8080 is often taken (Docker Desktop, WSL). The image sets PORT=8080. */
+export const DEFAULT_PORT = 8787;
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   return {
-    port: Number(env.PORT ?? 8080),
+    port: Number(env.PORT ?? DEFAULT_PORT),
     staticDir: env.STATIC_DIR ?? '../web/dist',
     dataDir: env.DATA_DIR ?? './data',
     cacheTtlDays: Number(env.CACHE_TTL_DAYS ?? 30),
