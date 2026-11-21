@@ -29,14 +29,15 @@ docs/           SPEC, ARCHITECTURE, DECISIONS, KNOWN_LIMITATIONS
 
 ## Konfiguration (Server, ENV)
 
-| Variable          | Default         | Bedeutung                                                                                                               |
-| ----------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `PORT`            | 8787            | HTTP-Port des Servers (Docker-Image: 8080). `pnpm dev` leitet `/api` von Vite an diesen Port weiter                     |
-| `STATIC_DIR`      | `../web/dist`   | Web-Build                                                                                                               |
-| `DATA_DIR`        | `./data`        | Cache der Geodaten                                                                                                      |
-| `CACHE_TTL_DAYS`  | 30              | Cache-Lebensdauer                                                                                                       |
-| `USER_AGENT`      | `Kubatur/0.1 …` | User-Agent für externe Dienste                                                                                          |
-| `ALLOWED_ORIGINS` | –               | CORS-Origins für `/api/*`                                                                                               |
-| `PARCEL_WFS`      | –               | JSON-Array generischer WFS-Flurstücksprovider (`id`, `url`, `typeName`, `coverage`, `fields.ref`, …), standardmäßig aus |
+| Variable          | Default         | Bedeutung                                                                                                                                        |
+| ----------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PORT`            | 8787            | HTTP-Port des Servers (Docker-Image: 8080). `pnpm dev` leitet `/api` von Vite an diesen Port weiter                                              |
+| `STATIC_DIR`      | `../web/dist`   | Web-Build                                                                                                                                        |
+| `DATA_DIR`        | `./data`        | Cache der Geodaten (`cache/`) und Kartenkacheln (`tiles/`)                                                                                       |
+| `CACHE_TTL_DAYS`  | 30              | Cache-Lebensdauer                                                                                                                                |
+| `USER_AGENT`      | `Kubatur/0.1 …` | User-Agent für externe Dienste                                                                                                                   |
+| `ALLOWED_ORIGINS` | –               | CORS-Origins für `/api/*`                                                                                                                        |
+| `PARCEL_WFS`      | –               | JSON-Array generischer WFS-Flurstücksprovider (`id`, `url`, `typeName`, `coverage`, `fields.ref`, …), standardmäßig aus                          |
+| `OVERPASS_URLS`   | 3 Instanzen     | Overpass-Endpunkte, kommagetrennt (Default: overpass-api.de, overpass.kumi.systems, maps.mail.ru); bei 429/502/503/504 wird der nächste versucht |
 
 Siehe `docs/` für Architektur, Entscheidungen und bekannte Grenzen.

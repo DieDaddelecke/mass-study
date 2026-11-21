@@ -1,6 +1,7 @@
 import {
   API,
   type ApiError,
+  type ContextLayersResponse,
   type ContextResponse,
   type GeocodeResponse,
   type ParcelsResponse,
@@ -41,4 +42,6 @@ export const api = {
     getJson<ParcelsResponse>(`${API.parcels}?${qs({ lon, lat })}`, signal),
   context: (bbox: [number, number, number, number], signal?: AbortSignal) =>
     getJson<ContextResponse>(`${API.context}?${qs({ bbox: bbox.join(',') })}`, signal),
+  contextLayers: (bbox: [number, number, number, number], signal?: AbortSignal) =>
+    getJson<ContextLayersResponse>(`${API.contextLayers}?${qs({ bbox: bbox.join(',') })}`, signal),
 };

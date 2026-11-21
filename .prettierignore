@@ -3,4 +3,5 @@ dist
 coverage
 SPEC.md
 docs/SPEC.md
-apps/server/test/fixtures/palaiseau/raw/
+apps/web/src/demo/palaiseauSurroundings.ts
+apps/server/test/fixtures/palaiseau/raw
