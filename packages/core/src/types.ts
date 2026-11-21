@@ -1,0 +1,299 @@
+/**
+ * Central data model of Kubatur. All coordinates are local and metric:
+ * x = east, y = north, z = up, origin = centroid of the site.
+ */
+
+export type Vec2 = [number, number];
+
+/** Outer ring counter-clockwise, holes clockwise. Rings are open (last point ≠ first). */
+export interface Polygon {
+  outer: Vec2[];
+  holes?: Vec2[][];
+}
+
+export type RuleProfileId = 'FR' | 'DE';
+export type StoreyNotation = 'fr' | 'de' | 'roman';
+
+export type Usage = 'wohnen' | 'buero' | 'gewerbe' | 'gemeinbedarf' | 'parken' | 'technik';
+export const USAGES: readonly Usage[] = [
+  'wohnen',
+  'buero',
+  'gewerbe',
+  'gemeinbedarf',
+  'parken',
+  'technik',
+];
+
+export type AccessType =
+  | 'zweispaenner'
+  | 'dreispaenner'
+  | 'laubengang'
+  | 'mittelflur'
+  | 'punkthaus'
+  | 'reihenhaus'
+  | 'buero';
+
+// ---------------------------------------------------------------------------
+// Typologies (Bauformen)
+// ---------------------------------------------------------------------------
+
+export interface SolitaerTypology {
+  kind: 'solitaer';
+  length: number;
+  depth: number;
+}
+
+export interface ZeileTypology {
+  kind: 'zeile';
+  length: number;
+  depth: number;
+  sections: number;
+  /** Offset of every second section perpendicular to the length axis (staggering), m. */
+  sectionOffset: number;
+}
+
+export interface ReiheTypology {
+  kind: 'reihe';
+  count: number;
+  unitWidth: number;
+  depth: number;
+  /** Alternating offset perpendicular to the row axis, m. */
+  alternatingOffset: number;
+  /** Optional width of both end houses. */
+  endUnitWidth?: number;
+}
+
+export type LineAlignment = 'center' | 'left' | 'right';
+
+export interface FreeLineTypology {
+  kind: 'freeLine';
+  /** Polyline in local mass coordinates. */
+  points: Vec2[];
+  closed: boolean;
+  depth: number;
+  alignment: LineAlignment;
+}
+
+export interface FreePolygonTypology {
+  kind: 'freePolygon';
+  polygon: Polygon;
+}
+
+export type Typology =
+  SolitaerTypology | ZeileTypology | ReiheTypology | FreeLineTypology | FreePolygonTypology;
+
+export type TypologyKind = Typology['kind'];
+
+// ---------------------------------------------------------------------------
+// Storeys
+// ---------------------------------------------------------------------------
+
+export type SetbackDistance = number | { front: number; back: number; left: number; right: number };
+
+export interface StoreyStack {
+  basement: { count: number; height: number };
+  ground: { height: number };
+  upper: { count: number; height: number };
+  /** index: storey index (-n … m, 0 = ground floor). */
+  heightOverrides?: { index: number; height: number }[];
+  /** The top `storeys` upper storeys are set back (Staffelgeschoss / attique). */
+  setback?: { storeys: number; distance: SetbackDistance };
+  /** Parapet / roof upstand above the top slab, m. */
+  parapet: number;
+  slabThickness: number;
+}
+
+export interface Mass {
+  id: string;
+  name: string;
+  typology: Typology;
+  position: Vec2;
+  /** Rotation in radians, counter-clockwise. */
+  rotation: number;
+  storeys: StoreyStack;
+  /** Per section (Zeile / Reihe) overrides. */
+  segmentOverrides?: Record<number, Partial<StoreyStack>>;
+  /** Default usage of above-ground storeys (basement defaults to parking). */
+  usage?: Usage;
+  usageByStorey?: Record<number, Usage>;
+  access?: AccessType | 'auto';
+}
+
+/** Central derived structure. 3D, areas, drawings, IFC and Archicad are generated from it. */
+export interface StoreySolid {
+  massId: string;
+  segment?: number;
+  /** -n … m, 0 = ground floor */
+  storeyIndex: number;
+  label: string;
+  /** World (project-local) coordinates. */
+  footprint: Polygon;
+  /** Finished floor level of this storey and of the one above. */
+  z0: number;
+  z1: number;
+  usage: Usage;
+  aboveGround: boolean;
+  /** True for set-back storeys (Staffelgeschoss / attique). */
+  setback: boolean;
+  /** True for the topmost storey of its mass / section (parapet sits on top). */
+  top: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Site, context, project
+// ---------------------------------------------------------------------------
+
+export interface Parcel {
+  id: string;
+  source: 'cadastre' | 'drawn' | 'import';
+  ref?: string;
+  polygon: Polygon;
+}
+
+export interface Site {
+  parcels: Parcel[];
+  boundary: Polygon;
+  buildable?: Polygon[];
+  buildingLines?: Vec2[][];
+}
+
+export interface ContextBuilding {
+  id: string;
+  footprint: Polygon;
+  height: number;
+  baseHeight?: number;
+  levels?: number;
+  source: 'osm' | 'ign' | 'import' | 'manual';
+  heightEstimated: boolean;
+  hidden?: boolean;
+  /** Existing building on the site that is to be demolished. */
+  demolished?: boolean;
+}
+
+export interface Variant {
+  id: string;
+  name: string;
+  masses: Mass[];
+}
+
+export interface Constraints {
+  // DE
+  grz?: number;
+  gfz?: number;
+  bmz?: number;
+  maxFullStoreys?: number;
+  // shared
+  maxHeight?: number;
+  /** Abstandsflächen factor (DE, e.g. 0.4 H). */
+  setbackFactor?: number;
+  // FR
+  /** Coefficient d'emprise au sol (CES), 0…1. */
+  empriseMax?: number;
+  /** Hauteur maximale, m (measured as configured in the profile). */
+  hauteurMax?: number;
+  /** Prospect: minimum distance to boundaries as a fraction of height (H/x → 1/x). */
+  prospectRatio?: number;
+  prospectMin?: number;
+  buildable?: Polygon[];
+  buildingLines?: Vec2[][];
+}
+
+export interface UnitType {
+  id: string;
+  label: string;
+  /** Target share 0…1 */
+  share: number;
+  areaMin: number;
+  areaTarget: number;
+  areaMax: number;
+}
+
+export interface Settings {
+  profile: RuleProfileId;
+  notation: StoreyNotation;
+  language: 'fr' | 'de' | 'en';
+  areas: {
+    exteriorWallThickness: number;
+    /** Share of BGF taken by interior walls / structure. */
+    interiorConstructionShare: number;
+    technicalShare: number;
+    livingAreaFactor: number;
+    /** VF share of NRF per access type. */
+    circulationShare: Record<AccessType, number>;
+  };
+  depthRanges: {
+    wohnen: Record<Exclude<AccessType, 'buero' | 'reihenhaus'>, [number, number]>;
+    buero: {
+      zellenbuero: [number, number];
+      kombibuero: [number, number];
+      openSpace: [number, number];
+    };
+    /** Minimum footprint side for a Punkthaus (solitaire) */
+    punkthausMinSide: number;
+    lightWarningDepth: number;
+  };
+  cores: {
+    /** Maximum distance to a protected stair (MBO § 35 / CCH), m. */
+    maxEscapeDistance: number;
+    /** Typical section length served by one core per access type, m. */
+    sectionLength: Partial<Record<AccessType, number>>;
+  };
+  unitMix: UnitType[];
+  workplaceArea: number;
+  parking: {
+    perDwelling: number;
+    officeAreaPerSpace: number;
+    retailAreaPerSpace: number;
+    garageAreaPerSpace: number;
+    garageEfficiency: number;
+  };
+  /** DE full-storey rule (Vollgeschoss, configurable per Land). */
+  fullStorey: {
+    minHeightAboveGround: number;
+    minClearHeight: number;
+    minAreaRatio: number;
+  };
+  /** FR surface de plancher approximation. */
+  surfaceDePlancher: {
+    deductParking: boolean;
+    deductTechnical: boolean;
+    /** Abattement of 10 % on residential area (Code de l'urbanisme R.111-22, 8°). */
+    residentialAbatement: number;
+  };
+  levelTolerance: number;
+}
+
+export interface ProjectInfo {
+  address?: string;
+  client?: string;
+  author?: string;
+  office?: string;
+  date: string;
+  revision: string;
+  phase: string;
+  logo?: string;
+}
+
+export interface GeoReference {
+  crs: string;
+  originCrs: Vec2;
+  originLonLat: [number, number];
+  groundElevation?: number;
+}
+
+export interface Project {
+  schemaVersion: number;
+  id: string;
+  name: string;
+  info: ProjectInfo;
+  geo: GeoReference;
+  site: Site;
+  context: ContextBuilding[];
+  variants: Variant[];
+  activeVariantId: string;
+  /** View and sheet definitions are owned by the drawing package (added in a later phase). */
+  views: unknown[];
+  sheets: unknown[];
+  settings: Settings;
+  constraints: Constraints;
+}
