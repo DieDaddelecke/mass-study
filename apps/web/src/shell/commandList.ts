@@ -66,6 +66,7 @@ import {
   zoomExtents,
 } from './commands';
 import { useShellStore } from './shellStore';
+import { exportActiveCsv, exportAllXlsx, openSchedule } from '../tables/tablesStore';
 
 export type CommandGroup =
   | 'file'
@@ -369,6 +370,55 @@ export function getCommands(): Command[] {
       active: theme.preference === p,
       run: () => theme.setPreference(p),
     });
+  // Schedules and XLSX/CSV export (tables/*): replace the "en préparation" placeholders in place.
+  for (const c of [
+    proj({
+      id: 'analysis.areaTable',
+      group: 'analysis',
+      label: t('ribbon.areaTable'),
+      icon: Table,
+      run: () => openSchedule('surfaces'),
+    }),
+    proj({
+      id: 'analysis.kpis',
+      group: 'analysis',
+      label: t('ribbon.kpis'),
+      icon: FileText,
+      run: () => openSchedule('kpis'),
+    }),
+    proj({
+      id: 'analysis.unitMix',
+      group: 'analysis',
+      label: t('ribbon.unitMix'),
+      icon: LayoutGrid,
+      run: () => openSchedule('typologies'),
+    }),
+    proj({
+      id: 'analysis.compare',
+      group: 'analysis',
+      label: t('ribbon.variantCompare'),
+      icon: GitBranch,
+      run: () => openSchedule('comparison'),
+    }),
+    proj({
+      id: 'output.xlsx',
+      group: 'output',
+      label: i18n.t('tables:export.xlsx'),
+      icon: Download,
+      run: () => void exportAllXlsx(),
+    }),
+    proj({
+      id: 'output.csv',
+      group: 'output',
+      label: i18n.t('tables:export.csv'),
+      icon: Download,
+      run: () => exportActiveCsv(),
+    }),
+  ]) {
+    const i = cmds.findIndex((x) => x.id === c.id);
+    if (i >= 0) cmds[i] = c;
+    else cmds.push(c);
+  }
   return cmds;
 }
 

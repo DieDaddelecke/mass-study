@@ -1,0 +1,125 @@
+{
+  "title": "Schedules",
+  "allVariants": "{{count}} variants",
+  "profile": {
+    "FR": "FR rules (Code de l’urbanisme)",
+    "DE": "DE rules (BauNVO / MBO)"
+  },
+  "empty": "No data – place a building mass.",
+  "tab": {
+    "surfaces": "Areas",
+    "kpis": "Key figures",
+    "typologies": "Typologies and mix",
+    "comparison": "Variant comparison"
+  },
+  "actions": {
+    "copy": "Copy",
+    "copyHint": "Copy the table to the clipboard (TSV)",
+    "xlsxHint": "Excel workbook, one sheet per table, with SUM formulas"
+  },
+  "export": {
+    "failed": "Export failed",
+    "xlsxDone": "Excel workbook exported",
+    "copied": "Table copied to the clipboard",
+    "xlsx": "Export schedules (Excel)",
+    "csv": "Export active table (CSV)"
+  },
+  "bool": {
+    "yes": "yes",
+    "no": "no"
+  },
+  "unit": {
+    "m": "m",
+    "m2": "m²",
+    "m3": "m³",
+    "count": "no."
+  },
+  "col": {
+    "name": "Name",
+    "usage": "Use",
+    "storeyHeight": "Storey height",
+    "level": "Finished floor level",
+    "fullStorey": "Full storey (DE)",
+    "bgf": "Gross floor area",
+    "kgf": "Construction area",
+    "nrf": "Net floor area",
+    "nuf": "Usable area",
+    "vf": "Circulation",
+    "tf": "Technical area",
+    "bri": "Gross volume",
+    "indicator": "Indicator",
+    "unit": "Unit",
+    "actual": "Actual",
+    "target": "Target (max.)",
+    "status": "Status",
+    "mass": "Mass",
+    "typology": "Form",
+    "depth": "Depth",
+    "suitable": "Suitable typologies",
+    "access": "Access",
+    "cores": "Cores",
+    "dwellings": "Dwellings",
+    "unitType": "{{name}}",
+    "livingArea": "Living area",
+    "workplaces": "Workplaces",
+    "parkingDemand": "Parking required",
+    "parkingCapacity": "Parking provided",
+    "variant": "{{name}}"
+  },
+  "row": {
+    "aboveGround": "Subtotal above ground",
+    "belowGround": "Subtotal below ground",
+    "massTotal": "Total {{name}}",
+    "totalAboveGround": "Total above ground",
+    "totalBelowGround": "Total below ground",
+    "variantTotal": "Total {{name}}",
+    "total": "Total"
+  },
+  "kpiGroup": {
+    "site": "Site and coverage",
+    "density": "Floor area and density",
+    "height": "Heights and storeys",
+    "program": "Programme"
+  },
+  "kpi": {
+    "siteArea": "Site area",
+    "emprise": "Building footprint",
+    "ces": "Site coverage ratio (CES)",
+    "surfaceDePlancher": "Surface de plancher (SDP)",
+    "densite": "Density (SDP / site)",
+    "formula": "Storeys (R+n)",
+    "niveaux": "Storeys above ground",
+    "hauteurEgout": "Eaves height",
+    "hauteurAcrotere": "Parapet height",
+    "gr": "Footprint (GR)",
+    "grz": "Site coverage (GRZ)",
+    "gf": "Floor area (GF)",
+    "gfz": "Floor area ratio (GFZ)",
+    "baumasse": "Building volume",
+    "bmz": "Volume ratio (BMZ)",
+    "maxFullStoreys": "Full storeys (DE)",
+    "totalHeight": "Total height",
+    "mboHeight": "Height (MBO)",
+    "buildingClass": "Building class (MBO)",
+    "bgf": "Total gross floor area",
+    "nuf": "Total usable area",
+    "dwellings": "Dwellings",
+    "livingArea": "Living area",
+    "workplaces": "Workplaces",
+    "parkingDemand": "Parking required",
+    "parkingCapacity": "Underground parking spaces"
+  },
+  "suit": {
+    "zweispaenner": "Two units per landing",
+    "dreispaenner": "Three units per landing",
+    "laubengang": "Access gallery",
+    "mittelflur": "Central corridor",
+    "punkthaus": "Point block",
+    "reihenhaus": "Terraced houses",
+    "buero": "Offices",
+    "zellenbuero": "Cellular offices",
+    "kombibuero": "Combi offices",
+    "openSpace": "Open-plan",
+    "atrium": "Atrium"
+  }
+}
