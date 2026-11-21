@@ -1,3 +1,5 @@
+import type { WfsParcelConfig } from './geo/wfs-parcel.js';
+
 /** Runtime configuration from environment variables (see README / docker-compose.yml). */
 export interface ServerConfig {
   port: number;
@@ -8,6 +10,8 @@ export interface ServerConfig {
   cacheTtlDays: number;
   userAgent: string;
   allowedOrigins: string[];
+  /** Generic WFS cadastre providers (JSON array in PARCEL_WFS), none by default. */
+  wfsParcelProviders: WfsParcelConfig[];
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -21,5 +25,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
+    wfsParcelProviders: parseWfsConfig(env.PARCEL_WFS),
   };
+}
+
+function parseWfsConfig(raw: string | undefined): WfsParcelConfig[] {
+  if (!raw?.trim()) return [];
+  const parsed = JSON.parse(raw) as unknown;
+  if (!Array.isArray(parsed)) throw new Error('PARCEL_WFS must be a JSON array');
+  for (const c of parsed as Partial<WfsParcelConfig>[]) {
+    if (!c.id || !c.url || !c.typeName || !c.fields?.ref || c.coverage?.length !== 4) {
+      throw new Error('PARCEL_WFS entry needs id, url, typeName, coverage[4], fields.ref');
+    }
+  }
+  return parsed as WfsParcelConfig[];
 }
