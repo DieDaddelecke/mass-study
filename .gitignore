@@ -9,3 +9,5 @@ apps/server/data/
 test-results/
 playwright-report/
 .claude/
+__pycache__/
+*.pyc
