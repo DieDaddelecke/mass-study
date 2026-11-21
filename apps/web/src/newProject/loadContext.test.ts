@@ -135,3 +135,28 @@ describe('createProjectWithContext', () => {
     expect(phases).toEqual(['creating', 'context']);
   });
 });
+
+describe('createProjectWithContext with slow layers', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('opens the project without waiting and adds the layers later, outside the undo history', async () => {
+    const { createProjectWithContext } = await import('./createFlow');
+    const { useProjectStore } = await import('../store/projectStore');
+    let resolve!: (v: typeof layersResponse) => void;
+    vi.spyOn(api, 'context').mockResolvedValue(contextResponse);
+    vi.spyOn(api, 'contextLayers').mockReturnValue(new Promise((r) => (resolve = r)));
+    const { project, layersError } = await createProjectWithContext(
+      { name: 'S', site: { kind: 'parcels', parcels: [parcel0518] }, radius: 150 },
+      undefined,
+      10,
+    );
+    expect(layersError).toBeNull();
+    expect(useProjectStore.getState().project?.surroundings).toBeUndefined();
+    resolve(layersResponse);
+    await new Promise((r) => setTimeout(r, 0));
+    const current = useProjectStore.getState().project;
+    expect(current?.id).toBe(project.id);
+    expect(current?.surroundings?.roads).toHaveLength(1);
+    expect(useProjectStore.temporal.getState().pastStates).toHaveLength(0);
+  });
+});

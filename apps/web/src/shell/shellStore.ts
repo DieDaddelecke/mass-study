@@ -3,6 +3,10 @@ import { create } from 'zustand';
 export type DialogId = 'projectInfo' | 'settings' | 'constraints' | 'warnings';
 export type LeftTab = 'project' | 'layers' | 'views';
 
+function wideScreen(): boolean {
+  return typeof window === 'undefined' || window.innerWidth >= 1200;
+}
+
 /** Shell-local UI state (dialogs, panels, toasts). Not part of the document. */
 export interface ShellState {
   dialog: DialogId | null;
@@ -32,9 +36,10 @@ export const useShellStore = create<ShellState>()((set) => ({
   info: null,
   busy: false,
   paletteOpen: false,
-  leftOpen: true,
+  // Panels start collapsed on small screens so the 3D view stays usable.
+  leftOpen: wideScreen(),
   leftTab: 'project',
-  inspectorOpen: true,
+  inspectorOpen: wideScreen(),
   setDialog: (dialog) => set({ dialog }),
   setError: (error) => set({ error }),
   setInfo: (info) => set({ info }),
