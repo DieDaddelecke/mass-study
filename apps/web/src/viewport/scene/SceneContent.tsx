@@ -5,7 +5,12 @@ import { BufferGeometry, DoubleSide, LineDashedMaterial, LineSegments, Material 
 import { activeVariant } from '../../store/projectStore';
 import type { VisualStyle } from '../../store/tools';
 import { useUiStore } from '../../store/uiStore';
+import { palette, type ScenePalette } from '../../theme/palette';
+import { useScenePalette } from '../../theme/themeStore';
+import { Basemap } from './Basemap';
 import { COLORS, usageColor } from './colors';
+import { useLayers } from './sceneLayers';
+import { Surroundings, Z } from './Surroundings';
 import { FatSegments } from './FatSegments';
 import {
   contextRange,
@@ -60,10 +65,21 @@ function FaceMaterial({ style, color }: { style: VisualStyle; color: string }) {
 
 // ---------------------------------------------------------------------------
 
-function Ground({ style, shadows }: { style: VisualStyle; shadows: boolean }) {
+const ACCENT = palette.accent;
+
+function Ground({
+  style,
+  shadows,
+  pal,
+}: {
+  style: VisualStyle;
+  shadows: boolean;
+  pal: ScenePalette;
+}) {
   return (
     <mesh
       position={[0, 0, -0.05]}
+      renderOrder={-10}
       receiveShadow={shadows}
       onClick={(e) => {
         if (!selectable(e)) return;
@@ -72,16 +88,16 @@ function Ground({ style, shadows }: { style: VisualStyle; shadows: boolean }) {
       }}
     >
       <planeGeometry args={[6000, 6000]} />
-      {style === 'realistic' ? (
-        <meshStandardMaterial color="#e4e2dc" roughness={1} />
+      {style === 'realistic' || style === 'shaded' ? (
+        <meshLambertMaterial color={pal.ground} depthWrite={false} />
       ) : (
-        <meshBasicMaterial color={COLORS.ground} />
+        <meshBasicMaterial color={pal.ground} depthWrite={false} />
       )}
     </mesh>
   );
 }
 
-function SiteBoundary({ project }: { project: Project }) {
+function SiteBoundary({ project, pal }: { project: Project; pal: ScenePalette }) {
   const b = project.site.boundary;
   const fill = useMemo(() => extrudePolygon(b, 0, 0.02), [b]);
   const segs = useMemo(() => {
@@ -102,20 +118,18 @@ function SiteBoundary({ project }: { project: Project }) {
     l.computeLineDistances();
     return l;
   }, [buildable]);
+  useEffect(() => {
+    (buildableLines?.material as LineDashedMaterial | undefined)?.color.set(pal.site);
+  }, [buildableLines, pal.site]);
   if (b.outer.length < 3) return null;
   return (
     <group>
       {fill && (
         <mesh geometry={fill} raycast={() => null}>
-          <meshBasicMaterial
-            color={COLORS.siteFill}
-            transparent
-            opacity={0.55}
-            depthWrite={false}
-          />
+          <meshBasicMaterial color={pal.site} transparent opacity={0.07} depthWrite={false} />
         </mesh>
       )}
-      <FatSegments segments={segs} color={COLORS.siteLine} width={2.5} />
+      <FatSegments segments={segs} color={pal.site} width={2.5} />
       {buildableLines && <primitive object={buildableLines} />}
     </group>
   );
@@ -125,10 +139,12 @@ function ContextBuildings({
   buildings,
   style,
   shadows,
+  pal,
 }: {
   buildings: readonly ContextBuilding[];
   style: VisualStyle;
   shadows: boolean;
+  pal: ScenePalette;
 }) {
   const geo = useMemo(() => buildContextGeometry(buildings), [buildings]);
   const lines = useMemo(() => {
@@ -162,9 +178,10 @@ function ContextBuildings({
     },
     [geo, lines],
   );
-  const edgeColor = style === 'realistic' ? '#a8a8a8' : COLORS.contextEdge;
+  const edgeColor = pal.contextEdge;
   useEffect(() => {
     (lines.solid.material as LineDashedMaterial).color?.set(edgeColor);
+    (lines.est.material as LineDashedMaterial).color?.set(edgeColor);
   }, [lines, edgeColor]);
   const idOf = (e: ThreeEvent<PointerEvent | MouseEvent>) =>
     e.faceIndex == null ? null : contextIdAt(geo, e.faceIndex);
@@ -191,7 +208,7 @@ function ContextBuildings({
             if (h && geo.ids.includes(h)) useUiStore.getState().setHover(null);
           }}
         >
-          <FaceMaterial style={style} color={style === 'hiddenLine' ? '#fbfbfb' : COLORS.context} />
+          <FaceMaterial style={style} color={pal.contextBuilding} />
         </mesh>
       )}
       <primitive object={lines.solid} />
@@ -246,17 +263,13 @@ function buildMasses(project: Project, solids: readonly SolidResult[]) {
   return { solids: out, edges };
 }
 
-function Masses({ project, solids, style, shadows }: Props) {
+function Masses({ project, solids, style, shadows, pal }: Props & { pal: ScenePalette }) {
   const built = useMemo(() => buildMasses(project, solids), [project, solids]);
   useEffect(() => () => built.solids.forEach((s) => s.geometry.dispose()), [built]);
   const selection = useUiStore((s) => s.selection);
   const hover = useUiStore((s) => s.hover);
   const faceColor = (u: MassSolidGeo['usage']) =>
-    style === 'consistentColors'
-      ? usageColor(u)
-      : style === 'hiddenLine'
-        ? COLORS.massHidden
-        : COLORS.massWarm;
+    style === 'consistentColors' ? usageColor(u) : pal.mass;
   return (
     <group>
       {built.solids.map((s, i) => (
@@ -281,7 +294,7 @@ function Masses({ project, solids, style, shadows }: Props) {
           {selection.includes(s.massId) && (
             <mesh geometry={s.geometry} raycast={() => null} renderOrder={2}>
               <meshBasicMaterial
-                color={COLORS.selection}
+                color={ACCENT}
                 transparent
                 opacity={0.35}
                 depthWrite={false}
@@ -299,10 +312,10 @@ function Masses({ project, solids, style, shadows }: Props) {
           <group key={id}>
             <FatSegments
               segments={e.thick}
-              color={hot ? COLORS.selection : COLORS.massEdge}
+              color={hot ? ACCENT : pal.massEdge}
               width={hot ? 3 : style === 'realistic' ? 1.2 : 2}
             />
-            <ThinLines segments={e.thin} color={hot ? COLORS.selection : COLORS.storeyLine} />
+            <ThinLines segments={e.thin} color={hot ? ACCENT : pal.contextEdge} />
           </group>
         );
       })}
@@ -332,18 +345,39 @@ function SelectedContext({ buildings }: { buildings: readonly ContextBuilding[] 
     }
     return out;
   }, [buildings, selection, hover]);
-  return <FatSegments segments={segs} color={COLORS.selection} width={2.5} />;
+  return <FatSegments segments={segs} color={ACCENT} width={2.5} />;
 }
 
 export function SceneContent(props: Props) {
   const { project, style, shadows } = props;
+  const pal = useScenePalette();
+  const layers = useLayers();
   return (
     <group>
-      <Ground style={style} shadows={shadows} />
-      <SiteBoundary project={project} />
-      <ContextBuildings buildings={project.context} style={style} shadows={shadows} />
-      <SelectedContext buildings={project.context} />
-      <Masses {...props} />
+      <color attach="background" args={[pal.sky]} />
+      <fog attach="fog" args={[pal.sky, 900, 3200]} />
+      <Ground style={style} shadows={shadows} pal={pal} />
+      {layers.basemap !== 'none' && style !== 'wireframe' && (
+        <Basemap project={project} kind={layers.basemap} z={Z.basemap} />
+      )}
+      {project.surroundings && (
+        <Surroundings
+          project={project}
+          data={project.surroundings}
+          layers={layers}
+          pal={pal}
+          style={style}
+          shadows={shadows}
+        />
+      )}
+      <SiteBoundary project={project} pal={pal} />
+      {layers.buildings && (
+        <>
+          <ContextBuildings buildings={project.context} style={style} shadows={shadows} pal={pal} />
+          <SelectedContext buildings={project.context} />
+        </>
+      )}
+      <Masses {...props} pal={pal} />
     </group>
   );
 }
