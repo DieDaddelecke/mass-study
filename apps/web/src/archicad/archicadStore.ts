@@ -7,8 +7,15 @@ import {
   DEFAULT_BRIDGE_URL,
   type ArchicadInstance,
 } from './bridgeClient';
-import { buildPlan, DEFAULT_OPTIONS, type PlanOptions, type TransferPlan } from './plan';
 import {
+  buildPlan,
+  DEFAULT_OPTIONS,
+  type PlanOptions,
+  type StorySetting,
+  type TransferPlan,
+} from './plan';
+import {
+  applyStories,
   executePlan,
   readSnapshot,
   removeOwnElements,
@@ -51,6 +58,8 @@ interface ArchicadState {
   progress?: { step: string; done: number; total: number };
   report?: TransferReport;
   removed?: number;
+  /** Stories were adjusted in this session (shown as a confirmation). */
+  storiesAdjusted?: boolean;
   error?: string;
 
   openDialog: () => void;
@@ -67,6 +76,8 @@ interface ArchicadState {
     usageLabel: (u: Usage) => string,
   ) => Promise<void>;
   remove: (project: Project) => Promise<void>;
+  /** Replaces the Archicad stories (test projects only; the bridge enforces it). */
+  adjustStories: (project: Project, stories: StorySetting[]) => Promise<void>;
 }
 
 function client(s: Pick<ArchicadState, 'bridgeUrl' | 'token'>) {
@@ -138,6 +149,7 @@ export const useArchicadStore = create<ArchicadState>((set, get) => ({
       error: undefined,
       report: undefined,
       removed: undefined,
+      storiesAdjusted: undefined,
     });
     try {
       const snapshot = await readSnapshot(client(get()), port, projectId);
@@ -184,6 +196,21 @@ export const useArchicadStore = create<ArchicadState>((set, get) => ({
       const removed = await removeOwnElements(client(get()), port, project.id);
       const snapshot = await readSnapshot(client(get()), port, project.id);
       set({ removed, snapshot, mode: 'create' });
+    } catch (e) {
+      set({ error: message(e) });
+    } finally {
+      set({ busy: false });
+    }
+  },
+
+  adjustStories: async (project, stories) => {
+    const { port } = get();
+    if (port === undefined) return;
+    set({ busy: true, error: undefined, report: undefined, storiesAdjusted: undefined });
+    try {
+      await applyStories(client(get()), port, stories);
+      const snapshot = await readSnapshot(client(get()), port, project.id);
+      set({ snapshot, storiesAdjusted: true });
     } catch (e) {
       set({ error: message(e) });
     } finally {

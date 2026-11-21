@@ -8,9 +8,10 @@ import {
   extrudeBody,
   matchStory,
   placePoint,
+  proposeStories,
   type PlanOptions,
 } from './plan';
-import { executePlan, readSnapshot, removeOwnElements } from './transfer';
+import { applyStories, executePlan, readSnapshot, removeOwnElements, TAG_FAILED } from './transfer';
 
 const label = (u: string) => ({ wohnen: 'Logement', buero: 'Bureaux' })[u] ?? u;
 
@@ -149,8 +150,14 @@ describe('executePlan', () => {
     expect(ac.attributes.ZoneCategory!.map((c) => c.name)).toEqual(
       expect.arrayContaining(['MS - Logement', 'MS - Bureaux']),
     );
-    const zones = [...ac.elements].filter(([, e]) => e.type === 'Zone' && e.details);
+    // zones land on our layer although the zone tool's default layer is hidden …
+    const ms = ac.attributes.Layer!.find((l) => l.name === 'MS - Massenstudie')!;
+    const zones = [...ac.elements].filter(
+      ([, e]) => e.type === 'Zone' && e.layer === ms.attributeId.guid,
+    );
     expect(zones).toHaveLength(pl.counts.zones);
+    // … and the default is restored afterwards
+    expect(ac.zoneDefaultLayer).toBe('L-Z');
 
     const snap = await readSnapshot(ac, 19723, 'p1');
     expect(snap.ownElements).toBe(pl.counts.zones + pl.counts.morphs);
@@ -196,6 +203,123 @@ describe('executePlan', () => {
     });
     expect(r.zoneFallback).toBe(true);
     expect(r.created.morphs).toBe(pl.counts.morphs);
+  });
+});
+
+describe('Archicad preparation', () => {
+  it('reports zones it could not tag instead of failing silently', async () => {
+    const ac = new FakeArchicad();
+    const orig = ac.call.bind(ac);
+    // an older Tapir without the layer-defaults commands
+    ac.call = (async (port: number, command: string, p?: unknown) => {
+      if (command.endsWith('LayerOfElementDefaults')) throw new Error('unknown command');
+      return orig(port, command, p);
+    }) as typeof ac.call;
+    const pl = plan({ morphs: false });
+    const r = await executePlan(ac, 19723, pl, {
+      projectId: 'p1',
+      mode: 'create',
+      usageLabel: label,
+    });
+    expect(r.created.zones).toBe(pl.counts.zones);
+    expect(r.errors).toHaveLength(pl.counts.zones);
+    expect(r.errors.every((e) => e.message.startsWith(TAG_FAILED))).toBe(true);
+  });
+
+  it('warns when several levels share one Archicad story and replaces refused zones by morphs', async () => {
+    const ac = new FakeArchicad([{ index: 0, name: 'RDC', level: 0 }]);
+    const { p, masses } = project();
+    const pl = buildPlan({
+      project: p,
+      masses: masses.slice(0, 1),
+      stories: ac.stories,
+      options: { ...DEFAULT_OPTIONS, morphs: false },
+      usageLabel: label,
+    });
+    expect(pl.warnings.map((w) => w.code)).toContain('sharedStory');
+    const r = await executePlan(ac, 19723, pl, {
+      projectId: 'p1',
+      mode: 'create',
+      usageLabel: label,
+    });
+    expect(r.created.zones).toBe(1);
+    expect(r.standIns).toBe(pl.counts.zones - 1);
+    expect(r.created.morphs).toBe(pl.counts.zones - 1);
+    expect(r.zoneFallback).toBe(false);
+  });
+
+  it('proposes stories that match every app level and keeps basements and surplus stories', () => {
+    const current = [
+      { index: -1, name: 'SS', level: -3 },
+      { index: 0, name: 'RDC', level: 0 },
+      { index: 1, name: 'Niv 1', level: 3.77 },
+      { index: 2, name: 'Niv 2', level: 6.54 },
+      { index: 3, name: 'Toit', level: 9.31 },
+    ];
+    const levels = [
+      { elevation: 0, label: 'RDC' },
+      { elevation: 3.5, label: 'R+1' },
+      { elevation: 6.5, label: 'R+2' },
+    ];
+    const pr = proposeStories(levels, current);
+    expect(pr.matches).toBe(false);
+    expect(pr.stories.map((s) => [s.name, s.level])).toEqual([
+      ['SS', -3],
+      ['RDC', 0],
+      ['R+1', 3.5],
+      ['R+2', 6.5],
+      ['Toit', 9.5],
+    ]);
+    expect(pr.stories[0]!.index).toBe(-1);
+    expect(pr.changes).toHaveLength(3);
+    // nothing to do when the stories already match
+    const again = proposeStories(
+      levels,
+      pr.stories.map((s, i) => ({ ...s, index: i - 1 })),
+    );
+    expect(again.matches).toBe(true);
+    expect(again.changes).toEqual([]);
+    // more app levels than stories: new stories on top, surplus raised above
+    const more = proposeStories(
+      [...levels, { elevation: 9.5, label: 'R+3' }, { elevation: 12.5, label: 'R+4' }],
+      current,
+    );
+    expect(more.stories.map((s) => s.level)).toEqual([-3, 0, 3.5, 6.5, 9.5, 12.5]);
+    expect(more.stories.at(-1)!.name).toBe('R+4');
+    // one label on two levels (masses with different floor heights): unique names
+    const twice = proposeStories([...levels, { elevation: 7, label: 'R+2' }], current);
+    expect(twice.stories.map((s) => s.name)).toEqual(
+      expect.arrayContaining(['R+2 (6.50)', 'R+2 (7.00)']),
+    );
+  });
+
+  it('applies stories so every level gets its own story', async () => {
+    const ac = new FakeArchicad([
+      { index: 0, name: 'RDC', level: 0 },
+      { index: 1, name: 'Niv 1', level: 3.77 },
+    ]);
+    const { p, masses } = project();
+    const opts = { ...DEFAULT_OPTIONS };
+    const before = buildPlan({
+      project: p,
+      masses,
+      stories: ac.stories,
+      options: opts,
+      usageLabel: label,
+    });
+    const pr = proposeStories(before.storeys, ac.stories);
+    await applyStories(ac, 19723, pr.stories);
+    const after = buildPlan({
+      project: p,
+      masses,
+      stories: ac.stories,
+      options: opts,
+      usageLabel: label,
+    });
+    expect(after.storeys.every((m) => m.exact)).toBe(true);
+    expect(after.warnings.map((w) => w.code)).not.toContain('sharedStory');
+    ac.untitled = false;
+    await expect(applyStories(ac, 19723, pr.stories)).rejects.toThrow(/untitled/);
   });
 });
 

@@ -1,12 +1,12 @@
 import type { Usage } from '@kubatur/core';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { formatNumber } from '../i18n';
 import { useProjectStore } from '../store/projectStore';
 import { Dialog, NumField, Row } from '../shell/ui';
 import { planFor, useArchicadStore } from './archicadStore';
-import type { PlanWarning } from './plan';
+import { LAYER_NAME, proposeStories, type PlanWarning } from './plan';
 import './archicad.css';
 
 /** "Archicad" dialog: bridge pairing, instance choice, options, preview, transfer. */
@@ -22,12 +22,20 @@ export function ArchicadDialog() {
     [project, s.snapshot, s.options, t],
   );
 
+  const proposal = useMemo(
+    () => (plan && s.snapshot ? proposeStories(plan.storeys, s.snapshot.stories) : null),
+    [plan, s.snapshot],
+  );
+  const [confirmStories, setConfirmStories] = useState(false);
+
   if (!s.open || !project) return null;
   const instance = s.instances.find((i) => i.port === s.port);
   const projectTitle = instance?.project?.isUntitled
     ? t('untitled')
     : (s.snapshot?.projectName ?? instance?.project?.projectName ?? '?');
   const nothing = !plan || plan.items.length === 0;
+  const isTest = !!s.snapshot?.isUntitled && !s.snapshot.isTeamwork;
+  const zoneLayer = s.snapshot?.zoneLayer;
 
   return (
     <Dialog
@@ -201,6 +209,82 @@ export function ArchicadDialog() {
               )}
             </section>
 
+            {(proposal?.matches === false ||
+              s.storiesAdjusted ||
+              (plan.counts.zones > 0 && zoneLayer && zoneLayer.name !== LAYER_NAME)) && (
+              <section className="ac-section">
+                <h3>{t('prepare.title')}</h3>
+                {plan.counts.zones > 0 && zoneLayer && zoneLayer.name !== LAYER_NAME && (
+                  <p className="ac-help">{t('prepare.zoneLayer', { layer: zoneLayer.name })}</p>
+                )}
+                {s.storiesAdjusted && (
+                  <div className="ac-result is-ok">{t('prepare.storiesDone')}</div>
+                )}
+                {proposal && !proposal.matches && (
+                  <>
+                    <p>{t('prepare.storiesDiffer')}</p>
+                    <table className="ac-table">
+                      <thead>
+                        <tr>
+                          <th>{t('prepare.before')}</th>
+                          <th>{t('prepare.after')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {proposal.changes.map((c, i) => (
+                          <tr key={i}>
+                            <td>
+                              {c.before
+                                ? `${c.before.name} · ${formatNumber(c.before.level, 2)} m`
+                                : t('prepare.newStory')}
+                            </td>
+                            <td>
+                              {c.after.name} · {formatNumber(c.after.level, 2)} m
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {isTest ? (
+                      <>
+                        <p className="ac-help">{t('prepare.storiesTestOnly')}</p>
+                        {!confirmStories ? (
+                          <button
+                            className="btn btn-sm"
+                            disabled={s.busy}
+                            onClick={() => setConfirmStories(true)}
+                          >
+                            {t('prepare.adjust')}
+                          </button>
+                        ) : (
+                          <div className="ac-checks">
+                            <button
+                              className="btn btn-sm btn-primary"
+                              disabled={s.busy}
+                              onClick={() => {
+                                setConfirmStories(false);
+                                void s.adjustStories(project, proposal.stories);
+                              }}
+                            >
+                              {t('prepare.confirm', { count: proposal.changes.length })}
+                            </button>
+                            <button
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => setConfirmStories(false)}
+                            >
+                              {t('common:actions.cancel')}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="ac-help">{t('prepare.storiesManual')}</p>
+                    )}
+                  </>
+                )}
+              </section>
+            )}
+
             <section className="ac-section">
               <h3>{t('preview.title')}</h3>
               <p>
@@ -255,6 +339,7 @@ export function ArchicadDialog() {
             <p>{t('result.created', s.report.created)}</p>
             {s.report.deleted > 0 && <p>{t('result.deleted', { count: s.report.deleted })}</p>}
             {s.report.zoneFallback && <p>{t('result.zoneFallback')}</p>}
+            {s.report.standIns > 0 && <p>{t('result.standIns', { count: s.report.standIns })}</p>}
             {s.report.errors.length > 0 && (
               <ul>
                 {s.report.errors.slice(0, 20).map((e, i) => (
@@ -286,6 +371,8 @@ function warningText(t: TFunction<'archicad'>, w: PlanWarning): string {
         label: w.label,
         story: w.storyName,
       });
+    case 'sharedStory':
+      return t('warning.sharedStory', { story: w.storyName, labels: w.labels.join(', ') });
     case 'belowLowestStory':
       return t('warning.belowLowestStory', { level: formatNumber(w.elevation, 2), label: w.label });
     default:

@@ -104,6 +104,7 @@ export type PlanWarning =
   | { code: 'levelWithoutStory'; elevation: number; label: string; storyName: string }
   | { code: 'belowLowestStory'; elevation: number; label: string }
   | { code: 'librariesMissing'; names: string[] }
+  | { code: 'sharedStory'; storyName: string; labels: string[] }
   | { code: 'teamwork' }
   | { code: 'noMasses' };
 
@@ -348,6 +349,19 @@ export function buildPlan(input: PlanInput): TransferPlan {
   }
 
   const sortedStoreys = [...storeys.values()].sort((a, b) => a.elevation - b.elevation);
+  if (o.zones) {
+    // Zones of several levels on one Archicad story overlap in plan: Archicad refuses them.
+    const byStory = new Map<number, StoreyMatch[]>();
+    for (const m of sortedStoreys)
+      byStory.set(m.storyIndex, [...(byStory.get(m.storyIndex) ?? []), m]);
+    for (const list of byStory.values())
+      if (list.length > 1)
+        warnings.push({
+          code: 'sharedStory',
+          storyName: list[0]!.storyName,
+          labels: list.map((m) => m.label),
+        });
+  }
   return {
     storeys: sortedStoreys,
     items,
@@ -376,4 +390,89 @@ export function morphForZone(item: PlanItem): MorphData | null {
     ),
     id: z.numberStr,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Story proposal ("Préparer Archicad")
+// ---------------------------------------------------------------------------
+
+/** One entry of Tapir's SetStories input (matched positionally from the bottom). */
+export interface StorySetting {
+  index?: number;
+  name: string;
+  level: number;
+  dispOnSections: boolean;
+}
+
+export interface StoryChange {
+  /** Existing story (undefined = new story). */
+  before?: { name: string; level: number };
+  after: { name: string; level: number };
+}
+
+export interface StoryProposal {
+  /** Full story list for SetStories. */
+  stories: StorySetting[];
+  changes: StoryChange[];
+  /** True when the Archicad stories already match every app level. */
+  matches: boolean;
+}
+
+/** Default height for Archicad stories kept above the app's top level. */
+const DEFAULT_STORY_HEIGHT = 3;
+
+/**
+ * Archicad stories that give every app level its own story at the exact height.
+ * Stories below the lowest app level stay as they are; the following stories take
+ * the app levels and names in order; surplus stories above are kept (raised if needed),
+ * so the number of stories never shrinks and no story with elements is removed.
+ */
+export function proposeStories(
+  levels: readonly { elevation: number; label: string }[],
+  stories: readonly TapirStory[],
+): StoryProposal {
+  const sorted = [...stories].sort((a, b) => a.level - b.level);
+  const app = [...levels].sort((a, b) => a.elevation - b.elevation);
+  const matches = app.every((l) =>
+    sorted.some((s) => Math.abs(s.level - l.elevation) <= LEVEL_TOL),
+  );
+  if (!app.length) return { stories: [], changes: [], matches: true };
+  const min = app[0]!.elevation;
+  const below = sorted.filter((s) => s.level < min - LEVEL_TOL);
+  const rest = sorted.slice(below.length);
+  const out: StorySetting[] = [];
+  const changes: StoryChange[] = [];
+  const disp = (s?: TapirStory) => s?.dispOnSections ?? true;
+
+  for (const s of below) out.push({ name: s.name, level: s.level, dispOnSections: disp(s) });
+  app.forEach((l, i) => {
+    const old = rest[i];
+    // masses with different floor heights give one label several levels: keep names unique
+    const dup = app.filter((x) => x.label === l.label).length > 1;
+    const name = dup ? `${l.label} (${l.elevation.toFixed(2)})` : l.label;
+    const next = { name, level: round(l.elevation) };
+    out.push({ ...next, dispOnSections: disp(old) });
+    if (!old || old.name !== next.name || Math.abs(old.level - next.level) > 1e-6)
+      changes.push({
+        ...(old ? { before: { name: old.name, level: old.level } } : {}),
+        after: next,
+      });
+  });
+  // surplus stories above: shifted up together (keeping their heights) only if the
+  // top app level would otherwise be lower than DEFAULT_STORY_HEIGHT
+  const surplus = rest.slice(app.length);
+  const top = out[out.length - 1]!.level;
+  const shift = surplus[0] ? Math.max(0, top + DEFAULT_STORY_HEIGHT - surplus[0].level) : 0;
+  for (const old of surplus) {
+    const level = round(old.level + shift);
+    out.push({ name: old.name, level, dispOnSections: disp(old) });
+    if (shift)
+      changes.push({
+        before: { name: old.name, level: old.level },
+        after: { name: old.name, level },
+      });
+  }
+  // pin the numbering so basements keep their negative indices
+  if (sorted[0]) out[0] = { ...out[0]!, index: sorted[0].index };
+  return { stories: out, changes, matches };
 }

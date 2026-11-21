@@ -38,6 +38,19 @@
     "replace": "Bereits übertragene Elemente ersetzen ({{count}})",
     "create": "Hinzufügen, nichts löschen"
   },
+  "prepare": {
+    "title": "Archicad vorbereiten",
+    "zoneLayer": "Die Standard-Ebene des Zonenwerkzeugs ist „{{layer}}“. Während der Übertragung werden Zonen auf „MS - Massenstudie“ erzeugt, danach wird die Einstellung zurückgesetzt.",
+    "storiesDiffer": "Die Archicad-Geschosse passen nicht zu den Ebenen des Projekts. Mehrere Ebenen landen im selben Geschoss, dadurch überlappen die Zonen.",
+    "before": "Archicad-Geschoss jetzt",
+    "after": "Vorschlag",
+    "newStory": "(neues Geschoss)",
+    "storiesTestOnly": "Unbenanntes Projekt: Die Geschosse können angepasst werden. Bereits platzierte Elemente folgen der neuen Geschosshöhe.",
+    "storiesManual": "Geschosse werden nur in einem unbenannten Projekt (Testprojekt) automatisch angepasst. In einem gespeicherten Projekt bitte in Archicad anpassen (Konstruktion › Geschosseinstellungen) oder die Platzierung mit Versatz verwenden.",
+    "adjust": "Archicad-Geschosse anpassen…",
+    "confirm": "Bestätigen: {{count}} Geschosse ändern",
+    "storiesDone": "Archicad-Geschosse angepasst. Die Vorschau unten berücksichtigt das."
+  },
   "preview": {
     "title": "Vorschau",
     "summary": "{{zones}} Zonen, {{morphs}} Volumen, {{slabs}} Decken auf {{storeys}} Ebenen, auf der Ebene „MS - Massenstudie“.",
@@ -45,7 +58,7 @@
     "storey": "Geschoss",
     "archicadStory": "Archicad-Geschoss",
     "offset": "Versatz",
-    "storiesUnchanged": "Die Geschossstruktur in Archicad wird nie verändert: jede Ebene kommt auf das nächstniedrigere Archicad-Geschoss."
+    "storiesUnchanged": "Jede Ebene wird auf das nächstniedrigere Archicad-Geschoss gesetzt, falls nötig mit Versatz."
   },
   "warning": {
     "noStories": "Das Archicad-Projekt hat keine Geschosse.",
@@ -53,7 +66,8 @@
     "teamwork": "Teamwork-Projekt: Elemente müssen reserviert werden können.",
     "librariesMissing": "Nicht verfügbare Bibliotheken in Archicad: {{names}}. Liegt der Zonenstempel darin, lehnt Archicad Zonen ab; sie werden dann durch Volumen ersetzt.",
     "levelWithoutStory": "Ebene {{level}} m ({{label}}) ohne Archicad-Geschoss auf dieser Höhe: auf „{{story}}“ mit Versatz gelegt.",
-    "belowLowestStory": "Ebene {{level}} m ({{label}}) liegt unter dem untersten Archicad-Geschoss."
+    "belowLowestStory": "Ebene {{level}} m ({{label}}) liegt unter dem untersten Archicad-Geschoss.",
+    "sharedStory": "Die Ebenen {{labels}} liegen alle im Geschoss „{{story}}“: Ihre Zonen überlappen, Archicad lehnt sie ab. Sie werden als Morphs erzeugt. Geschosse anpassen, um das zu vermeiden."
   },
   "progress": {
     "prepare": "Vorbereitung (Ebene, Kategorien)…",
@@ -68,7 +82,8 @@
     "created": "Angelegt: {{zones}} Zonen, {{morphs}} Volumen, {{slabs}} Decken.",
     "deleted": "{{count}} vorherige Elemente gelöscht.",
     "zoneFallback": "Archicad hat alle Zonen abgelehnt (Zonenstempel oder Bibliothek fehlt). Stattdessen wurden Volumen angelegt. Bibliothek im Projekt laden und erneut übertragen.",
-    "removed": "{{count}} Elemente aus Archicad entfernt."
+    "removed": "{{count}} Elemente aus Archicad entfernt.",
+    "standIns": "{{count}} von Archicad abgelehnte Zonen (Überlappung) wurden durch Morphs ersetzt."
   },
   "pill": {
     "ready": "Archicad: verbunden – Übertragung öffnen"

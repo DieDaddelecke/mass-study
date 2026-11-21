@@ -39,9 +39,14 @@ class MockArchicad:
         self.elements: dict[str, dict[str, Any]] = {}
         self.user_data: dict[str, dict[str, str]] = {}
         self.attributes: dict[str, list[dict[str, Any]]] = {
-            "Layer": [{"attributeId": {"guid": _guid()}, "index": 1, "name": "Calque Archicad"}],
+            "Layer": [
+                {"attributeId": {"guid": _guid()}, "index": 1, "name": "Calque Archicad"},
+                {"attributeId": {"guid": _guid()}, "index": 2, "name": "8 - ZONES_SDP"},
+            ],
             "ZoneCategory": [{"attributeId": {"guid": _guid()}, "index": 1, "name": "Zone"}],
         }
+        self.zone_default_layer = self.attributes["Layer"][1]["attributeId"]["guid"]
+        self.untitled = True
         self.log: list[tuple[str, Any]] = []
         self.lock = threading.Lock()
 
@@ -89,7 +94,26 @@ class MockArchicad:
         if name == "GetAddOnVersion":
             return {"version": "2.0.0"}
         if name == "GetProjectInfo":
-            return {"isUntitled": True, "isTeamwork": False}
+            return {"isUntitled": self.untitled, "isTeamwork": False}
+        if name == "GetLayerOfElementDefaults":
+            name_of = {a["attributeId"]["guid"]: a["name"] for a in self.attributes["Layer"]}
+            return {
+                "layersOfElementDefaults": [
+                    {"elementType": t, "layerId": {"guid": self.zone_default_layer}, "layerName": name_of.get(self.zone_default_layer, "")}
+                    for t in p["elementTypes"]
+                ]
+            }
+        if name == "SetLayerOfElementDefaults":
+            for it in p["layersOfElementDefaults"]:
+                if it["elementType"] == "Zone":
+                    self.zone_default_layer = it["layerId"]["guid"]
+            return {"executionResults": [{"success": True} for _ in p["layersOfElementDefaults"]]}
+        if name == "SetStories":
+            base = p["stories"][0].get("index", self.stories[0]["index"]) if p["stories"] else 0
+            self.stories = [
+                {"index": base + i, "name": s["name"], "level": s["level"], "height": 3.0} for i, s in enumerate(p["stories"])
+            ]
+            return {}
         if name == "GetStories":
             return {"firstStory": self.stories[0]["index"], "lastStory": self.stories[-1]["index"], "actStory": 0, "stories": self.stories}
         if name == "GetLibraries":
