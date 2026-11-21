@@ -1,1 +1,31 @@
-{}
+{
+  "cube": {
+    "top": "OBEN",
+    "bottom": "UNTEN",
+    "north": "NORD",
+    "south": "SÜD",
+    "east": "OST",
+    "west": "WEST",
+    "home": "Startansicht"
+  },
+  "compass": { "N": "N", "E": "O", "S": "S", "W": "W" },
+  "style": {
+    "wireframe": "Drahtmodell",
+    "hiddenLine": "Verdeckte Kanten",
+    "shaded": "Schattiert",
+    "consistentColors": "Konsistente Farben",
+    "realistic": "Realistisch"
+  },
+  "bar": {
+    "label": "Ansichtssteuerung",
+    "scaleDisabled": "Maßstab (in 3D nicht verfügbar)",
+    "visualStyle": "Visueller Stil",
+    "sun": "Sonne und Schatten",
+    "toOrtho": "Orthogonale Ansicht",
+    "toPersp": "Perspektivische Ansicht",
+    "zoomExtents": "Zoom Grenzen (ZF)",
+    "isolate": "Isolieren / Ausblenden",
+    "soon": "in Vorbereitung"
+  },
+  "legend": { "title": "Nutzungen" }
+}

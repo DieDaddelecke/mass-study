@@ -1,0 +1,119 @@
+.vp-root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(to bottom, #dfeaf5 0%, #f6f9fc 45%, #ffffff 100%);
+}
+.vp-canvas {
+  position: absolute !important;
+  inset: 0;
+}
+.vp-navcube {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 140px;
+  height: 140px;
+  user-select: none;
+}
+.vp-navcube-home {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border, #cdcdcd);
+  border-radius: var(--radius, 2px);
+  background: #fff;
+  color: #444;
+  cursor: pointer;
+}
+.vp-navcube-home:hover {
+  background: var(--hover, #e3eef9);
+}
+.vp-bar {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 26px;
+  padding: 0 4px;
+  border: 1px solid var(--border, #cdcdcd);
+  border-radius: var(--radius, 2px);
+  background: rgba(255, 255, 255, 0.95);
+  font: 12px var(--font, system-ui);
+  color: var(--text, #1f1f1f);
+}
+.vp-bar-scale {
+  padding: 0 6px;
+  color: var(--text-muted, #6b6b6b);
+  opacity: 0.6;
+}
+.vp-bar-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: var(--border, #cdcdcd);
+}
+.vp-bar-select {
+  height: 20px;
+  font: inherit;
+  border: 1px solid transparent;
+  background: transparent;
+}
+.vp-bar-select:hover {
+  border-color: var(--border, #cdcdcd);
+}
+.vp-bar-btn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius, 2px);
+  background: transparent;
+  color: #333;
+  cursor: pointer;
+}
+.vp-bar-btn:hover:not(:disabled) {
+  background: var(--hover, #e3eef9);
+}
+.vp-bar-btn.is-on {
+  border-color: var(--accent, #1f7fd0);
+  background: var(--hover, #e3eef9);
+}
+.vp-bar-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.vp-legend {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border, #cdcdcd);
+  background: rgba(255, 255, 255, 0.95);
+  font: 12px var(--font, system-ui);
+}
+.vp-legend-title {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.vp-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 18px;
+}
+.vp-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
