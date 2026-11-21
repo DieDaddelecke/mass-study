@@ -162,7 +162,13 @@ function FileMenu() {
           <Menu.Separator className="menu-sep" />
           <Menu.Label className="menu-label">{t('file.export')}</Menu.Label>
           {(['ifc', 'xlsx', 'csv', 'pdf', 'dxf'] as const).map((f) => (
-            <MenuItem key={f} icon={Download} label={t(`file.exportFormat.${f}`)} disabled />
+            <MenuItem
+              key={f}
+              icon={Download}
+              label={t(`file.exportFormat.${f}`)}
+              onSelect={f === 'ifc' ? () => setDialog('ifcExport') : undefined}
+              disabled={f !== 'ifc'}
+            />
           ))}
           <Menu.Separator className="menu-sep" />
           <MenuItem

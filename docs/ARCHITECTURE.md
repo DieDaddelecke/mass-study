@@ -6,7 +6,7 @@
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `packages/core`         | Datenmodell, Bauform-Generatoren, Geschosslogik, Flächen (DIN 277), Kennzahlen DE/FR, Typologien, Wohnungsmix, Prüfungen, Projektion, Projektdatei | P1 fertig                                                         |
 | `packages/drawing`      | 2D-Zeichnungsmodell, verdeckte Kanten, Schnitte, SVG/DXF                                                                                           | P6                                                                |
-| `packages/ifc`          | IFC4-STEP-Writer                                                                                                                                   | P8                                                                |
+| `packages/ifc`          | IFC4-STEP-Writer (`StepWriter`, IFC-GUIDs, `exportIfc(project, variantResult, options)`) – Projekt › Site › Gebäude › Geschosse › Räume/Decken     | P5: IFC4-Export                                                   |
 | `apps/web`              | Vite + React SPA                                                                                                                                   | P2–P4: Oberfläche, Dialog „Nouveau projet“, 3D-Ansicht, Werkzeuge |
 | `apps/server`           | Hono: Geodaten-Proxy + Cache, liefert den Web-Build aus                                                                                            | P3: Geodaten-Proxy (IGN, API Carto, BD TOPO, Overpass, Nominatim) |
 | `tools/archicad-bridge` | Python-Bridge + Mock-Archicad                                                                                                                      | P8                                                                |
@@ -61,4 +61,13 @@ Lokales metrisches System (x Ost, y Nord, z oben), Ursprung im Schwerpunkt des G
 | `api/`            | HTTP-Vertrag mit dem Server (`contract.ts`) und Client                                                                                                                                          |
 | `i18n/`           | i18next, Französisch Standard; ein Namespace je Modul                                                                                                                                           |
 | `theme/`          | Design-Tokens (`tokens.css`), Szenenpalette (`palette.ts`), hell/dunkel/System (`themeStore.ts`)                                                                                                |
+| `exports/`        | Downloads (`download.ts`); `ifc.ts` + `IfcExportDialog.tsx`: IFC4-Export der aktiven Variante, Writer per `import()` nachgeladen                                                                |
 | `demo/`           | Offline-Demoprojekt `?demo=palaiseau` aus aufgezeichneten echten Daten                                                                                                                          |
+
+## IFC-Export (`packages/ifc`)
+
+- `step.ts`: ISO-10303-21-Writer; Werte werden als fertige Tokens übergeben (`str`, `real`, `enumv`, `list`, `typed`), Strings ASCII mit `\X2\…\X0\`.
+- `guid.ts`: 22-stellige IFC-GUIDs; mit `guidSeed` deterministisch (Web-App: Projekt-ID + Variante → stabile IDs für Archicad-Hotlink/Neu-Import).
+- `export.ts`: IfcProject (m, m², m³, rad) › IfcSite (Parzellen als FootPrint, RefLatitude/RefLongitude des lokalen Ursprungs, IfcMapConversion + IfcProjectedCRS) › IfcBuilding „{Étude de capacité} – {Variante}“ › IfcBuildingStorey je `VariantResult.levels` › IfcSpace je StoreySolid (IfcRelAggregates, Body = Extrusion, Profil mit Voids bei Höfen, Qto_SpaceBaseQuantities, Pset_SpaceCommon, Pset_Massenstudie). Optional IfcSlab/IfcBuildingElementProxy (IfcRelContainedInSpatialStructure im Geschoss) und Kontext-Proxies im Site.
+- Geometrie in projektlokalen Metern; lokaler Ursprung = `geo.originCrs`, keine Drehung (x = Ost), z = 0 = ±0,00 = `geo.groundElevation`.
+- Tests parsen die Datei mit `web-ifc` (WASM in Node, `SetWasmPath(<node_modules/web-ifc>/, true)`).
