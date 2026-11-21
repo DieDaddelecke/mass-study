@@ -1,0 +1,270 @@
+/* Schedule workspace (tables/TablesView.tsx). Uses the design tokens of theme/tokens.css. */
+
+.tables-view {
+  position: absolute;
+  inset: 0;
+  padding: calc(var(--inset) * 2 + var(--bar-h)) var(--inset) var(--inset)
+    calc(var(--inset) * 2 + var(--dock-w));
+  background:
+    radial-gradient(1200px 600px at 85% -10%, var(--accent-soft), transparent 60%),
+    radial-gradient(900px 500px at 0% 110%, rgb(139 92 246 / 0.08), transparent 60%), var(--sky);
+  display: flex;
+  transition: padding var(--dur) var(--ease);
+}
+.app.has-left .tables-view {
+  padding-left: calc(var(--inset) * 3 + var(--dock-w) + var(--left-w));
+}
+.app.has-right .tables-view {
+  padding-right: calc(var(--inset) * 2 + var(--right-w));
+}
+
+.tables-card {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--r-xl);
+  background: var(--glass-strong);
+}
+
+.tables-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  padding: 14px 16px 12px 20px;
+  border-bottom: 1px solid var(--hairline);
+}
+.tables-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-right: auto;
+}
+.tables-title h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.tables-sub {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tables-tabs .tab {
+  height: 28px;
+  padding: 0 12px;
+}
+.tables-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.tables-scroll {
+  flex: 1;
+  padding-bottom: 88px;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.tables-empty {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  color: var(--text-3);
+}
+
+/* ------------------------------------------------------------------ table */
+.sched {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+.sched th,
+.sched td {
+  height: 30px;
+  padding: 0 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--hairline);
+  text-align: left;
+}
+.sched th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 40px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  white-space: normal;
+  line-height: 1.25;
+  vertical-align: bottom;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--hairline-strong);
+}
+.sched th:first-child,
+.sched td:first-child {
+  position: sticky;
+  left: 0;
+  background: inherit;
+}
+.sched th:first-child {
+  z-index: 2;
+  padding-left: 30px;
+}
+.sched tr {
+  background: var(--glass-strong);
+}
+.sched .num {
+  text-align: right;
+}
+.sched .center {
+  text-align: center;
+}
+.sched td.name {
+  color: var(--text);
+}
+.sched td.name > span {
+  vertical-align: middle;
+}
+
+/* row kinds */
+.sched tr.k-row td {
+  color: var(--text-2);
+}
+.sched tr.k-row td.name {
+  color: var(--text);
+}
+.sched tr.k-group td {
+  height: 34px;
+  font-weight: 600;
+  color: var(--text);
+}
+.sched tr.k-group.d-0 td {
+  font-size: var(--fs);
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--glass-strong);
+}
+.sched tr.k-subtotal td {
+  font-weight: 600;
+  color: var(--text);
+  background: linear-gradient(var(--hover), var(--hover)), var(--glass-strong);
+}
+.sched tr.k-total td {
+  height: 34px;
+  font-weight: 700;
+  color: var(--text);
+  border-top: 1px solid var(--hairline-strong);
+  background: linear-gradient(var(--press), var(--press)), var(--glass-strong);
+}
+.sched tr.k-total + tr.k-total td {
+  border-top: none;
+}
+
+/* interaction */
+.sched tr.is-mass {
+  cursor: pointer;
+}
+.sched tr.is-mass:hover td,
+.sched tr.is-hover td {
+  background: linear-gradient(var(--hover), var(--hover)), var(--glass-strong);
+}
+.sched tr.is-selected td {
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--glass-strong);
+}
+.sched tr.is-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.sched-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin: 0 2px 0 -20px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-3);
+  vertical-align: middle;
+  cursor: pointer;
+}
+.sched-toggle:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.sched-toggle svg {
+  transition: transform var(--dur) var(--ease);
+}
+.sched-toggle[aria-expanded='true'] svg {
+  transform: rotate(90deg);
+}
+
+.sched-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.sched-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.sched-pill.s-ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.sched-pill.s-warning {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+}
+.sched-pill.s-error {
+  background: var(--error-soft);
+  color: var(--error-text);
+}
+
+.sched-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-3);
+  vertical-align: middle;
+}
+.sched-dot.on {
+  border-color: transparent;
+  background: var(--accent-grad);
+}
+
+@media (max-width: 900px) {
+  .tables-actions .btn span {
+    display: none;
+  }
+}
+.sched td.muted {
+  color: var(--text-3);
+}
