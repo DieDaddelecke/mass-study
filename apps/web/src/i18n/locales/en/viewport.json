@@ -1,1 +1,31 @@
-{}
+{
+  "cube": {
+    "top": "TOP",
+    "bottom": "BOTTOM",
+    "north": "NORTH",
+    "south": "SOUTH",
+    "east": "EAST",
+    "west": "WEST",
+    "home": "Home view"
+  },
+  "compass": { "N": "N", "E": "E", "S": "S", "W": "W" },
+  "style": {
+    "wireframe": "Wireframe",
+    "hiddenLine": "Hidden line",
+    "shaded": "Shaded",
+    "consistentColors": "Consistent colours",
+    "realistic": "Realistic"
+  },
+  "bar": {
+    "label": "View control",
+    "scaleDisabled": "Scale (not applicable in 3D)",
+    "visualStyle": "Visual style",
+    "sun": "Sun and shadows",
+    "toOrtho": "Switch to orthographic",
+    "toPersp": "Switch to perspective",
+    "zoomExtents": "Zoom extents (ZF)",
+    "isolate": "Isolate / hide",
+    "soon": "coming soon"
+  },
+  "legend": { "title": "Uses" }
+}

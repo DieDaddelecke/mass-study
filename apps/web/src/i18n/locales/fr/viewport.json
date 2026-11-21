@@ -1,1 +1,31 @@
-{}
+{
+  "cube": {
+    "top": "DESSUS",
+    "bottom": "DESSOUS",
+    "north": "NORD",
+    "south": "SUD",
+    "east": "EST",
+    "west": "OUEST",
+    "home": "Vue d'accueil"
+  },
+  "compass": { "N": "N", "E": "E", "S": "S", "W": "O" },
+  "style": {
+    "wireframe": "Filaire",
+    "hiddenLine": "Lignes cachées",
+    "shaded": "Ombré",
+    "consistentColors": "Couleurs uniformes",
+    "realistic": "Réaliste"
+  },
+  "bar": {
+    "label": "Contrôle de la vue",
+    "scaleDisabled": "Échelle (sans objet en 3D)",
+    "visualStyle": "Style visuel",
+    "sun": "Soleil et ombres",
+    "toOrtho": "Passer en vue orthogonale",
+    "toPersp": "Passer en vue perspective",
+    "zoomExtents": "Zoom étendu (ZF)",
+    "isolate": "Isoler / masquer",
+    "soon": "en préparation"
+  },
+  "legend": { "title": "Affectations" }
+}
