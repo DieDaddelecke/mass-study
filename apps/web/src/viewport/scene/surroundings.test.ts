@@ -9,7 +9,7 @@ import {
   flatPolygonsGeometry,
   hedgeGeometry,
 } from './surroundingsGeometry';
-import { buildTreeInstances } from './treeInstances';
+import { buildTreeInstances, scatterTreesInGreen } from './treeInstances';
 import {
   lonLatToTile,
   mosaicCorners,
@@ -220,5 +220,41 @@ describe('synthetic surroundings', () => {
     expect(s.trees.length).toBeGreaterThanOrEqual(40);
     expect(s.green.some((g) => g.kind === 'park')).toBe(true);
     expect(s.parcels.length).toBeGreaterThan(3);
+  });
+});
+
+describe('scatterTreesInGreen', () => {
+  const wood = {
+    id: 'w1',
+    kind: 'wood' as const,
+    source: 'ign' as const,
+    footprint: {
+      outer: [
+        [0, 0],
+        [70, 0],
+        [70, 70],
+        [0, 70],
+      ] as [number, number][],
+    },
+  };
+  it('fills woods on a jittered grid, deterministically, and skips excluded areas', () => {
+    const a = scatterTreesInGreen([wood]);
+    expect(a.length).toBe(100); // 70 / 7 = 10 × 10
+    expect(scatterTreesInGreen([wood])).toEqual(a);
+    expect(a.every((t) => t.height >= 13 && t.height <= 20)).toBe(true);
+    const half = {
+      outer: [
+        [0, 0],
+        [35, 0],
+        [35, 70],
+        [0, 70],
+      ] as [number, number][],
+    };
+    const b = scatterTreesInGreen([wood], [half]);
+    expect(b.length).toBeGreaterThan(30);
+    expect(b.length).toBeLessThan(70);
+  });
+  it('ignores kinds without scatter rules', () => {
+    expect(scatterTreesInGreen([{ ...wood, kind: 'grass' }])).toEqual([]);
   });
 });

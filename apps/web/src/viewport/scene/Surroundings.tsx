@@ -1,4 +1,11 @@
-import type { Project, Surroundings as SurroundingsData } from '@kubatur/core';
+import {
+  intersection,
+  rect,
+  ringCentroid,
+  type Polygon,
+  type Project,
+  type Surroundings as SurroundingsData,
+} from '@kubatur/core';
 import { useEffect, useLayoutEffect, useMemo } from 'react';
 import {
   BufferGeometry,
@@ -22,7 +29,7 @@ import {
   hedgeGeometry,
   polygonOutlineSegments,
 } from './surroundingsGeometry';
-import { buildTreeInstances, type TreeInstanceSet } from './treeInstances';
+import { buildTreeInstances, scatterTreesInGreen, type TreeInstanceSet } from './treeInstances';
 
 /** Heights of the flat context layers (ground plane at -0.05, site fill 0…0.02). */
 export const Z = {
@@ -252,10 +259,12 @@ function Instances({
 }
 
 function Trees({
+  project,
   data,
   pal,
   shadows,
 }: {
+  project: Project;
   data: SurroundingsData;
   pal: ScenePalette;
   shadows: boolean;
@@ -269,7 +278,12 @@ function Trees({
     [],
   );
   useEffect(() => () => Object.values(geos).forEach((g) => g.dispose()), [geos]);
-  const inst = useMemo(() => buildTreeInstances(data.trees, pal.tree), [data.trees, pal.tree]);
+  const trees = useMemo(() => {
+    const exclude = [project.site.boundary, ...project.context.map((b) => b.footprint)];
+    // data.green is already clipped to the context extent (clipAreas).
+    return [...data.trees, ...scatterTreesInGreen(data.green, exclude)];
+  }, [data.trees, data.green, project.site.boundary, project.context]);
+  const inst = useMemo(() => buildTreeInstances(trees, pal.tree), [trees, pal.tree]);
   return (
     <group>
       <Instances set={inst.broad} geometry={geos.crown} color={pal.tree} tinted shadows={shadows} />
@@ -322,7 +336,49 @@ function Parcels({
 // ---------------------------------------------------------------------------
 
 /** Streets, vegetation, water and neighbouring parcels around the site. */
-export function Surroundings({ project, data, layers, pal, style, shadows }: Props) {
+/** Max half size of the area that green and water are clipped to, m. */
+const CLIP_MAX = 400;
+
+/**
+ * Large forests / water bodies reach kilometres beyond the loaded context: clip them to the extent
+ * of the other context data (roads, buildings, site), at most CLIP_MAX around the site.
+ */
+function clipAreas(data: SurroundingsData, project: Project): SurroundingsData {
+  const ring = project.site.boundary.outer;
+  const [cx, cy] = ring.length ? ringCentroid(ring) : [0, 0];
+  let minX = cx - 60,
+    minY = cy - 60,
+    maxX = cx + 60,
+    maxY = cy + 60;
+  const add = ([x, y]: readonly [number, number]) => {
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  };
+  for (const r of data.roads) r.centerline.forEach(add);
+  for (const b of project.context) b.footprint.outer.forEach(add);
+  const box = [
+    rect(
+      Math.max(minX, cx - CLIP_MAX),
+      Math.max(minY, cy - CLIP_MAX),
+      Math.min(maxX, cx + CLIP_MAX),
+      Math.min(maxY, cy + CLIP_MAX),
+    ),
+  ];
+  const clip = <T extends { id: string; footprint: Polygon }>(items: readonly T[]): T[] =>
+    items.flatMap((it) =>
+      intersection([it.footprint], box).map((footprint, i) => ({
+        ...it,
+        id: i ? `${it.id}#c${i}` : it.id,
+        footprint,
+      })),
+    );
+  return { ...data, green: clip(data.green), water: clip(data.water) };
+}
+
+export function Surroundings({ project, data: raw, layers, pal, style, shadows }: Props) {
+  const data = useMemo(() => clipAreas(raw, project), [raw, project]);
   const dim = layers.basemap !== 'none';
   const wire = style === 'wireframe';
   return (
@@ -331,7 +387,7 @@ export function Surroundings({ project, data, layers, pal, style, shadows }: Pro
         <GreenWater data={data} layers={layers} pal={pal} dim={dim} />
       )}
       {layers.roads && <Roads data={data} pal={pal} dim={dim || wire} />}
-      {layers.trees && <Trees data={data} pal={pal} shadows={shadows} />}
+      {layers.trees && <Trees project={project} data={data} pal={pal} shadows={shadows} />}
       {layers.parcels && <Parcels project={project} data={data} pal={pal} />}
     </group>
   );
