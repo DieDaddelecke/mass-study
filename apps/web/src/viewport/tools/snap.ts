@@ -45,7 +45,9 @@ export function collectSnapGeometry(
     if (exclude.includes(m.id)) continue;
     for (const f of massFootprints(m)) edges.push(...polygonEdges(f));
   }
-  for (const c of project.context) if (!c.hidden) edges.push(...polygonEdges(c.footprint));
+  // demolished buildings on the site are no reference
+  for (const c of project.context)
+    if (!c.hidden && !c.demolished) edges.push(...polygonEdges(c.footprint));
   const variant = project.variants.find((v) => v.masses === masses) ?? project.variants[0];
   for (const z of variant?.plantings ?? [])
     if (!exclude.includes(z.id)) edges.push(...polygonEdges(z.polygon));

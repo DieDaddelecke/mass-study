@@ -79,7 +79,7 @@ export function pickableEdges(project: Project, masses: readonly Mass[]): Pickab
     }
   }
   for (const c of project.context) {
-    if (c.hidden) continue;
+    if (c.hidden || c.demolished) continue;
     for (const e of ringEdges(c.footprint.outer))
       out.push({ seg: e, z0: c.baseHeight ?? 0, z1: c.height, kind: 'context' });
   }
