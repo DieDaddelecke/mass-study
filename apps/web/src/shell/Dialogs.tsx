@@ -1,12 +1,15 @@
-import type {
-  AccessType,
-  Constraints,
-  ModelWarning,
-  Project,
-  RuleProfileId,
-  Settings,
-  StoreyNotation,
-  WarningCode,
+import {
+  requiredFacade,
+  resolveUnitRules,
+  type AccessType,
+  type Constraints,
+  type ModelWarning,
+  type Project,
+  type RuleProfileId,
+  type Settings,
+  type StoreyNotation,
+  type UnitRules,
+  type WarningCode,
 } from '@kubatur/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -127,6 +130,12 @@ function SettingsDialog({ project }: { project: Project }) {
     </Row>
   );
   const pct = (v: number) => v * 100;
+  const rules = resolveUnitRules(s);
+  const setRule = (k: keyof UnitRules, v: number | boolean) =>
+    patch((d) => ({ ...d, unitRules: { ...resolveUnitRules(d), [k]: v } }));
+  const facadeList = s.unitMix
+    .map((u) => `${u.label} ${formatNumber(requiredFacade(u, rules))} m`)
+    .join(' · ');
   return (
     <Dialog
       open
@@ -239,6 +248,26 @@ function SettingsDialog({ project }: { project: Project }) {
               { suffix: '%', digits: 1 },
             ),
           )}
+          <h3>{t('settings.unitRules')}</h3>
+          {(
+            ['livingMinFacade', 'pmrBedroomMinFacade', 'bedroomMinFacade', 'interiorWall'] as const
+          ).map((k) => (
+            <div key={k}>
+              {num(t(`settings.${k}`), rules[k], (v) => setRule(k, v), {
+                suffix: 'm',
+                digits: 2,
+              })}
+            </div>
+          ))}
+          <Row label={t('settings.galleryCountsAsFacade')}>
+            <input
+              type="checkbox"
+              aria-label={t('settings.galleryCountsAsFacade')}
+              checked={rules.galleryCountsAsFacade}
+              onChange={(e) => setRule('galleryCountsAsFacade', e.target.checked)}
+            />
+          </Row>
+          <p className="muted">{t('settings.unitRulesNote', { list: facadeList })}</p>
         </div>
       </div>
     </Dialog>
@@ -318,6 +347,7 @@ export const WARNING_CODES: WarningCode[] = [
   'lightDepth',
   'mixPlausibility',
   'estimatedContextHeights',
+  'unitFacade',
 ];
 
 /** Translated message for a model warning (numbers formatted for the UI language). */

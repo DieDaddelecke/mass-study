@@ -1,15 +1,18 @@
-import type { Project, VariantResult } from '@kubatur/core';
+import { massLayouts, type MassLayout, type Project, type VariantResult } from '@kubatur/core';
 import {
   axonometry,
   defaultSections,
   drawingInput,
   elevation,
+  floorPlan,
+  typicalStorey,
   section,
   sitePlan,
   type ColorScheme,
   type DrawingModel,
   type DrawingTexts,
 } from '@kubatur/drawing';
+import i18n, { formatNumber } from '../i18n';
 import type { ViewId } from '../store/tools';
 
 export type DrawingViewId = Exclude<ViewId, '3d' | 'areas'>;
@@ -20,6 +23,9 @@ export interface DrawingSettings {
   /** Show section lines A/B in the site plan. */
   sectionLines: boolean;
   texts?: Partial<DrawingTexts>;
+  /** Floor plan: storey index (default: typical upper storey) and precomputed layouts. */
+  storey?: number;
+  layouts?: MassLayout[];
 }
 
 /** Build the drawing model of a 2D view (pure; memoised by the caller). */
@@ -44,6 +50,14 @@ export function buildDrawing(
         ...common,
         ...(s.sectionLines ? { sections } : {}),
       });
+    case 'floorPlan': {
+      const layouts = s.layouts ?? massLayouts(result, project.settings);
+      return floorPlan(project, input.solids, s.storey ?? typicalStorey(layouts), layouts, {
+        neighbours: s.neighbours,
+        facadeText: (f, r) =>
+          i18n.t('drawing:fp.facadeTip', { facade: formatNumber(f), min: formatNumber(r) }),
+      });
+    }
     case 'elevN':
     case 'elevE':
     case 'elevS':

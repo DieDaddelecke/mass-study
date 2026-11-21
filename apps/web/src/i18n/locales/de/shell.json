@@ -228,7 +228,8 @@
     "sectionA": "Schnitt A",
     "sectionB": "Schnitt B",
     "areas": "Flächen",
-    "none": "Keine Ansicht geöffnet – Doppelklick auf {3D} im Projektbrowser"
+    "none": "Keine Ansicht geöffnet – Doppelklick auf {3D} im Projektbrowser",
+    "floorPlan": "Geschossgrundrisse"
   },
   "view": {
     "style": "Visueller Stil",
@@ -290,7 +291,14 @@
     "parkingArea": "Fläche je Stellplatz",
     "parkingPerDwelling": "Stellplätze je Wohnung",
     "workplaceArea": "Fläche je Arbeitsplatz",
-    "circulation": "Verkehrsflächenanteil je Erschließung"
+    "circulation": "Verkehrsflächenanteil je Erschließung",
+    "unitRules": "Wohnungsregeln (Fassadenlänge)",
+    "livingMinFacade": "Wohnraum – min. Fassade",
+    "pmrBedroomMinFacade": "Rollstuhlgerechtes Schlafzimmer – min. Fassade",
+    "bedroomMinFacade": "Schlafzimmer – min. Fassade",
+    "interiorWall": "Innenwand zwischen Räumen",
+    "galleryCountsAsFacade": "Laubengangseite zählt als Fassade",
+    "unitRulesNote": "Mindest-Fassadenlänge: {{list}}"
   },
   "rules": {
     "fr": "Frankreich (PLU)",
@@ -316,7 +324,8 @@
     "depthOutOfRange": "Bautiefe von {{masses}} ({{depth}} m) passt zu keiner Erschließungsart.",
     "lightDepth": "Bautiefe von {{masses}} ({{depth}} m): Belichtung kritisch.",
     "mixPlausibility": "{{masses}}: {{actual}} Wohnungen je Geschoss und Kern (erwartet {{min}}–{{max}}).",
-    "estimatedContextHeights": "Höhe von {{count}} Umgebungsgebäude(n) geschätzt."
+    "estimatedContextHeights": "Höhe von {{count}} Umgebungsgebäude(n) geschätzt.",
+    "unitFacade": "{{count}} Wohnungen erfüllen die Mindest-Fassadenlängen nicht ({{masses}})."
   },
   "cmd": {
     "undo": "Rückgängig",

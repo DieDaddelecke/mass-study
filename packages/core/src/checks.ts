@@ -12,7 +12,8 @@ export type WarningCode =
   | 'depthOutOfRange'
   | 'lightDepth'
   | 'mixPlausibility'
-  | 'estimatedContextHeights';
+  | 'estimatedContextHeights'
+  | 'unitFacade';
 
 export interface ModelWarning {
   code: WarningCode;

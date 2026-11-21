@@ -1,4 +1,5 @@
 import { analyzeMasses, type VariantResult } from './analysis.js';
+import { massLayouts } from './layout.js';
 import { modelWarnings, type ModelWarning } from './checks.js';
 import { defaultTypology } from './generators.js';
 import {
@@ -150,6 +151,22 @@ export function analyzeProject(
   const buildable = project.constraints.buildable ?? project.site.buildable;
   if (buildable) site.buildable = buildable;
   const warnings = modelWarnings(result, site, project.context, constraints);
+  // office façade rules of the schematic unit layout
+  const layouts = massLayouts(result, project.settings);
+  let failing = 0;
+  const failingMasses: string[] = [];
+  for (const ml of layouts) {
+    const n = ml.storeys.reduce((x, st) => x + st.summary.facadeViolations, 0);
+    if (n) failingMasses.push(ml.massId);
+    failing += n;
+  }
+  if (failing)
+    warnings.push({
+      code: 'unitFacade',
+      severity: 'warning',
+      massIds: failingMasses,
+      data: { count: failing },
+    });
   return { result, de, fr, constraints, warnings };
 }
 

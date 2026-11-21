@@ -25,7 +25,11 @@ function loadStored(): Stored {
   const base: Stored = { ...DEFAULT_OPTIONS, coverImage: true };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...base, ...(JSON.parse(raw) as Partial<Stored>) };
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<Stored>;
+      // sheet kinds added later default to on
+      return { ...base, ...parsed, sheets: { ...base.sheets, ...parsed.sheets } };
+    }
   } catch {
     /* storage unavailable */
   }
