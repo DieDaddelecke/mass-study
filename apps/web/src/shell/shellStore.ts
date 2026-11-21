@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type DialogId = 'projectInfo' | 'settings' | 'constraints' | 'warnings';
+export type DialogId = 'projectInfo' | 'settings' | 'constraints' | 'warnings' | 'ifcExport';
 export type LeftTab = 'project' | 'layers' | 'views';
 
 function wideScreen(): boolean {

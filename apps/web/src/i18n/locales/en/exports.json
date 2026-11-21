@@ -1,0 +1,25 @@
+{
+  "ifc": {
+    "title": "IFC4 export",
+    "intro": "Exports the active variant as IFC4 (storeys, spaces, slabs), georeferenced in the project coordinate system.",
+    "export": "Export .ifc",
+    "done": "IFC file exported",
+    "failed": "IFC export failed",
+    "options": {
+      "spaces": "Spaces (IfcSpace → Archicad zones)",
+      "slabs": "Floor slabs (IfcSlab)",
+      "massProxies": "Volumes per storey (IfcBuildingElementProxy)",
+      "context": "Surrounding buildings (IfcBuildingElementProxy)"
+    },
+    "archicad": {
+      "title": "Import into Archicad",
+      "merge": "Existing project: File › Interoperability › IFC › Merge – levels become stories, spaces become zones.",
+      "hotlink": "As an updatable reference: place the file as a Hotlink module and update it after each export; IDs stay stable.",
+      "origin": "0,0 in the file is the local project origin; its projected coordinates are in IfcMapConversion. On import choose “Survey Point” for georeferenced placement, otherwise “Project Origin”."
+    },
+    "building": "Massing study",
+    "site": "Site",
+    "slab": "Slab",
+    "contextBuilding": "Existing building"
+  }
+}

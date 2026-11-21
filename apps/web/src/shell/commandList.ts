@@ -344,7 +344,16 @@ export function getCommands(): Command[] {
     off('analysis.compare', 'analysis', t('ribbon.variantCompare'), GitBranch),
     off('output.dossier', 'output', t('ribbon.dossier'), FileText),
   );
-  for (const f of ['ifc', 'xlsx', 'csv', 'pdf', 'dxf'] as const)
+  cmds.push(
+    proj({
+      id: 'output.ifc',
+      group: 'output',
+      label: `${t('file.export')} ${t('file.exportFormat.ifc')}`,
+      icon: Download,
+      run: () => shell.setDialog('ifcExport'),
+    }),
+  );
+  for (const f of ['xlsx', 'csv', 'pdf', 'dxf'] as const)
     cmds.push(
       off(`output.${f}`, 'output', `${t('file.export')} ${t(`file.exportFormat.${f}`)}`, Download),
     );
