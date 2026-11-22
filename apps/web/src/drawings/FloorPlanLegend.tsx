@@ -98,7 +98,14 @@ export function FloorPlanLegend({
                 <td className="num muted">{Math.round((100 * c.count) / total)} %</td>
                 <td className="num muted">{fmt(c.area)} m²</td>
                 <td className="num muted" title={t('fp.facadeRule')}>
-                  ≥ {formatNumber(requiredFacade(c.type, rules))} m
+                  ≥{' '}
+                  {formatNumber(
+                    requiredFacade(
+                      c.duplex > 0 && c.duplex === c.count ? { ...c.type, duplex: true } : c.type,
+                      rules,
+                    ),
+                  )}{' '}
+                  m
                 </td>
               </tr>
             ))}

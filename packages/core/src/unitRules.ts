@@ -238,7 +238,9 @@ export function roomsFit(
   pieces: readonly number[],
   rules: UnitRules = DEFAULT_UNIT_RULES,
 ): boolean {
-  return roomLevels(t, rules).every((w) => assignRooms(w, pieces, rules.interiorWall) !== null);
+  // 1 cm tolerance: façade pieces are measured on clipped outlines (cf. room check, 2 cm)
+  const p = pieces.map((x) => x + 0.01);
+  return roomLevels(t, rules).every((w) => assignRooms(w, p, rules.interiorWall) !== null);
 }
 
 /**
