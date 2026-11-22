@@ -131,3 +131,6 @@ button.pill-status {
   color: inherit;
   cursor: pointer;
 }
+.ac-help.is-warn {
+  color: var(--error-text);
+}

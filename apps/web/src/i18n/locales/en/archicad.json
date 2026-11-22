@@ -27,14 +27,19 @@
   },
   "options": {
     "title": "Elements to create",
-    "zones": "Zones (area, name, number)",
-    "morphs": "Volumes (Morphs)",
-    "stairs": "Stairs (flights and landings, as morphs)",
-    "stairsHint": "The stairs sit inside the volumes: show zones or hide volumes to see them.",
-    "slabs": "Slabs",
+    "zones": "Zones per dwelling (with stair cores and circulation)",
+    "morphs": "Volumes (morphs, massing study)",
+    "stairs": "Archicad stairs (two flights, landing)",
+    "stairsHint": "The stairs sit inside the volumes: hide the volumes to see them.",
+    "slabs": "Slabs (floors, flat roofs, stair openings)",
     "offsetX": "Offset X",
     "offsetY": "Offset Y",
-    "rotation": "Rotation"
+    "rotation": "Rotation",
+    "sdpZones": "SDP zone per storey",
+    "walls": "Walls (façade, stair cores, party walls)",
+    "roofs": "Pitched roofs",
+    "facadeWall": "Façade wall thickness",
+    "interiorWall": "Interior wall thickness"
   },
   "mode": {
     "replace": "Replace previously transferred elements ({{count}})",
@@ -55,7 +60,7 @@
   },
   "preview": {
     "title": "Preview",
-    "summary": "{{zones}} zones, {{morphs}} volumes, {{stairs}} stairs, {{slabs}} slabs on {{storeys}} levels, on layer “MS - Massenstudie”.",
+    "summary": "{{zones}} dwelling zones, {{sdpZones}} SDP zones, {{walls}} walls, {{slabs}} slabs, {{roofs}} roofs, {{stairs}} stairs, {{morphs}} volumes on {{storeys}} levels, on layer “MS - Massenstudie”.",
     "level": "Level",
     "storey": "Storey",
     "archicadStory": "Archicad story",
@@ -66,7 +71,7 @@
     "noStories": "The Archicad project has no stories.",
     "noMasses": "The active variant has no masses.",
     "teamwork": "Teamwork project: elements must be reservable.",
-    "librariesMissing": "Libraries unavailable in Archicad: {{names}}. If the zone stamp is in one of them, Archicad refuses zones; they are then replaced by volumes.",
+    "librariesMissing": "Libraries unavailable in Archicad: {{names}}. Most templates keep their zone stamp there: without it Archicad refuses every zone (SDP zones then become volumes). In the Library Manager, point the library to its location on this computer and refresh.",
     "levelWithoutStory": "Level {{level}} m ({{label}}) has no Archicad story at that height: placed on “{{story}}” with an offset.",
     "belowLowestStory": "Level {{level}} m ({{label}}) is below the lowest Archicad story.",
     "sharedStory": "Levels {{labels}} all fall on story “{{story}}”: their zones overlap and Archicad refuses them. They will be created as morphs. Adjust the stories to avoid this."
@@ -79,16 +84,24 @@
     "morphs": "Creating volumes…",
     "stairs": "Creating stairs…",
     "tag": "Tagging elements…",
-    "done": "Done"
+    "done": "Done",
+    "walls": "Creating walls…",
+    "roofs": "Creating roofs…"
   },
   "result": {
-    "created": "Created: {{zones}} zones, {{morphs}} volumes, {{stairs}} stairs, {{slabs}} slabs.",
+    "created": "Created: {{zones}} dwelling zones, {{sdpZones}} SDP zones, {{walls}} walls, {{slabs}} slabs, {{roofs}} roofs, {{stairs}} stairs, {{morphs}} volumes.",
     "deleted": "{{count}} previous elements deleted.",
-    "zoneFallback": "Archicad refused every zone (zone stamp or library missing). Volumes were created instead. Load the project's Archicad library and transfer again.",
+    "zoneFallback": "Archicad refused every zone (zone stamp or library missing). Load the Archicad 28 library in the project and transfer again.",
     "removed": "{{count}} elements removed from Archicad.",
-    "standIns": "{{count}} zones refused by Archicad (overlap) were replaced by morphs."
+    "standIns": "{{count}} SDP zones refused by Archicad were replaced by volumes.",
+    "stairFallbacks": "{{count}} stairs refused by Archicad were created as volumes (flights and landing)."
   },
   "pill": {
     "ready": "Archicad: connected – open transfer"
+  },
+  "zoneNames": {
+    "core": "Stair core",
+    "circulation": "Circulation",
+    "sdp": "SDP"
   }
 }

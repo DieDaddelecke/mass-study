@@ -1,6 +1,18 @@
-import { createMass, createProject, rect, type Mass, type Project } from '@kubatur/core';
+import {
+  createMass,
+  createProject,
+  DEFAULT_STAIR_RULES,
+  layoutStairs,
+  massLayout,
+  massToSolids,
+  rect,
+  type Mass,
+  type Project,
+  type Vec2,
+} from '@kubatur/core';
 import { describe, expect, it } from 'vitest';
 import { BridgeClient } from './bridgeClient';
+import { nativeStair } from './native';
 import { FakeArchicad } from './fakeArchicad';
 import {
   buildPlan,
@@ -92,25 +104,41 @@ describe('story matching', () => {
 });
 
 describe('buildPlan', () => {
-  it('creates one zone and one morph per storey solid', () => {
+  it('plans native elements by default: dwelling zones, SDP zones, walls, slabs, stairs', () => {
     const pl = plan();
+    const { masses, p } = project();
+    const solids = masses.flatMap((m) => massToSolids(m, p.settings));
     expect(pl.counts.zones).toBeGreaterThan(0);
-    expect(pl.counts.zones).toBe(pl.counts.morphs);
-    expect(pl.counts.slabs).toBe(0);
-    const z = pl.items.find((i) => i.kind === 'zone')!;
-    expect(z.zone!.numberStr).toMatch(/^MS-A-/);
-    expect(z.zone!.allowOverlap).toBe(false);
-    expect(z.zone!.height).toBeGreaterThan(2);
-    expect(pl.usages).toEqual(['wohnen', 'buero']);
+    expect(pl.counts.sdpZones).toBe(solids.length);
+    expect(pl.counts.walls).toBeGreaterThan(0);
+    expect(pl.counts.slabs).toBeGreaterThan(0);
+    expect(pl.counts.stairs).toBeGreaterThan(0);
+    expect(pl.counts.morphs).toBe(0);
+    const unit = pl.items.find((i) => i.role === 'unit')!;
+    expect(unit.zone!.numberStr).toMatch(/^A-/);
+    expect(unit.zone!.name).toMatch(/^T\d/);
+    expect(unit.zone!.allowOverlap).toBe(false);
+    const sdp = pl.items.find((i) => i.role === 'sdp')!;
+    expect(sdp.zone!.numberStr).toMatch(/^MS-A-.*-SDP$/);
+    expect(sdp.zone!.allowOverlap).toBe(true);
+    expect(sdp.zone!.height).toBeGreaterThan(2);
+    expect(pl.categories.map((c) => c.name)).toEqual(
+      expect.arrayContaining(['MS - Logement', 'MS - Bureaux', 'MS - SDP']),
+    );
+    // keys are unique (they identify the elements in Archicad)
+    expect(new Set(pl.items.map((i) => i.key)).size).toBe(pl.items.length);
   });
 
   it('never invents stories: levels map onto existing ones with an offset', () => {
     const pl = plan();
     for (const s of pl.storeys) expect(stories.some((x) => x.index === s.storyIndex)).toBe(true);
-    const z = pl.items.filter((i) => i.kind === 'zone');
-    for (const i of z) {
+    for (const i of pl.items.filter((x) => x.kind === 'zone')) {
       const st = stories.find((s) => s.index === i.zone!.floorIndex)!;
       expect(st.level + i.zone!.bottomOffset!).toBeCloseTo(i.z0, 6);
+    }
+    for (const i of pl.items.filter((x) => x.kind === 'wall')) {
+      const st = stories.find((s) => s.index === i.wall!.floorIndex)!;
+      expect(st.level + i.wall!.zCoordinate).toBeCloseTo(i.z0, 6);
     }
   });
 
@@ -128,9 +156,69 @@ describe('buildPlan', () => {
     expect(pl.warnings.map((w) => w.code)).toContain('levelWithoutStory');
   });
 
-  it('slabs carry absolute levels', () => {
-    const pl = plan({ slabs: true, zones: false, morphs: false, stairs: false });
+  it('one slab per floor level with absolute levels, stair openings and a roof slab', () => {
+    const only = { zones: false, sdpZones: false, walls: false, roofs: false, stairs: false };
+    const pl = plan(only);
     expect(pl.items.every((i) => i.kind === 'slab' && i.slab!.level === i.z0)).toBe(true);
+    const { masses, p } = project();
+    const a = massToSolids(masses[0]!, p.settings);
+    const slabsA = pl.items.filter((i) => i.massName === 'A');
+    // every floor level plus the roof
+    expect(new Set(slabsA.map((i) => i.z0)).size).toBe(a.length + 1);
+    // the stairs cut openings into the floors they arrive at
+    expect(slabsA.some((i) => (i.slab!.holes ?? []).length > 0)).toBe(true);
+    expect(slabsA.some((i) => i.slab!.id!.includes('TOIT'))).toBe(true);
+  });
+
+  it('façade walls run on the centre line inside the footprint, up to the slab above', () => {
+    const pl = plan({ zones: false, sdpZones: false, slabs: false, stairs: false });
+    const { masses, p } = project();
+    const s0 = massToSolids(masses[0]!, p.settings).find((s) => s.storeyIndex === 0)!;
+    const walls = pl.items.filter(
+      (i) => i.kind === 'wall' && i.massName === 'A' && i.key.includes('|f'),
+    );
+    const ground = walls.filter((w) => w.z0 === s0.z0);
+    expect(ground).toHaveLength(s0.footprint.outer.length);
+    const slab = masses[0]!.storeys.slabThickness;
+    for (const w of ground) {
+      expect(w.wall!.thickness).toBe(DEFAULT_OPTIONS.facadeWall);
+      expect(w.wall!.height).toBeCloseTo(s0.z1 - s0.z0 - slab, 6);
+      expect(w.wall!.referenceLineLocation).toBe('Center');
+    }
+    // interior walls (cores, party walls) exist as well and are not on the façade
+    expect(pl.items.some((i) => i.kind === 'wall' && i.key.includes('|i'))).toBe(true);
+  });
+
+  it('pitched roofs become single-plane roofs that rise away from their pivot line', () => {
+    const { p, masses } = project();
+    const m: Mass = { ...masses[0]!, roof: { kind: 'gable', pitch: 35, ridge: 'length' } };
+    const pl = buildPlan({
+      project: p,
+      masses: [m],
+      stories,
+      options: {
+        ...DEFAULT_OPTIONS,
+        zones: false,
+        sdpZones: false,
+        walls: false,
+        slabs: false,
+        stairs: false,
+      },
+      usageLabel: label,
+    });
+    const roofs = pl.items.filter((i) => i.kind === 'roof');
+    expect(roofs).toHaveLength(2);
+    for (const r of roofs) {
+      expect(r.roof!.angle).toBeCloseTo((35 * Math.PI) / 180, 6);
+      const { begCoordinate: b, endCoordinate: e } = r.roof!.pivotLine;
+      const ring = r.roof!.polygonCoordinates;
+      const c = {
+        x: ring.reduce((s, q) => s + q.x, 0) / ring.length,
+        y: ring.reduce((s, q) => s + q.y, 0) / ring.length,
+      };
+      // the roof rises on the left of the pivot line: the face lies left of it
+      expect((e.x - b.x) * (c.y - b.y) - (e.y - b.y) * (c.x - b.x)).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -167,20 +255,50 @@ describe('stairs', () => {
     }
   });
 
-  it('plans one stair per core and storey (flights + landing as morphs on the right story)', () => {
+  it('a core stair becomes an Archicad U-stair whose flights lie inside the U', () => {
+    const { p, masses } = project();
+    const m = masses[0]!;
+    const solids = massToSolids(m, p.settings);
+    const list = [...layoutStairs([massLayout(m, solids, p.settings)], p.settings).values()].flat();
+    expect(list.length).toBeGreaterThan(0);
+    for (const st of list) {
+      const n = nativeStair(st)!;
+      expect(n.points).toHaveLength(4);
+      const [p0, p1, p2] = n.points as [Vec2, Vec2, Vec2];
+      // flight 1 lies on the side the baseline position says
+      const f = st.flights[0]!.polygon.outer;
+      const c: Vec2 = [
+        f.reduce((s, q) => s + q[0], 0) / f.length,
+        f.reduce((s, q) => s + q[1], 0) / f.length,
+      ];
+      const cross = (p1[0] - p0[0]) * (c[1] - p0[1]) - (p1[1] - p0[1]) * (c[0] - p0[0]);
+      expect(n.baseline).toBe(cross > 0 ? 'Right' : 'Left');
+      // the landing edge spans both flights and the gap
+      const across = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+      expect(across).toBeCloseTo(2 * st.flights[0]!.width + DEFAULT_STAIR_RULES.gap, 6);
+      // flight 1 is long enough for its treads
+      const run = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+      expect(run).toBeGreaterThanOrEqual((st.flights[0]!.risers - 1) * st.going - 1e-6);
+      expect(n.height).toBeCloseTo(st.z1 - st.z0, 6);
+    }
+  });
+
+  it('plans one native stair per core and storey, with morphs as fallback', () => {
     const pl = plan();
     const st = pl.items.filter((i) => i.kind === 'stair');
-    expect(pl.counts.stairs).toBeGreaterThan(0);
-    // two flights and one landing per stair
-    expect(st).toHaveLength(pl.counts.stairs * 3);
+    expect(st).toHaveLength(pl.counts.stairs);
     for (const i of st) {
-      expect(closed(i.morph!.body)).toBe(true);
-      expect(i.morph!.basePoint.z).toBe(i.z0);
-      const story = stories.find((s) => s.index === i.morph!.floorIndex)!;
+      expect(i.stair!.baseLineEdges.map((e) => e.segmentType)).toEqual([
+        'Flight',
+        'Landing',
+        'Flight',
+      ]);
+      expect(i.stair!.zCoordinate).toBe(i.z0);
+      const story = stories.find((s) => s.index === i.stair!.floorIndex)!;
       expect(story.level).toBeLessThanOrEqual(i.z0 + 0.05);
-      const zs = i.morph!.body.vertices.map((v) => v.z);
-      expect(Math.min(...zs)).toBeGreaterThanOrEqual(-0.3);
-      expect(Math.max(...zs)).toBeLessThanOrEqual(4);
+      // two flights and one landing as stand-in morphs
+      expect(i.fallback).toHaveLength(3);
+      for (const m of i.fallback!) expect(closed(m.body)).toBe(true);
     }
     expect(plan({ stairs: false }).counts.stairs).toBe(0);
   });
@@ -190,41 +308,32 @@ describe('executePlan', () => {
   it('creates, tags and layers elements; replace removes only our own', async () => {
     const ac = new FakeArchicad();
     const foreign = ac.addForeign('Zone');
-    const pl = plan();
-    const r1 = await executePlan(ac, 19723, pl, {
-      projectId: 'p1',
-      mode: 'create',
-      usageLabel: label,
-    });
+    const pl = plan({ morphs: true });
+    const r1 = await executePlan(ac, 19723, pl, { projectId: 'p1', mode: 'create' });
     expect(r1.errors).toEqual([]);
-    expect(r1.created.zones).toBe(pl.counts.zones);
-    expect(r1.created.morphs).toBe(pl.counts.morphs);
+    const expected: Record<string, number> = { ...pl.counts };
+    delete expected.storeys;
+    expect(r1.created).toEqual(expected);
     expect(ac.attributes.Layer!.some((l) => l.name === 'MS - Massenstudie')).toBe(true);
     expect(ac.attributes.ZoneCategory!.map((c) => c.name)).toEqual(
-      expect.arrayContaining(['MS - Logement', 'MS - Bureaux']),
+      expect.arrayContaining(['MS - Logement', 'MS - Bureaux', 'MS - SDP']),
     );
-    // zones land on our layer although the zone tool's default layer is hidden …
+    // zones and stairs land on our layer although the tools' default layer is hidden …
     const ms = ac.attributes.Layer!.find((l) => l.name === 'MS - Massenstudie')!;
-    const zones = [...ac.elements].filter(
-      ([, e]) => e.type === 'Zone' && e.layer === ms.attributeId.guid,
-    );
-    expect(zones).toHaveLength(pl.counts.zones);
-    // … and the default is restored afterwards
-    expect(ac.zoneDefaultLayer).toBe('L-Z');
+    const on = (type: string) =>
+      [...ac.elements].filter(([, e]) => e.type === type && e.layer === ms.attributeId.guid);
+    expect(on('Zone')).toHaveLength(pl.counts.zones + pl.counts.sdpZones);
+    expect(on('Stair')).toHaveLength(pl.counts.stairs);
+    // … and the defaults are restored afterwards
+    expect(ac.defaultLayers).toEqual({ Zone: 'L-Z', Stair: 'L-Z', Roof: 'L-Z' });
 
-    const stairParts = pl.items.filter((i) => i.kind === 'stair').length;
-    expect(r1.created.stairs).toBe(pl.counts.stairs);
-    const own = pl.counts.zones + pl.counts.morphs + stairParts;
+    const own = Object.values(expected).reduce((a, b) => a + b, 0);
     const snap = await readSnapshot(ac, 19723, 'p1');
     expect(snap.ownElements).toBe(own);
 
-    const r2 = await executePlan(ac, 19723, pl, {
-      projectId: 'p1',
-      mode: 'replace',
-      usageLabel: label,
-    });
+    const r2 = await executePlan(ac, 19723, pl, { projectId: 'p1', mode: 'replace' });
     expect(r2.deleted).toBe(own);
-    expect(ac.count('Zone')).toBe(pl.counts.zones + 1);
+    expect(ac.count('Zone')).toBe(pl.counts.zones + pl.counts.sdpZones + 1);
     expect(ac.elements.has(foreign)).toBe(true);
     // categories are not duplicated on a second run
     expect(ac.attributes.ZoneCategory!.filter((c) => c.name === 'MS - Logement')).toHaveLength(1);
@@ -233,18 +342,61 @@ describe('executePlan', () => {
     expect(ac.elements.size).toBe(1);
   });
 
-  it('falls back to morphs when Archicad refuses every zone', async () => {
+  it('gives new zone categories a loaded zone stamp', async () => {
     const ac = new FakeArchicad();
-    ac.refuseZones = true;
-    const pl = plan({ morphs: false });
-    const r = await executePlan(ac, 19723, pl, {
+    const snap = await readSnapshot(ac, 19723, 'p1');
+    expect(snap.zoneStamps).toBe(1);
+    expect(snap.zoneStamp).toEqual({
+      name: 'Marque de zone 28',
+      mainGuid: '{4AE64969-2731-4802-86B3-08DD03364006}',
+      revGuid: '{AE163506-E14C-46A2-9E09-B08E24712238}',
+    });
+    await executePlan(ac, 19723, plan(), {
       projectId: 'p1',
       mode: 'create',
-      usageLabel: label,
+      zoneStamp: snap.zoneStamp!,
     });
+    expect(ac.categoryData.length).toBeGreaterThan(0);
+    expect(ac.categoryData.every((d) => d.stampMainGuid === snap.zoneStamp!.mainGuid)).toBe(true);
+    ac.refuseZones = true;
+    expect((await readSnapshot(ac, 19723, 'p1')).zoneStamps).toBe(0);
+  });
+
+  it("gives dwelling zones the project's own category of their type (T1 … T5)", async () => {
+    const ac = new FakeArchicad();
+    ac.attributes.ZoneCategory!.push(
+      ...['T1', 'T2', 'T3', 'T4', 'T5'].map((name, i) => ({
+        attributeId: { guid: `C-${name}` },
+        index: 10 + i,
+        name,
+      })),
+    );
+    await executePlan(ac, 19723, plan(), { projectId: 'p1', mode: 'create' });
+    const zones = [...ac.elements.values()].filter((e) => e.type === 'Zone');
+    const data = zones.map(
+      (e) => e.data as { name: string; categoryAttributeId?: { guid: string } },
+    );
+    const units = data.filter((d) => /^T\d$/.test(d.name));
+    expect(units.length).toBeGreaterThan(0);
+    for (const d of units) expect(d.categoryAttributeId!.guid).toBe(`C-${d.name}`);
+    // SDP zones keep the Kubatur category
+    const ms = ac.attributes.ZoneCategory!.find((c) => c.name === 'MS - SDP')!;
+    expect(
+      data
+        .filter((d) => d.name.startsWith('SDP'))
+        .every((d) => d.categoryAttributeId!.guid === ms.attributeId.guid),
+    ).toBe(true);
+  });
+
+  it('replaces SDP zones by morphs when Archicad refuses every zone', async () => {
+    const ac = new FakeArchicad();
+    ac.refuseZones = true;
+    const pl = plan();
+    const r = await executePlan(ac, 19723, pl, { projectId: 'p1', mode: 'create' });
     expect(r.zoneFallback).toBe(true);
     expect(r.created.zones).toBe(0);
-    expect(r.created.morphs).toBe(pl.counts.zones);
+    expect(r.created.morphs).toBe(pl.counts.sdpZones);
+    expect(r.created.walls).toBe(pl.counts.walls);
     expect(r.errors).toEqual([]);
   });
 
@@ -252,18 +404,26 @@ describe('executePlan', () => {
     const ac = new FakeArchicad();
     ac.refuseZones = true;
     const pl = plan({ morphs: true });
-    const r = await executePlan(ac, 19723, pl, {
-      projectId: 'p1',
-      mode: 'create',
-      usageLabel: label,
-    });
+    const r = await executePlan(ac, 19723, pl, { projectId: 'p1', mode: 'create' });
     expect(r.zoneFallback).toBe(true);
     expect(r.created.morphs).toBe(pl.counts.morphs);
+  });
+
+  it('builds a refused stair from morphs', async () => {
+    const ac = new FakeArchicad();
+    ac.refuseStairs = true;
+    const pl = plan();
+    const r = await executePlan(ac, 19723, pl, { projectId: 'p1', mode: 'create' });
+    expect(r.errors).toEqual([]);
+    expect(r.stairFallbacks).toBe(pl.counts.stairs);
+    expect(r.created.stairs).toBe(pl.counts.stairs);
+    expect(ac.count('Stair')).toBe(0);
+    expect(ac.count('Morph')).toBe(pl.counts.stairs * 3);
   });
 });
 
 describe('Archicad preparation', () => {
-  it('reports zones it could not tag instead of failing silently', async () => {
+  it('reports elements it could not tag instead of failing silently', async () => {
     const ac = new FakeArchicad();
     const orig = ac.call.bind(ac);
     // an older Tapir without the layer-defaults commands
@@ -271,36 +431,36 @@ describe('Archicad preparation', () => {
       if (command.endsWith('LayerOfElementDefaults')) throw new Error('unknown command');
       return orig(port, command, p);
     }) as typeof ac.call;
-    const pl = plan({ morphs: false });
-    const r = await executePlan(ac, 19723, pl, {
-      projectId: 'p1',
-      mode: 'create',
-      usageLabel: label,
-    });
+    const pl = plan();
+    const r = await executePlan(ac, 19723, pl, { projectId: 'p1', mode: 'create' });
     expect(r.created.zones).toBe(pl.counts.zones);
-    expect(r.errors).toHaveLength(pl.counts.zones);
-    expect(r.errors.every((e) => e.message.startsWith(TAG_FAILED))).toBe(true);
+    // zones and stairs stay on the hidden default layer
+    const hidden = pl.counts.zones + pl.counts.sdpZones + pl.counts.stairs;
+    expect(r.errors.filter((e) => e.message.startsWith(TAG_FAILED))).toHaveLength(hidden);
   });
 
-  it('warns when several levels share one Archicad story and replaces refused zones by morphs', async () => {
+  it('warns when several levels share one Archicad story and replaces refused SDP zones by morphs', async () => {
     const ac = new FakeArchicad([{ index: 0, name: 'RDC', level: 0 }]);
     const { p, masses } = project();
     const pl = buildPlan({
       project: p,
       masses: masses.slice(0, 1),
       stories: ac.stories,
-      options: { ...DEFAULT_OPTIONS, morphs: false },
+      options: {
+        ...DEFAULT_OPTIONS,
+        zones: false,
+        walls: false,
+        slabs: false,
+        roofs: false,
+        stairs: false,
+      },
       usageLabel: label,
     });
     expect(pl.warnings.map((w) => w.code)).toContain('sharedStory');
-    const r = await executePlan(ac, 19723, pl, {
-      projectId: 'p1',
-      mode: 'create',
-      usageLabel: label,
-    });
-    expect(r.created.zones).toBe(1);
-    expect(r.standIns).toBe(pl.counts.zones - 1);
-    expect(r.created.morphs).toBe(pl.counts.zones - 1);
+    const r = await executePlan(ac, 19723, pl, { projectId: 'p1', mode: 'create' });
+    expect(r.created.sdpZones).toBe(1);
+    expect(r.standIns).toBe(pl.counts.sdpZones - 1);
+    expect(r.created.morphs).toBe(pl.counts.sdpZones - 1);
     expect(r.zoneFallback).toBe(false);
   });
 

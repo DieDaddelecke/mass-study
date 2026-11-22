@@ -17,7 +17,14 @@ export function ArchicadDialog() {
   const usageLabel = (u: Usage) => t(`common:usage.${u}`);
 
   const plan = useMemo(
-    () => (project && s.snapshot ? planFor(project, s.snapshot, s.options, usageLabel) : null),
+    () =>
+      project && s.snapshot
+        ? planFor(project, s.snapshot, s.options, usageLabel, {
+            core: t('zoneNames.core'),
+            circulation: t('zoneNames.circulation'),
+            sdp: t('zoneNames.sdp'),
+          })
+        : null,
     // usageLabel only depends on the language (t)
     [project, s.snapshot, s.options, t],
   );
@@ -57,7 +64,7 @@ export function ArchicadDialog() {
           <button
             className="btn btn-primary"
             disabled={s.busy || nothing || s.port === undefined}
-            onClick={() => plan && void s.transfer(project, plan, usageLabel)}
+            onClick={() => plan && void s.transfer(project, plan)}
           >
             {s.mode === 'replace'
               ? t('update', { name: projectTitle })
@@ -153,7 +160,9 @@ export function ArchicadDialog() {
             <section className="ac-section">
               <h3>{t('options.title')}</h3>
               <div className="ac-checks">
-                {(['zones', 'morphs', 'stairs', 'slabs'] as const).map((k) => (
+                {(
+                  ['zones', 'sdpZones', 'walls', 'slabs', 'roofs', 'stairs', 'morphs'] as const
+                ).map((k) => (
                   <label key={k}>
                     <input
                       type="checkbox"
@@ -166,6 +175,24 @@ export function ArchicadDialog() {
               </div>
               {s.options.stairs && s.options.morphs && (
                 <p className="ac-help">{t('options.stairsHint')}</p>
+              )}
+              {s.options.walls && (
+                <div className="ac-place">
+                  <Row label={t('options.facadeWall')}>
+                    <NumField
+                      value={s.options.facadeWall}
+                      onCommit={(v) => v > 0 && s.setOptions({ facadeWall: v })}
+                      suffix="m"
+                    />
+                  </Row>
+                  <Row label={t('options.interiorWall')}>
+                    <NumField
+                      value={s.options.interiorWall}
+                      onCommit={(v) => v > 0 && s.setOptions({ interiorWall: v })}
+                      suffix="m"
+                    />
+                  </Row>
+                </div>
               )}
               <div className="ac-place">
                 <Row label={t('options.offsetX')}>
@@ -290,15 +317,7 @@ export function ArchicadDialog() {
 
             <section className="ac-section">
               <h3>{t('preview.title')}</h3>
-              <p>
-                {t('preview.summary', {
-                  zones: plan.counts.zones,
-                  morphs: plan.counts.morphs,
-                  stairs: plan.counts.stairs,
-                  slabs: plan.counts.slabs,
-                  storeys: plan.counts.storeys,
-                })}
-              </p>
+              <p>{t('preview.summary', { ...plan.counts })}</p>
               <table className="ac-table">
                 <thead>
                   <tr>
@@ -340,7 +359,10 @@ export function ArchicadDialog() {
         )}
         {s.report && (
           <div className={`ac-result${s.report.errors.length ? ' is-warn' : ' is-ok'}`}>
-            <p>{t('result.created', s.report.created)}</p>
+            <p>{t('result.created', { ...s.report.created })}</p>
+            {s.report.stairFallbacks > 0 && (
+              <p>{t('result.stairFallbacks', { count: s.report.stairFallbacks })}</p>
+            )}
             {s.report.deleted > 0 && <p>{t('result.deleted', { count: s.report.deleted })}</p>}
             {s.report.zoneFallback && <p>{t('result.zoneFallback')}</p>}
             {s.report.standIns > 0 && <p>{t('result.standIns', { count: s.report.standIns })}</p>}

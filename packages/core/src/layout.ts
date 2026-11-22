@@ -1527,6 +1527,42 @@ function applyDuplex(
   return out;
 }
 
+/**
+ * Stair cores must stack: storeys without dwellings (commerce, offices on the ground floor)
+ * take the cores of the nearest storey with dwellings above, clipped to their own footprint,
+ * so the stairs run straight through. Their open area is recomputed around the cores.
+ */
+export function stackCores(storeys: StoreyLayout[]): StoreyLayout[] {
+  return storeys.map((st, i) => {
+    if (st.units.length || !st.cores.length) return st;
+    const ref = storeys.slice(i + 1).find((x) => x.units.length && x.cores.length);
+    if (!ref) return st;
+    const cores: LayoutArea[] = [];
+    for (const c of ref.cores)
+      for (const p of intersection(st.footprints, [c.polygon]))
+        if (polygonArea(p) > 1e-3)
+          cores.push({
+            kind: 'core',
+            polygon: p,
+            area: polygonArea(p),
+            index: cores.length,
+            ...(c.box ? { box: c.box } : {}),
+          });
+    if (!cores.length) return st;
+    const taken = union([...cores.map((c) => c.polygon), ...st.circulation.map((c) => c.polygon)]);
+    const open: LayoutArea[] = difference(st.footprints, taken)
+      .filter((p) => polygonArea(p) > 1e-3)
+      .map((p) => ({ kind: 'open', polygon: p, area: polygonArea(p) }));
+    const sum = (a: readonly LayoutArea[]) => a.reduce((x, y) => x + y.area, 0);
+    return {
+      ...st,
+      cores,
+      open,
+      summary: { ...st.summary, coreArea: sum(cores), openArea: sum(open) },
+    };
+  });
+}
+
 /** Layouts of all above-ground storeys of one mass (from its storey solids). */
 export function massLayout(
   mass: Mass,
@@ -1550,7 +1586,7 @@ export function massLayout(
       pins.set(i, r.pins);
       return r.layout;
     });
-  const storeys = applyDuplex(mass, byStorey, settings, access, simplex, pins);
+  const storeys = stackCores(applyDuplex(mass, byStorey, settings, access, simplex, pins));
   const counts = new Map<string, LayoutTypeCount>();
   let units = 0;
   let unitArea = 0;

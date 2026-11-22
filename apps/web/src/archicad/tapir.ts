@@ -106,3 +106,48 @@ export interface UserDataPair {
   key: string;
   value: string;
 }
+
+/** CreateWalls item. With floorIndex, zCoordinate is the bottom offset from that story. */
+export interface WallData {
+  begCoordinate: Coordinate2D;
+  endCoordinate: Coordinate2D;
+  floorIndex: number;
+  zCoordinate: number;
+  height: number;
+  thickness: number;
+  referenceLineLocation: 'Center';
+  structureType: 'Basic';
+  layerIndex?: number;
+  id?: string;
+}
+
+/** CreateRoofs item: a single-plane roof (pivotLine + angle). The plane rises left of the pivot line. */
+export interface RoofData {
+  level: number;
+  floorIndex: number;
+  thickness: number;
+  structureType: 'Basic';
+  polygonCoordinates: Coordinate2D[];
+  holes?: Hole2D[];
+  pivotLine: { begCoordinate: Coordinate2D; endCoordinate: Coordinate2D };
+  angle: number;
+}
+
+/**
+ * CreateStairs item (Tapir 2.0.0): a U-shaped stair from a baseline with Flight / Landing /
+ * Flight edges. Tapir 2.0.0 has no layerIndex here: the Stair tool default layer is switched.
+ */
+export interface StairData {
+  baseLinePoints: Coordinate2D[];
+  baselinePosition: 'Left' | 'Right' | 'Center';
+  zCoordinate: number;
+  floorIndex: number;
+  totalHeight: number;
+  flightWidth: number;
+  stepNum: number;
+  riserHeight: number;
+  treadDepth: number;
+  baseLineEdges: { segmentType: 'Flight' | 'Landing' }[];
+  baseLineVertices: { turnType: 'None' | 'Landing' }[];
+  id?: string;
+}
