@@ -10,6 +10,7 @@ import {
   union,
   type LayoutArea,
   type LayoutRoom,
+  type LayoutUnit,
   type OutdoorType,
   type RoomKind,
   type MassLayout,
@@ -110,6 +111,8 @@ export interface FloorPlanOptions extends CommonOptions {
   outdoorText?: (kind: OutdoorType) => string;
   /** Room names for tooltips and labels (default: French short labels). */
   roomText?: (kind: RoomKind) => string;
+  /** Duplex texts: mark after the type and the level names (default: French). */
+  duplexText?: { duplex: string; jour: string; nuit: string };
 }
 
 const fmtM = (v: number) => `${v.toFixed(2).replace('.', ',')} m`;
@@ -152,7 +155,7 @@ function labelPoint(p: Polygon): Vec2 {
 }
 
 /** Label point of a dwelling: in the part not covered by its rooms when that is large enough. */
-export function unitLabelPoint(p: Polygon, rooms: readonly LayoutRoom[]): Vec2 {
+export function unitLabelPoint(p: Polygon, rooms: readonly Pick<LayoutRoom, 'polygon'>[]): Vec2 {
   if (rooms.length) {
     const rest = difference(
       [p],
@@ -164,6 +167,58 @@ export function unitLabelPoint(p: Polygon, rooms: readonly LayoutRoom[]): Vec2 {
 }
 
 const fmtArea = (a: number) => `${Math.round(a)} m²`;
+
+/** Default French texts of duplex dwellings. */
+export const DUPLEX_LABELS: { duplex: string; jour: string; nuit: string } = {
+  duplex: 'duplex',
+  jour: 'niv. jour',
+  nuit: 'niv. nuit',
+};
+
+/** Unit label: type, duplex mark, out-of-range and façade marks. */
+export function unitTitle(
+  u: Pick<LayoutUnit, 'label' | 'outOfRange' | 'facadeOk' | 'duplex'>,
+  duplexText: string = DUPLEX_LABELS.duplex,
+): string {
+  return `${u.label}${u.duplex ? ` ${duplexText}` : ''}${u.outOfRange ? '*' : ''}${u.facadeOk ? '' : ' !'}`;
+}
+
+/** Areas to keep the unit label clear of: rooms and the duplex stair. */
+export const labelObstacles = (u: Pick<LayoutUnit, 'rooms' | 'duplex'>): { polygon: Polygon }[] => [
+  ...(u.rooms ?? []),
+  ...(u.duplex?.stair ? [{ polygon: u.duplex.stair }] : []),
+];
+
+/**
+ * Internal stair of a duplex: a straight flight with treads across its length and an arrow
+ * pointing up (drawn on both levels; on the upper level the arrow starts at the landing).
+ */
+export function duplexStairSymbol(stair: Polygon, upper: boolean): DItem[] {
+  const r = stair.outer;
+  if (r.length !== 4) return [line(r, 1, 'solid', '#55534e', true)];
+  const [p0, p1, , p3] = r as [Vec2, Vec2, Vec2, Vec2];
+  const o = p0;
+  let e1: Vec2 = [p1[0] - p0[0], p1[1] - p0[1]];
+  let e2: Vec2 = [p3[0] - p0[0], p3[1] - p0[1]];
+  if (Math.hypot(...e2) > Math.hypot(...e1)) [e1, e2] = [e2, e1];
+  const at = (a: number, b: number): Vec2 => [
+    o[0] + e1[0] * a + e2[0] * b,
+    o[1] + e1[1] * a + e2[1] * b,
+  ];
+  const out: DItem[] = [
+    { kind: 'fill', rings: [r], fill: '#ffffff', pen: 1, stroke: '#55534e', title: 'escalier' },
+  ];
+  const steps = Math.max(4, Math.round(Math.hypot(...e1) / 0.26));
+  for (let i = 1; i < steps; i++)
+    out.push(line([at(i / steps, 0), at(i / steps, 1)], 1, 'solid', '#8a877f'));
+  // walking line with arrow (up), from the bottom step on the lower level
+  const a0 = upper ? 0.55 : 0.06;
+  const a1 = 0.94;
+  out.push(line([at(a0, 0.5), at(a1, 0.5)], 1, 'solid', '#55534e'));
+  out.push(line([at(a1 - 0.1, 0.25), at(a1, 0.5), at(a1 - 0.1, 0.75)], 1, 'solid', '#55534e'));
+  if (upper) out.push(line([at(0.5, 0), at(0.5, 1)], 2, 'dashed', '#55534e'));
+  return out;
+}
 
 /**
  * Stair and lift of a core, as modelled in 3D and transferred to Archicad (`coreStair`): treads,
@@ -327,6 +382,7 @@ export function floorPlan(
 
   const labels: DItem[] = [];
   const roomName = opts.roomText ?? ((k: RoomKind) => ROOM_LABELS[k]);
+  const dpx = opts.duplexText ?? DUPLEX_LABELS;
   for (const st of storeys) {
     for (const o of st.open) items.push(fill(o.polygon, FLOOR_PLAN_COLORS.open));
     for (const c of st.circulation) items.push(fill(c.polygon, FLOOR_PLAN_COLORS.circulation));
@@ -338,7 +394,7 @@ export function floorPlan(
             ? serviceColor(unitColor(u.typeId, mix))
             : unitColor(u.typeId, mix),
         ),
-        title: `${u.label} · ${fmtArea(u.area)}${u.outOfRange ? ' *' : ''} · ${(
+        title: `${u.label}${u.duplex ? ` ${dpx.duplex} · ${dpx[u.duplex.level]} · ${fmtArea(u.duplex.totalArea)}` : ''} · ${fmtArea(u.area)}${u.outOfRange ? ' *' : ''} · ${(
           opts.facadeText ?? defaultFacadeText
         )(u.facade, u.facadeRequired)}${u.facadeOk ? '' : ' !'}`,
         ...(u.facadeOk
@@ -373,6 +429,9 @@ export function floorPlan(
             });
         }
       }
+    for (const u of st.units)
+      if (u.duplex?.stair)
+        items.push(...duplexStairSymbol(u.duplex.stair, u.duplex.part === 'upper'));
     for (const k of st.cores) {
       items.push(fill(k.polygon, FLOOR_PLAN_COLORS.core));
       items.push(...coreSymbol(k, st, stairRules));
@@ -388,12 +447,19 @@ export function floorPlan(
       for (const r of rings(o.polygon)) items.push(line(r, 1, 'solid', COLORS.grey, true));
     if (opts.labels !== false)
       for (const u of st.units) {
-        const at = unitLabelPoint(u.polygon, opts.rooms === false ? [] : (u.rooms ?? []));
+        const at = unitLabelPoint(
+          u.polygon,
+          opts.rooms === false
+            ? u.duplex?.stair
+              ? [{ polygon: u.duplex.stair }]
+              : []
+            : labelObstacles(u),
+        );
         const big = polygonArea(u.polygon) > 12;
         labels.push({
           kind: 'text',
           at,
-          text: `${u.label}${u.outOfRange ? '*' : ''}${u.facadeOk ? '' : ' !'}`,
+          text: unitTitle(u, dpx.duplex),
           sizeMm: big ? 2.6 : 1.8,
           anchor: 'middle',
           baseline: 'bottom',
@@ -404,7 +470,7 @@ export function floorPlan(
         labels.push({
           kind: 'text',
           at,
-          text: fmtArea(u.area),
+          text: u.duplex ? `${fmtArea(u.area)} · ${dpx[u.duplex.level]}` : fmtArea(u.area),
           sizeMm: big ? 1.9 : 1.4,
           anchor: 'middle',
           baseline: 'top',

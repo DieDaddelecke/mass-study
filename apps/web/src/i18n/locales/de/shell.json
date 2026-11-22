@@ -491,5 +491,17 @@
     "mode": "Modus",
     "facade": "Fassade",
     "volume": "Ganzes Volumen"
+  },
+  "duplex": {
+    "title": "Maisonette (Duplex)",
+    "enabled": "Maisonette-Wohnungen",
+    "from": "Ab Geschoss",
+    "entry": "Eingang und Wohnraum",
+    "entryLower": "Untere Ebene",
+    "entryUpper": "Obere Ebene",
+    "types": "Typen als Maisonette",
+    "note": "Zwei übereinanderliegende Geschosse ab {{storey}}. Eingang immer auf der Ebene des Wohnraums; Wohnraum und PMR-Zimmer auf der Wohnebene, weitere Zimmer auf der Schlafebene. Fassadenregeln je Ebene.",
+    "none": "Keine Maisonette: Die Wohnungen dieses Grundrisses sind für eine Maisonette-Ebene zu groß.",
+    "count": "{{count}} Maisonetten"
   }
 }

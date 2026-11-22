@@ -20,6 +20,7 @@ import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
 import { useViewportStore } from '../viewport/viewportStore';
 import { SCENE_LOOKS, type SceneLook } from '../viewport/scene/looks';
+import { DuplexFields } from './DuplexFields';
 import { OutdoorFields } from './OutdoorFields';
 import { PlantingProperties, RoofFields, TerraceFields } from './MassShapeFields';
 import { TypologyInputs } from './TypologyInputs';
@@ -326,7 +327,10 @@ function MassProperties({ mass }: { mass: Mass }) {
         </Row>
       </Group>
       {(mass.usage ?? 'wohnen') === 'wohnen' && (
-        <OutdoorFields mass={mass} settings={project.settings} update={update} />
+        <>
+          <OutdoorFields mass={mass} settings={project.settings} update={update} />
+          <DuplexFields mass={mass} settings={project.settings} update={update} />
+        </>
       )}
       {res && (
         <Group title={t('props.group.results')}>

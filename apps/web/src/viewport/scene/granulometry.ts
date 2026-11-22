@@ -99,8 +99,14 @@ export function buildGranulometry(
         const cut = u.outdoor?.kind === 'loggia' ? (u.outdoor.cut ?? u.outdoor.polygon) : null;
         const zc = z1 - LOGGIA_SLAB;
         const loggia = cut && zc > st.z0 ? big(intersection([u.polygon], [cut])) : [];
+        // a duplex reads as one volume over two storeys: no outline between its levels
+        const edgeOpts = {
+          bottom: false,
+          ...(u.duplex?.part === 'lower' ? { top: false } : {}),
+        };
         if (!cut || !loggia.length) {
-          add(u.polygon, color, true);
+          add(u.polygon, color, false);
+          prismEdges(u.polygon, st.z0, z1, edgeOpts, edges);
           continue;
         }
         // the dwelling without its loggia, and the slab of the storey above over the loggia
@@ -109,7 +115,7 @@ export function buildGranulometry(
           add(p, color, false, zc, z1);
           prismEdges(p, st.z0, zc, { bottom: false }, edges);
         }
-        prismEdges(u.polygon, st.z0, z1, { bottom: false }, edges);
+        prismEdges(u.polygon, st.z0, z1, edgeOpts, edges);
       }
       for (const c of st.cores) add(c.polygon, GRANULO_COLORS.core, true);
       for (const c of st.circulation) add(c.polygon, GRANULO_COLORS.circulation, false);

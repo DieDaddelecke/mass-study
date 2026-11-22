@@ -552,19 +552,23 @@ function floorPlanLegend(
   for (const type of mix) {
     let n = 0;
     let a = 0;
+    let d = 0;
     for (const { s } of here)
       for (const b of s.summary.byType)
         if (b.typeId === type.id) {
           n += b.count;
           a += b.area;
+          d += b.duplex ?? 0;
         }
-    if (!n) continue;
+    if (!n && !a) continue;
     total += n;
     area += a;
     out.push(
       rect(x, y - 2.6, 3.2, 3.2, { fill: unitColor(type.id, mix), stroke: '#000', pen: 0.1 }),
     );
-    out.push(txt(x + 5, y, type.label, 2.6));
+    out.push(
+      txt(x + 5, y, d ? `${type.label} (${d} ${t('fp.duplexShort.duplex')})` : type.label, 2.6),
+    );
     out.push(txt(x + 40, y, String(n), 2.6, { anchor: 'end' }));
     out.push(txt(x + FP_LEGEND_W, y, `${input.formatNumber(a, 0)} m²`, 2.6, { anchor: 'end' }));
     y += 4.6;
@@ -586,6 +590,17 @@ function floorPlanLegend(
     out.push(rect(x, y - 2.6, 3.2, 3.2, { fill, stroke: '#000', pen: 0.1 }));
     out.push(txt(x + 5, y, fit(t(key), 2.4, FP_LEGEND_W - 5), 2.4));
     y += 4.4;
+  }
+  const nuit = here.reduce(
+    (k, { s }) => k + s.units.filter((u) => u.duplex?.level === 'nuit').length,
+    0,
+  );
+  if (nuit) {
+    for (const l of wrap2(t('fp.duplexNuit', { count: nuit }), 2, FP_LEGEND_W)) {
+      out.push(txt(x, y + 1, l, 2, { fill: '#555' }));
+      y += 3.2;
+    }
+    y += 1;
   }
   if (here.some(({ s }) => s.units.some((u) => u.outOfRange))) {
     out.push(txt(x, y + 1, fit(t('fp.outOfRange'), 2, FP_LEGEND_W), 2, { fill: '#555' }));
@@ -614,7 +629,14 @@ function floorPlanDrafts(input: DossierInput, f: Frame, counter: { n: number }):
   const boxH = f.ch - CAPTION_H;
   return groups.map((g) => {
     const storey = g.storeys[0]!;
-    const model = floorPlan(project, solids, storey, layouts, { neighbours: false });
+    const model = floorPlan(project, solids, storey, layouts, {
+      neighbours: false,
+      duplexText: {
+        duplex: t('fp.duplexShort.duplex'),
+        jour: t('fp.duplexShort.jour'),
+        nuit: t('fp.duplexShort.nuit'),
+      },
+    });
     const scale = chooseScale(model, boxW, boxH, FP_SCALES);
     const size = measureDrawing(model, scale);
     const svg = renderSvg(model, { scale, background: null, theme: 'paper' });

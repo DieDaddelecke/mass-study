@@ -491,5 +491,17 @@
     "mode": "Mode",
     "facade": "Façade",
     "volume": "Volume entier"
+  },
+  "duplex": {
+    "title": "Duplex",
+    "enabled": "Logements en duplex",
+    "from": "À partir de",
+    "entry": "Entrée et séjour",
+    "entryLower": "Niveau bas (duplex montant)",
+    "entryUpper": "Niveau haut (duplex descendant)",
+    "types": "Types en duplex",
+    "note": "Deux niveaux superposés à partir de {{storey}}. Entrée toujours au niveau du séjour ; séjour et chambre PMR au niveau jour, autres chambres au niveau nuit. Règles de façade par niveau.",
+    "none": "Aucun duplex : les logements de ce plan sont trop grands pour un niveau de duplex.",
+    "count": "{{count}} duplex"
   }
 }

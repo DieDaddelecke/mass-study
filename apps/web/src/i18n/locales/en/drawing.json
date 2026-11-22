@@ -73,7 +73,15 @@
     },
     "outdoor": "Outdoor space (balcony, loggia, terrace)",
     "outdoorFail": "{{count}} outdoor space(s) below the minimum (4 m², depth) or away from the living room",
-    "outdoorNone": "{{count}} dwelling(s) without outdoor space"
+    "outdoorNone": "{{count}} dwelling(s) without outdoor space",
+    "duplexShort": {
+      "duplex": "duplex",
+      "jour": "day level",
+      "nuit": "night level"
+    },
+    "duplexCount": "of which {{count}} duplex",
+    "duplexNuit": "{{count}} duplex night level(s) (counted on the entrance level)",
+    "duplexStair": "Internal duplex stair"
   },
   "ridge": "ridge"
 }
