@@ -1,5 +1,7 @@
 import {
   difference,
+  intersection,
+  polygonArea,
   type MassLayout,
   type Polygon,
   type StoreySolid,
@@ -33,6 +35,11 @@ export interface GranuloScene {
   /** Keys (`massId#storeyIndex`) of the storey solids replaced by the granulometry. */
   covered: Set<string>;
 }
+
+/** Slab (of the storey above, or the roof) kept over a loggia, m. */
+export const LOGGIA_SLAB = 0.3;
+
+const big = (ps: Polygon[]) => ps.filter((p) => polygonArea(p) > 0.05);
 
 export const storeyKey = (s: Pick<StoreySolid, 'massId' | 'storeyIndex'>) =>
   `${s.massId}#${s.storeyIndex}`;
@@ -77,15 +84,27 @@ export function buildGranulometry(
       const z1 = z1Of.get(key);
       if (z1 === undefined || !(z1 > st.z0)) continue;
       covered.add(key);
-      const add = (p: Polygon, color: string, outline: boolean) => {
-        const g = colored(p, st.z0, z1, color);
+      const add = (p: Polygon, color: string, outline: boolean, za = st.z0, zb = z1) => {
+        const g = colored(p, za, zb, color);
         if (g) parts.push(g);
-        if (outline) prismEdges(p, st.z0, z1, { bottom: false }, edges);
+        if (outline) prismEdges(p, za, zb, { bottom: false }, edges);
       };
       for (const u of st.units) {
-        const parts =
-          u.outdoor?.kind === 'loggia' ? difference([u.polygon], [u.outdoor.polygon]) : [u.polygon];
-        for (const p of parts) add(p, unitColor(u.typeId, mix), true);
+        const color = unitColor(u.typeId, mix);
+        const cut = u.outdoor?.kind === 'loggia' ? (u.outdoor.cut ?? u.outdoor.polygon) : null;
+        const zc = z1 - LOGGIA_SLAB;
+        const loggia = cut && zc > st.z0 ? big(intersection([u.polygon], [cut])) : [];
+        if (!cut || !loggia.length) {
+          add(u.polygon, color, true);
+          continue;
+        }
+        // the dwelling without its loggia, and the slab of the storey above over the loggia
+        for (const p of big(difference([u.polygon], [cut]))) add(p, color, false);
+        for (const p of loggia) {
+          add(p, color, false, zc, z1);
+          prismEdges(p, st.z0, zc, { bottom: false }, edges);
+        }
+        prismEdges(u.polygon, st.z0, z1, { bottom: false }, edges);
       }
       for (const c of st.cores) add(c.polygon, GRANULO_COLORS.core, true);
       for (const c of st.circulation) add(c.polygon, GRANULO_COLORS.circulation, false);
@@ -133,7 +152,7 @@ export function buildOutdoor(layouts: readonly MassLayout[]): OutdoorScene {
         const z = st.z0;
         if (o.kind === 'loggia') {
           const k = `${m.massId}#${st.storeyIndex}`;
-          loggias.set(k, [...(loggias.get(k) ?? []), o.polygon]);
+          loggias.set(k, [...(loggias.get(k) ?? []), o.cut ?? o.polygon]);
           continue;
         }
         if (o.kind === 'terrasse') {

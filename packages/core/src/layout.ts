@@ -16,9 +16,11 @@ import {
   difference,
   intersection,
   normalizePolygon,
+  offsetPolygons,
   orientedExtents,
   rect,
   polygonArea,
+  polygonPerimeter,
   ringCentroid,
   union,
 } from './geometry.js';
@@ -1179,7 +1181,7 @@ function onLine([a, b]: [Vec2, Vec2], lines: readonly [Vec2, Vec2][]): boolean {
 }
 
 /** Drop vertices closer than `tol` to the line through their neighbours (clipping noise). */
-function simplify(p: Polygon, tol = 0.02): Polygon {
+function simplify(p: Polygon, tol = 0.02, despike = true): Polygon {
   const ring = (r: Vec2[]): Vec2[] => {
     const pts = [...r];
     let changed = true;
@@ -1202,7 +1204,21 @@ function simplify(p: Polygon, tol = 0.02): Polygon {
   };
   const out: Polygon = { outer: ring(p.outer) };
   if (p.holes?.length) out.holes = p.holes.map(ring);
-  return out;
+  return despike ? removeSpikes(out, (q) => simplify(q, tol, false)) : out;
+}
+
+/**
+ * Removes zero-width spikes and hairline strips (left by merging polygons with tiny gaps and
+ * by `simplify`): they would count as façade and show as flickering faces in 3D. Polygons
+ * without such parts are returned unchanged.
+ */
+function removeSpikes(p: Polygon, clean: (p: Polygon) => Polygon): Polygon {
+  const e = 0.005;
+  const opened = offsetPolygons(offsetPolygons([p], -e), e);
+  if (!opened.length) return p;
+  const perimeter = opened.reduce((s, q) => s + polygonPerimeter(q), 0);
+  if (Math.abs(perimeter - polygonPerimeter(p)) < 0.05) return p;
+  return clean(opened.reduce((x, y) => (polygonArea(y) > polygonArea(x) ? y : x)));
 }
 
 const dist = (a: Vec2, b: Vec2) => Math.hypot(a[0] - b[0], a[1] - b[1]);
