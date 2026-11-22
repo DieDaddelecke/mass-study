@@ -21,20 +21,33 @@ export function UsageLegend() {
   );
 }
 
-/** Legend of the granulometry style: dwelling types with count and share (all masses). */
+/**
+ * Legend of the granulometry style: dwelling types with count and share (all masses), or of one
+ * storey only while the view is cut at it.
+ */
 export function GranulometryLegend({
   layouts,
   mix,
+  level = null,
+  levelLabel,
 }: {
   layouts: readonly MassLayout[];
   mix: readonly UnitType[];
+  level?: number | null;
+  levelLabel?: string;
 }) {
   const { t } = useTranslation('viewport');
   const rows = mix
     .map((type) => ({
       type,
       count: layouts.reduce(
-        (s, m) => s + (m.totals.byType.find((b) => b.typeId === type.id)?.count ?? 0),
+        (s, m) =>
+          s +
+          (level === null
+            ? (m.totals.byType.find((b) => b.typeId === type.id)?.count ?? 0)
+            : m.storeys
+                .filter((st) => st.storeyIndex === level)
+                .reduce((n, st) => n + st.units.filter((u) => u.typeId === type.id).length, 0)),
         0,
       ),
     }))
@@ -42,7 +55,10 @@ export function GranulometryLegend({
   const total = rows.reduce((s, r) => s + r.count, 0);
   return (
     <div className="glass vp-legend" aria-label={t('legend.granuloTitle')}>
-      <div className="vp-legend-title">{t('legend.granuloTitle')}</div>
+      <div className="vp-legend-title">
+        {t('legend.granuloTitle')}
+        {level !== null && levelLabel ? ` · ${levelLabel}` : ''}
+      </div>
       {total === 0 && <div className="vp-legend-row">{t('legend.none')}</div>}
       {rows.map((r) => (
         <div key={r.type.id} className="vp-legend-row">

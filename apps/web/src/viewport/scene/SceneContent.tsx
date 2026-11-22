@@ -28,6 +28,8 @@ import { useLayers } from './sceneLayers';
 import { startMassDrag } from '../tools/ToolLayer';
 import { Plantings } from './Plantings';
 import { roofGeometry } from './roofGeometry';
+import { StoreyCut } from './StoreyCut';
+import { massesCutAt } from './storeyCut';
 
 const EMPTY_ZONES: PlantingZone[] = [];
 import { Surroundings, Z } from './Surroundings';
@@ -60,6 +62,8 @@ interface Props {
   shadows: boolean;
   /** Dwelling layouts (outdoor spaces; dwellings in the granulometry style). */
   layouts?: readonly MassLayout[] | null;
+  /** Storey cut: this storey is cut like a floor plan, everything above is hidden. */
+  cutLevel?: number | null;
 }
 
 /** Click is a "real" click (not the end of a camera drag) and the select tool is active. */
@@ -358,7 +362,31 @@ function buildMasses(
 }
 
 function Masses(props: Props & { pal: ScenePalette; edgeWidth: number }) {
-  const { project, solids, style, shadows, pal, layouts, edgeWidth } = props;
+  const { project, style, shadows, pal, edgeWidth } = props;
+  const cut = props.cutLevel ?? null;
+  // with a storey cut: only the storeys below it are drawn as volumes
+  const solids = useMemo(
+    () => (cut === null ? props.solids : props.solids.filter((r) => r.solid.storeyIndex < cut)),
+    [props.solids, cut],
+  );
+  const layouts = useMemo(
+    () =>
+      cut === null || !props.layouts
+        ? props.layouts
+        : props.layouts.map((m) => ({
+            ...m,
+            storeys: m.storeys.filter((st) => st.storeyIndex <= cut),
+          })),
+    [props.layouts, cut],
+  );
+  const roofs = useMemo(() => {
+    if (cut === null) return props.roofs;
+    const gone = massesCutAt(
+      props.solids.map((r) => r.solid),
+      cut,
+    );
+    return props.roofs?.filter((r) => !gone.has(r.massId));
+  }, [props.roofs, props.solids, cut]);
   const granulo = useMemo(
     () =>
       style === 'granulometry' && layouts
@@ -457,8 +485,21 @@ function Masses(props: Props & { pal: ScenePalette; edgeWidth: number }) {
           <ThinLines segments={g.edges} color={pal.contextEdge} />
         </group>
       ))}
+      {cut !== null && (
+        <StoreyCut
+          solids={props.solids}
+          layouts={props.layouts}
+          level={cut}
+          mix={project.settings.unitMix}
+          wallColor={pal.mass}
+          loggias={outdoor?.loggias}
+          style={style}
+          shadows={shadows}
+          pick={pick}
+        />
+      )}
       <Roofs
-        roofs={props.roofs}
+        roofs={roofs}
         style={style}
         shadows={shadows}
         pal={pal}

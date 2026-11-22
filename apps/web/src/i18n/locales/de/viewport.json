@@ -34,7 +34,8 @@
     "soon": "in Vorbereitung",
     "persp": "Perspektive",
     "ortho": "Ortho",
-    "magnet": "Magnetisch fangen (Alt gedrückt: aus)"
+    "magnet": "Magnetisch fangen (Alt gedrückt: aus)",
+    "cut": "Geschossschnitt (Grundriss eines Geschosses zeigen)"
   },
   "legend": {
     "title": "Nutzungen",
@@ -44,5 +45,9 @@
     "circulation": "Erschließung",
     "other": "Andere Nutzungen",
     "none": "Keine Wohnungen in der Variante"
+  },
+  "cut": {
+    "title": "Schnitt",
+    "off": "Ganzes Volumen zeigen"
   }
 }

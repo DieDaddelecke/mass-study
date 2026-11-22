@@ -34,7 +34,8 @@
     "soon": "en préparation",
     "persp": "Perspective",
     "ortho": "Ortho",
-    "magnet": "Magnétisme (Alt maintenu : désactivé)"
+    "magnet": "Magnétisme (Alt maintenu : désactivé)",
+    "cut": "Coupe par étage (afficher le plan d'un niveau)"
   },
   "legend": {
     "title": "Affectations",
@@ -44,5 +45,9 @@
     "circulation": "Circulation",
     "other": "Autres usages",
     "none": "Aucun logement dans la variante"
+  },
+  "cut": {
+    "title": "Coupe",
+    "off": "Afficher tout le volume"
   }
 }

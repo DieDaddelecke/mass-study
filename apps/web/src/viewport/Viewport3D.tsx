@@ -14,7 +14,9 @@ import { useViewportStore } from './viewportStore';
 import { useLook } from './scene/useLook';
 import { LIT_STYLES, type LookSpec } from './scene/looks';
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { massLayouts, type Project, type SolidResult } from '@kubatur/core';
+import { massLayouts, storeyLabel, type Project, type SolidResult } from '@kubatur/core';
+import { CutSlider } from './CutSlider';
+import { cutLevels } from './scene/storeyCut';
 import type { VisualStyle } from '../store/tools';
 import './viewport.css';
 
@@ -117,7 +119,17 @@ export function Viewport3D() {
       return null;
     }
   }, [project, analysis]);
+  // storey cut: the chosen storey, kept within the storeys of the model
+  const cutLevel = useViewportStore((s) => s.cutLevel);
+  const setCutLevel = useViewportStore((s) => s.setCutLevel);
+  const levels = useMemo(() => cutLevels(solids.map((r) => r.solid)), [solids]);
+  const cut =
+    cutLevel === null || !levels.length
+      ? null
+      : Math.min(levels[0]!, Math.max(levels[levels.length - 1]!, cutLevel));
   if (!project) return null;
+  const basements = Math.max(0, -Math.min(0, ...levels));
+  const labelOf = (l: number) => storeyLabel(l, project.settings.notation, false, basements);
   const ortho = projection === 'orthographic';
   return (
     <div className="vp-root">
@@ -149,6 +161,7 @@ export function Viewport3D() {
           style={style}
           shadows={shadows}
           layouts={layouts}
+          cutLevel={cut}
         />
         <CameraRig project={project} solids={solids} projection={projection} />
         <ToolLayer />
@@ -157,8 +170,22 @@ export function Viewport3D() {
       <NavCube />
       <ViewControlBar />
       {style === 'consistentColors' && <UsageLegend />}
-      {style === 'granulometry' && (
-        <GranulometryLegend layouts={layouts ?? []} mix={project.settings.unitMix} />
+      {cut !== null && (
+        <CutSlider
+          levels={levels}
+          labelOf={labelOf}
+          value={levels.includes(cut) ? cut : (levels.find((l) => l <= cut) ?? levels[0]!)}
+          onChange={setCutLevel}
+          onClose={() => setCutLevel(null)}
+        />
+      )}
+      {(style === 'granulometry' || cut !== null) && (
+        <GranulometryLegend
+          layouts={layouts ?? []}
+          mix={project.settings.unitMix}
+          level={cut}
+          levelLabel={cut === null ? undefined : labelOf(cut)}
+        />
       )}
     </div>
   );
