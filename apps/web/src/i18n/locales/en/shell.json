@@ -234,6 +234,7 @@
   },
   "view": {
     "style": "Visual style",
+    "look": "Ambience",
     "projection": "Projection",
     "perspective": "Perspective",
     "orthographic": "Orthographic",
@@ -244,6 +245,12 @@
       "consistentColors": "Consistent colors",
       "granulometry": "Granulometry",
       "realistic": "Realistic"
+    },
+    "looks": {
+      "maquette": "White model",
+      "bois": "Wood model",
+      "diagramme": "Diagram",
+      "classique": "Classic"
     }
   },
   "status": {

@@ -18,6 +18,8 @@ import { actions, activeVariant, useProjectStore } from '../store/projectStore';
 import type { VisualStyle } from '../store/tools';
 import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
+import { useViewportStore } from '../viewport/viewportStore';
+import { SCENE_LOOKS, type SceneLook } from '../viewport/scene/looks';
 import { OutdoorFields } from './OutdoorFields';
 import { PlantingProperties, RoofFields, TerraceFields } from './MassShapeFields';
 import { TypologyInputs } from './TypologyInputs';
@@ -470,6 +472,8 @@ function ViewProperties() {
   const setStyle = useUiStore((s) => s.setVisualStyle);
   const projection = useUiStore((s) => s.projection);
   const setProjection = useUiStore((s) => s.setProjection);
+  const look = useViewportStore((s) => s.look);
+  const setLook = useViewportStore((s) => s.setLook);
   const setDialog = useShellStore((s) => s.setDialog);
   const n = (v: number, d = 0) => formatNumber(v, d, i18n.language);
   const siteArea = polygonsArea(project.site.parcels.map((p) => p.polygon));
@@ -523,6 +527,15 @@ function ViewProperties() {
             {STYLES.map((s) => (
               <option key={s} value={s}>
                 {t(`view.styles.${s}`)}
+              </option>
+            ))}
+          </select>
+        </Row>
+        <Row label={t('view.look')}>
+          <select value={look} onChange={(e) => setLook(e.target.value as SceneLook)}>
+            {SCENE_LOOKS.map((l) => (
+              <option key={l} value={l}>
+                {t(`view.looks.${l}`)}
               </option>
             ))}
           </select>

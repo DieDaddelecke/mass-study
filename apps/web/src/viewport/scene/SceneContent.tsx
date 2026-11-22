@@ -17,7 +17,9 @@ import { activeVariant } from '../../store/projectStore';
 import type { VisualStyle } from '../../store/tools';
 import { useUiStore } from '../../store/uiStore';
 import { palette, type ScenePalette } from '../../theme/palette';
-import { useScenePalette } from '../../theme/themeStore';
+import { useLook } from './useLook';
+import { LIT_STYLES } from './looks';
+import { SkyBackground } from './SkyBackground';
 import { Basemap } from './Basemap';
 import { COLORS, usageColor } from './colors';
 import { useLayers } from './sceneLayers';
@@ -78,7 +80,10 @@ function FaceMaterial({ style, color }: { style: VisualStyle; color: string }) {
   const common = { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 } as const;
   if (style === 'wireframe')
     return <meshBasicMaterial {...common} colorWrite={false} depthWrite={false} />;
-  if (style === 'hiddenLine') return <meshBasicMaterial {...common} color={color} />;
+  // explicit colorWrite / depthWrite: r3f reuses the material instance when switching from the
+  // wireframe style and would otherwise keep its invisible settings.
+  if (style === 'hiddenLine')
+    return <meshBasicMaterial {...common} color={color} colorWrite depthWrite />;
   if (style === 'realistic')
     return <meshStandardMaterial {...common} color={color} roughness={0.9} />;
   return <meshLambertMaterial {...common} color={color} />;
@@ -109,7 +114,7 @@ function Ground({
       }}
     >
       <planeGeometry args={[6000, 6000]} />
-      {style === 'realistic' || style === 'shaded' ? (
+      {LIT_STYLES.has(style) ? (
         <meshLambertMaterial color={pal.ground} depthWrite={false} />
       ) : (
         <meshBasicMaterial color={pal.ground} depthWrite={false} />
@@ -118,7 +123,15 @@ function Ground({
   );
 }
 
-function SiteBoundary({ project, pal }: { project: Project; pal: ScenePalette }) {
+function SiteBoundary({
+  project,
+  pal,
+  fillOpacity,
+}: {
+  project: Project;
+  pal: ScenePalette;
+  fillOpacity: number;
+}) {
   const b = project.site.boundary;
   const fill = useMemo(() => extrudePolygon(b, 0, 0.02), [b]);
   const segs = useMemo(() => {
@@ -147,7 +160,12 @@ function SiteBoundary({ project, pal }: { project: Project; pal: ScenePalette })
     <group>
       {fill && (
         <mesh geometry={fill} raycast={() => null}>
-          <meshBasicMaterial color={pal.site} transparent opacity={0.07} depthWrite={false} />
+          <meshBasicMaterial
+            color={pal.site}
+            transparent
+            opacity={fillOpacity}
+            depthWrite={false}
+          />
         </mesh>
       )}
       <FatSegments segments={segs} color={pal.site} width={2.5} />
@@ -317,8 +335,8 @@ function buildMasses(
   return { solids: out, edges };
 }
 
-function Masses(props: Props & { pal: ScenePalette }) {
-  const { project, solids, style, shadows, pal, layouts } = props;
+function Masses(props: Props & { pal: ScenePalette; edgeWidth: number }) {
+  const { project, solids, style, shadows, pal, layouts, edgeWidth } = props;
   const granulo = useMemo(
     () =>
       style === 'granulometry' && layouts
@@ -417,7 +435,14 @@ function Masses(props: Props & { pal: ScenePalette }) {
           <ThinLines segments={g.edges} color={pal.contextEdge} />
         </group>
       ))}
-      <Roofs roofs={props.roofs} style={style} shadows={shadows} pal={pal} faceColor={pal.mass} />
+      <Roofs
+        roofs={props.roofs}
+        style={style}
+        shadows={shadows}
+        pal={pal}
+        faceColor={pal.mass}
+        edgeWidth={edgeWidth}
+      />
       {outdoor && style !== 'wireframe' && (
         <OutdoorMeshes o={outdoor} style={style} shadows={shadows} pal={pal} />
       )}
@@ -428,7 +453,7 @@ function Masses(props: Props & { pal: ScenePalette }) {
             <FatSegments
               segments={e.thick}
               color={hot ? ACCENT : pal.massEdge}
-              width={hot ? 3 : style === 'realistic' ? 1.2 : 2}
+              width={hot ? 3 : style === 'realistic' ? Math.min(1.2, edgeWidth) : edgeWidth}
             />
             <ThinLines segments={e.thin} color={hot ? ACCENT : pal.contextEdge} />
           </group>
@@ -444,12 +469,14 @@ function Roofs({
   shadows,
   pal,
   faceColor,
+  edgeWidth,
 }: {
   roofs?: readonly RoofPiece[] | undefined;
   style: VisualStyle;
   shadows: boolean;
   pal: ScenePalette;
   faceColor: string;
+  edgeWidth: number;
 }) {
   const selection = useUiStore((s) => s.selection);
   const hover = useUiStore((s) => s.hover);
@@ -504,7 +531,7 @@ function Roofs({
             <FatSegments
               segments={b.edges}
               color={hot ? ACCENT : pal.massEdge}
-              width={hot ? 3 : style === 'realistic' ? 1.2 : 2}
+              width={hot ? 3 : style === 'realistic' ? Math.min(1.2, edgeWidth) : edgeWidth}
             />
           </group>
         );
@@ -574,12 +601,13 @@ function SelectedContext({ buildings }: { buildings: readonly ContextBuilding[] 
 
 export function SceneContent(props: Props) {
   const { project, style, shadows } = props;
-  const pal = useScenePalette();
+  const look = useLook();
+  const pal = look.pal;
   const layers = useLayers();
   return (
     <group>
-      <color attach="background" args={[pal.sky]} />
-      <fog attach="fog" args={[pal.sky, 900, 3200]} />
+      <SkyBackground top={look.sky[0]} horizon={look.sky[1]} />
+      <fog attach="fog" args={[look.sky[1], 900, 3200]} />
       <Ground style={style} shadows={shadows} pal={pal} />
       {layers.basemap !== 'none' && style !== 'wireframe' && (
         <Basemap project={project} kind={layers.basemap} z={Z.basemap} />
@@ -594,7 +622,7 @@ export function SceneContent(props: Props) {
           shadows={shadows}
         />
       )}
-      <SiteBoundary project={project} pal={pal} />
+      <SiteBoundary project={project} pal={pal} fillOpacity={look.siteFill} />
       {layers.buildings && (
         <>
           <ContextBuildings buildings={project.context} style={style} shadows={shadows} pal={pal} />
@@ -606,7 +634,7 @@ export function SceneContent(props: Props) {
         pal={pal}
         shadows={shadows}
       />
-      <Masses {...props} pal={pal} />
+      <Masses {...props} pal={pal} edgeWidth={look.edgeWidth} />
     </group>
   );
 }

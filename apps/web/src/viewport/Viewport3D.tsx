@@ -1,5 +1,6 @@
 import { Canvas } from '@react-three/fiber';
 import { DirectionalLight, Object3D } from 'three';
+import { EffectComposer, N8AO } from '@react-three/postprocessing';
 import { useProjectStore } from '../store/projectStore';
 import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
@@ -10,6 +11,8 @@ import { SceneContent } from './scene/SceneContent';
 import { ToolLayer } from './tools/ToolLayer';
 import { ViewControlBar } from './ViewControlBar';
 import { useViewportStore } from './viewportStore';
+import { useLook } from './scene/useLook';
+import { LIT_STYLES, type LookSpec } from './scene/looks';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { massLayouts, type Project, type SolidResult } from '@kubatur/core';
 import type { VisualStyle } from '../store/tools';
@@ -25,33 +28,43 @@ function Lights({
   solids,
   style,
   shadows,
+  look,
 }: {
   project: Project;
   solids: readonly SolidResult[];
   style: VisualStyle;
   shadows: boolean;
+  look: LookSpec;
 }) {
   const box = useMemo(() => modelBox(project, solids, 60), [project, solids]);
   const cx = (box.min[0] + box.max[0]) / 2 || 0;
   const cy = (box.min[1] + box.max[1]) / 2 || 0;
   const r = Math.max(60, Math.hypot(box.max[0] - box.min[0], box.max[1] - box.min[1]) / 2 + 20);
   const realistic = style === 'realistic';
+  const [dx, dy, dz] = look.sun.dir;
+  const dl = Math.hypot(dx, dy, dz) || 1;
+  const d = (2 * r * Math.SQRT2) / dl;
   // three does not refresh the shadow camera's projection when its bounds change; without this the
   // default 10 m frustum stays active and almost no shadows appear.
   const sunRef = useRef<DirectionalLight>(null);
   useLayoutEffect(() => {
     sunRef.current?.shadow.camera.updateProjectionMatrix();
-  }, [r, shadows]);
+  }, [r, shadows, look]);
   return (
     <>
-      <hemisphereLight args={['#ffffff', '#d8d4cc', realistic ? 0.9 : 1.1]} />
-      <ambientLight intensity={realistic ? 0.35 : 0.45} />
+      <hemisphereLight
+        args={[look.hemi.sky, look.hemi.ground, look.hemi.intensity * (realistic ? 0.85 : 1)]}
+      />
+      <ambientLight intensity={look.ambient * (realistic ? 0.8 : 1)} />
       <directionalLight
         ref={sunRef}
-        position={[cx - 0.45 * r * 2, cy - 0.9 * r * 2, r * 2]}
-        intensity={realistic ? 2.2 : 1.3}
+        position={[cx + dx * d, cy + dy * d, dz * d]}
+        color={look.sun.color}
+        intensity={look.sun.intensity * (realistic ? 1.25 : 1)}
         castShadow={shadows}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[4096, 4096]}
+        shadow-radius={look.sun.softness}
+        shadow-intensity={look.sun.shadowIntensity}
         shadow-bias={-0.0005}
         shadow-normalBias={0.05}
         shadow-camera-left={-r * 1.4}
@@ -59,11 +72,28 @@ function Lights({
         shadow-camera-top={r * 1.4}
         shadow-camera-bottom={-r * 1.4}
         shadow-camera-near={1}
-        shadow-camera-far={r * 8}
+        shadow-camera-far={d * 2 + r * 4}
       >
         <object3D attach="target" position={[cx, cy, 0]} />
       </directionalLight>
     </>
+  );
+}
+
+/** Post-processing: screen-space ambient occlusion (soft contact shadows in corners). */
+function Effects({ look, style }: { look: LookSpec; style: VisualStyle }) {
+  if (!look.ao || !LIT_STYLES.has(style)) return null;
+  return (
+    <EffectComposer multisampling={4} enableNormalPass={false}>
+      <N8AO
+        aoRadius={look.ao.radius}
+        intensity={look.ao.intensity}
+        distanceFalloff={1}
+        color={look.ao.color}
+        quality="medium"
+        halfRes
+      />
+    </EffectComposer>
   );
 }
 
@@ -74,8 +104,9 @@ export function Viewport3D() {
   const style = useUiStore((s) => s.visualStyle);
   const projection = useUiStore((s) => s.projection);
   const sun = useViewportStore((s) => s.sunEnabled);
+  const look = useLook();
   const solids = analysis?.result.solids ?? EMPTY;
-  const shadows = (style === 'realistic' || style === 'shaded') && sun;
+  const shadows = LIT_STYLES.has(style) && sun;
   // dwelling layouts (outdoor spaces, granulometry): recomputed with every change of the project
   const layouts = useMemo(() => {
     if (!project || !analysis) return null;
@@ -94,7 +125,7 @@ export function Viewport3D() {
         key={projection}
         className="vp-canvas"
         orthographic={ortho}
-        shadows={shadows}
+        shadows={shadows ? 'percentage' : false}
         dpr={[1, 2]}
         flat
         // preserveDrawingBuffer: the dossier captures the canvas for its cover page.
@@ -110,7 +141,7 @@ export function Viewport3D() {
         }}
         onPointerLeave={() => useUiStore.getState().setHover(null)}
       >
-        <Lights project={project} solids={solids} style={style} shadows={shadows} />
+        <Lights project={project} solids={solids} style={style} shadows={shadows} look={look} />
         <SceneContent
           project={project}
           solids={solids}
@@ -121,6 +152,7 @@ export function Viewport3D() {
         />
         <CameraRig project={project} solids={solids} projection={projection} />
         <ToolLayer />
+        <Effects look={look} style={style} />
       </Canvas>
       <NavCube />
       <ViewControlBar />

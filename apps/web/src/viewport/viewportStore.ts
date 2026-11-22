@@ -1,5 +1,22 @@
 import { create } from 'zustand';
 import type { Basemap } from '../api/contract';
+import { SCENE_LOOKS, type SceneLook } from './scene/looks';
+
+const LOOK_KEY = 'kubatur.sceneLook';
+
+function readLook(): SceneLook {
+  if (typeof window === 'undefined') return 'maquette';
+  // `?look=…` overrides the stored choice (screenshots, links).
+  const q = new URLSearchParams(window.location.search).get('look');
+  if (q && (SCENE_LOOKS as readonly string[]).includes(q)) return q as SceneLook;
+  try {
+    const v = localStorage.getItem(LOOK_KEY);
+    if (v && (SCENE_LOOKS as readonly string[]).includes(v)) return v as SceneLook;
+  } catch {
+    /* storage unavailable */
+  }
+  return 'maquette';
+}
 
 /** Visibility of context layers in the 3D view (per session; not stored in the project). */
 export interface ContextLayers {
@@ -43,6 +60,9 @@ export interface ViewportState {
   /** Context layer visibility (layers panel in the shell, rendering in viewport/scene). */
   layers: ContextLayers;
   setLayer: <K extends keyof ContextLayers>(key: K, value: ContextLayers[K]) => void;
+  /** Ambiance of the 3D view (lighting, colours, soft shadows, ambient occlusion); per browser. */
+  look: SceneLook;
+  setLook: (look: SceneLook) => void;
 }
 
 export const useViewportStore = create<ViewportState>()((set) => ({
@@ -56,4 +76,13 @@ export const useViewportStore = create<ViewportState>()((set) => ({
   setSunEnabled: (sunEnabled) => set({ sunEnabled }),
   layers: DEFAULT_LAYERS,
   setLayer: (key, value) => set((s) => ({ layers: { ...s.layers, [key]: value } })),
+  look: readLook(),
+  setLook: (look) => {
+    try {
+      localStorage.setItem(LOOK_KEY, look);
+    } catch {
+      /* storage unavailable */
+    }
+    set({ look });
+  },
 }));
