@@ -147,6 +147,22 @@ export interface Mass {
   outdoor?: OutdoorConfig;
   /** Roof on the top storey (default: flat with parapet). */
   roof?: RoofConfig;
+  /** Duplex dwellings on the upper storeys; default: settings (off). */
+  duplex?: DuplexConfig;
+}
+
+/**
+ * Duplex dwellings (logements en duplex): two stacked storeys form one dwelling. The entrance
+ * is always on the level with the séjour (niveau jour).
+ */
+export interface DuplexConfig {
+  enabled: boolean;
+  /** Lowest storey a duplex may start on (R+3 = 3). */
+  fromStorey: number;
+  /** Level of the entrance and the séjour: lower (duplex montant) or upper (descendant). */
+  entry: 'lower' | 'upper';
+  /** Unit types built as duplex (ids of the unit mix); default: types with ≥ 3 rooms. */
+  types?: string[];
 }
 
 export type OutdoorKind = 'none' | 'balcon' | 'loggia';
@@ -389,6 +405,12 @@ export interface UnitType {
   areaMax: number;
   /** Number of main rooms (T3 = 3: living + 2 bedrooms); default: digit in id / label. */
   rooms?: number;
+  /**
+   * Internal (layout of duplex storeys): one level of a duplex of this type. The séjour and the
+   * PMR bedroom are on the entrance level (niveau jour), the further bedrooms on the other level
+   * (niveau nuit); façade rules apply per level.
+   */
+  duplex?: boolean;
 }
 
 /** Office rules for dwellings: minimum façade lengths per room, m. */
@@ -453,6 +475,8 @@ export interface Settings {
   /** Outdoor spaces: minimums and the default configuration of new buildings. */
   outdoorRules?: OutdoorRules;
   outdoor?: OutdoorConfig;
+  /** Duplex dwellings: default configuration of new buildings. */
+  duplex?: DuplexConfig;
   workplaceArea: number;
   parking: {
     perDwelling: number;

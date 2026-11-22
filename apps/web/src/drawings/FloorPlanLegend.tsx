@@ -27,15 +27,17 @@ export function FloorPlanLegend({
     .map((type) => {
       let count = 0;
       let area = 0;
+      let duplex = 0;
       for (const { s } of here)
         for (const b of s.summary.byType)
           if (b.typeId === type.id) {
             count += b.count;
             area += b.area;
+            duplex += b.duplex ?? 0;
           }
-      return { type, count, area };
+      return { type, count, area, duplex };
     })
-    .filter((c) => c.count > 0);
+    .filter((c) => c.count > 0 || c.area > 0);
   const total = counts.reduce((a, c) => a + c.count, 0);
   const totalArea = counts.reduce((a, c) => a + c.area, 0);
   const outOfRange = here.some(({ s }) => s.units.some((u) => u.outOfRange));
@@ -53,7 +55,8 @@ export function FloorPlanLegend({
   const units = here.flatMap(({ s }) => s.units);
   const outdoor = units.filter((u) => u.outdoor);
   const outdoorFail = outdoor.filter((u) => !u.outdoor!.ok).length;
-  const outdoorNone = units.length - outdoor.length;
+  const nuit = units.filter((u) => u.duplex?.level === 'nuit').length;
+  const outdoorNone = units.length - nuit - outdoor.length;
   const outdoorArea = outdoor.reduce((a, u) => a + u.outdoor!.area, 0);
   const neutral = unitColor(mix[0]?.id ?? '', mix);
   const hasOpen = here.some(({ s }) => s.open.length > 0);
@@ -76,7 +79,7 @@ export function FloorPlanLegend({
           )}
         </p>
       ))}
-      {total > 0 ? (
+      {total > 0 || nuit > 0 ? (
         <table className="dv-legend-table">
           <tbody>
             {counts.map((c) => (
@@ -87,12 +90,22 @@ export function FloorPlanLegend({
                     style={{ background: unitColor(c.type.id, mix) }}
                   />
                   {c.type.label}
+                  {c.duplex > 0 && (
+                    <span className="muted"> · {t('fp.duplexCount', { count: c.duplex })}</span>
+                  )}
                 </td>
                 <td className="num">{c.count}</td>
                 <td className="num muted">{Math.round((100 * c.count) / total)} %</td>
                 <td className="num muted">{fmt(c.area)} m²</td>
                 <td className="num muted" title={t('fp.facadeRule')}>
-                  ≥ {formatNumber(requiredFacade(c.type, rules))} m
+                  ≥{' '}
+                  {formatNumber(
+                    requiredFacade(
+                      c.duplex > 0 && c.duplex === c.count ? { ...c.type, duplex: true } : c.type,
+                      rules,
+                    ),
+                  )}{' '}
+                  m
                 </td>
               </tr>
             ))}
@@ -149,6 +162,15 @@ export function FloorPlanLegend({
             {t('fp.outdoor')} · {fmt(outdoorArea)} m²
           </li>
         )}
+        {units.some((u) => u.duplex?.stair) && (
+          <li>
+            <span
+              className="dv-legend-sw"
+              style={{ background: '#fff', outline: '1px solid #55534e' }}
+            />
+            {t('fp.duplexStair')}
+          </li>
+        )}
         {hasOpen && (
           <li>
             <span className="dv-legend-sw" style={{ background: FLOOR_PLAN_COLORS.open }} />
@@ -174,6 +196,7 @@ export function FloorPlanLegend({
       {outdoorNone > 0 && outdoor.length > 0 && (
         <p className="dv-legend-note">{t('fp.outdoorNone', { count: outdoorNone })}</p>
       )}
+      {nuit > 0 && <p className="dv-legend-note">{t('fp.duplexNuit', { count: nuit })}</p>}
       {outOfRange && <p className="dv-legend-note">{t('fp.outOfRange')}</p>}
       {differs.map((m) => (
         <p key={m.massId} className="dv-legend-note">

@@ -73,7 +73,15 @@
     },
     "outdoor": "Außenbereich (Balkon, Loggia, Terrasse)",
     "outdoorFail": "{{count}} Außenbereich(e) unter dem Minimum (4 m², Tiefe) oder nicht am Wohnraum",
-    "outdoorNone": "{{count}} Wohnung(en) ohne Außenbereich"
+    "outdoorNone": "{{count}} Wohnung(en) ohne Außenbereich",
+    "duplexShort": {
+      "duplex": "Maisonette",
+      "jour": "Wohnebene",
+      "nuit": "Schlafebene"
+    },
+    "duplexCount": "davon {{count}} Maisonette",
+    "duplexNuit": "{{count}} Schlafebene(n) von Maisonetten (gezählt auf der Eingangsebene)",
+    "duplexStair": "Innentreppe der Maisonette"
   },
   "ridge": "First"
 }

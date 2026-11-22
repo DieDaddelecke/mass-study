@@ -34,7 +34,7 @@ import {
   resolveUnitRules,
   unitRooms,
 } from './unitRules.js';
-import { unitRoomLayout, type LayoutRoom } from './rooms.js';
+import { duplexProgram, unitRoomLayout, type LayoutRoom } from './rooms.js';
 import {
   facadeSide,
   placeOutdoor,
@@ -45,6 +45,7 @@ import {
 } from './outdoor.js';
 import type {
   AccessType,
+  DuplexConfig,
   Mass,
   Polygon,
   Project,
@@ -100,16 +101,37 @@ export interface LayoutUnit {
   rooms: LayoutRoom[];
   /** Outdoor space (balcon, loggia, terrasse), if the building has one on this façade. */
   outdoor?: LayoutOutdoor;
+  /** One level of a duplex dwelling (the same polygon on both storeys). */
+  duplex?: LayoutDuplex;
+}
+
+/** Level of a duplex dwelling. */
+export interface LayoutDuplex {
+  /** jour: entrance, séjour and chambre PMR; nuit: the further bedrooms. */
+  level: 'jour' | 'nuit';
+  /** Lower or upper of the two storeys. */
+  part: 'lower' | 'upper';
+  /** Storey indices of the lower and the upper level. */
+  storeys: [number, number];
+  /** Area of both levels, m². */
+  totalArea: number;
+  /** Internal stair (same place on both levels). */
+  stair?: Polygon;
 }
 
 export interface LayoutTypeCount {
   typeId: string;
   label: string;
+  /** Dwellings (a duplex counts once, on its entrance level). */
   count: number;
+  /** Area of the dwellings (both levels of a duplex). */
   area: number;
+  /** Of which duplex. */
+  duplex?: number;
 }
 
 export interface StoreyLayoutSummary {
+  /** Dwellings with their entrance on this storey (duplex upper/lower levels not counted). */
   units: number;
   byType: LayoutTypeCount[];
   unitArea: number;
@@ -547,6 +569,8 @@ function planBar(
   n: number,
   pick: (area: number, count: number) => UnitType[],
   fc: FacadeCtx,
+  /** Core centres (along the bar) to keep, e.g. those of the storey below. */
+  pins?: readonly number[],
 ): BarPlan {
   const L = bar.length;
   const D = bar.depth;
@@ -562,7 +586,8 @@ function planBar(
     if (residential) plan.rows.push({ rect: [0, 0, L, D], core: -1, sides: 2 });
     return plan;
   }
-  const centres = coreCentres(L, n);
+  const centres = pins?.length === n ? [...pins] : coreCentres(L, n);
+  const pin = (i: number) => (pins?.length === n ? pins[i] : undefined);
 
   if (!residential) {
     for (const c of centres) plan.cores.push([c - cw / 2, (D - cd) / 2, c + cw / 2, (D + cd) / 2]);
@@ -604,7 +629,11 @@ function planBar(
           };
           const ts = fitTypes(pick(est, 3), fc, (x) => geo(x).ok);
           const [big, mid, small] = ts;
-          const { wm, wl, side } = geo(ts);
+          const { wm, wl: wl0, side } = geo(ts);
+          // a pinned core keeps its place: the big unit takes what is left beside it
+          const pc = pin(i);
+          const wl =
+            pc === undefined ? wl0 : Math.min(Math.max(pc - cw / 2 - side - s0, 0.5), S - wm - 0.5);
           const m0 = s0 + wl;
           const m1 = m0 + wm;
           const k0 = m0 + side;
@@ -636,6 +665,7 @@ function planBar(
           // left unit (with the strip behind the core) gets share r
           let c = clampC(s0 + (A * r - back) / D + cw / 2, s0, s1, cw / 2);
           if (lo! <= hi! + 1e-9) c = Math.min(Math.max(c, lo!), hi!);
+          c = pin(i) ?? c;
           const k0 = c - cw / 2;
           const k1 = c + cw / 2;
           plan.cores.push([k0, kb0, k1, kb1]);
@@ -810,6 +840,23 @@ export function storeyLayout(
   settings: Settings,
   access: AccessType = resolveAccess(mass, settings),
 ): StoreyLayout {
+  return layoutStorey(mass, solids, settings, access).layout;
+}
+
+interface LayoutPass {
+  /** Core centres per bar to keep (from the simplex layout of the same footprint). */
+  pins?: number[][];
+  /** Level of the duplex dwellings on this storey (duplex types of the mix). */
+  duplex?: 'jour' | 'nuit';
+}
+
+function layoutStorey(
+  mass: Mass,
+  solids: readonly StoreySolid[],
+  settings: Settings,
+  access: AccessType,
+  pass: LayoutPass = {},
+): { layout: StoreyLayout; pins: number[][] } {
   const first = solids[0]!;
   const dim = layoutDimensions(settings);
   const mix = settings.unitMix.filter((t) => t.share > 0 && t.areaTarget > 0);
@@ -859,7 +906,11 @@ export function storeyLayout(
     : [];
   const pick = (area: number, count: number): UnitType[] =>
     mix.length ? rowTypes(area, typePool, mix, avgTarget, count) : [];
-  const coresPerBar = distributeCores(bars, mass, effAccess, settings, dim, avgTarget);
+  const pinned = pass.pins && pass.pins.length === bars.length ? pass.pins : undefined;
+  const coresPerBar = pinned
+    ? pinned.map((p) => p.length)
+    : distributeCores(bars, mass, effAccess, settings, dim, avgTarget);
+  const pins: number[][] = [];
   for (const [bi, bar] of bars.entries()) {
     {
       regions.push(...bar.region);
@@ -873,7 +924,9 @@ export function storeyLayout(
         coresPerBar[bi]!,
         pick,
         fc,
+        pinned?.[bi],
       );
+      pins.push(plan.cores.map((r) => (r[0] + r[2]) / 2));
       const coreBase = cores.length;
       for (const r of plan.cores) {
         for (const p of clip(bar.region, rectPoly(bar.frame, r)))
@@ -1050,6 +1103,8 @@ export function storeyLayout(
         ...polygonEdges(circulation.filter((c) => c.kind === 'gallery').map((c) => c.polygon)),
       );
     const minReq = Math.min(...mix.map(fc.req));
+    const roomsOf = (t: UnitType) =>
+      t.duplex && pass.duplex ? duplexProgram(unitRooms(t), pass.duplex, rules) : unitRooms(t);
     const polys = raw.map((u) => simplify(u.polys[0]!));
     const fac = polys.map((p) => facadeOf(p, facadeSegs).length);
     const alive = raw.map(() => true);
@@ -1105,7 +1160,17 @@ export function storeyLayout(
         facadeRequired: need,
         facadeOk: facade.length >= need - 1e-6 && roomsFit(choice.type, pieces, rules),
         facadeSegments: facade.segments,
-        rooms: unitRoomLayout(polygon, facade.segments, unitRooms(choice.type), rules, (seg) => {
+        ...(choice.type.duplex && pass.duplex
+          ? {
+              duplex: {
+                level: pass.duplex,
+                part: 'lower' as const,
+                storeys: [first.storeyIndex, first.storeyIndex] as [number, number],
+                totalArea: area,
+              },
+            }
+          : {}),
+        rooms: unitRoomLayout(polygon, facade.segments, roomsOf(choice.type), rules, (seg) => {
           // séjour preferably on the outer façade, where the outdoor space can go
           const outer = onLine(seg, outlineSegs);
           if (!outer) return 0;
@@ -1116,6 +1181,8 @@ export function storeyLayout(
     // outdoor spaces: one per dwelling, in front of (or next to) the séjour
     const placedOutdoor: Polygon[] = [];
     for (const u of units) {
+      // a duplex has its outdoor space on the séjour level only
+      if (u.duplex?.level === 'nuit') continue;
       const exterior = facadeOf(u.polygon, outlineSegs).segments;
       const sejour = u.rooms.find((r) => r.kind === 'sejour');
       const o = placeOutdoor(
@@ -1144,34 +1211,37 @@ export function storeyLayout(
   }
 
   const byType: LayoutTypeCount[] = mix
+    .filter((t, i) => mix.findIndex((x) => x.id === t.id) === i)
     .map((t) => {
       const list = units.filter((u) => u.typeId === t.id);
+      const dpx = list.filter((u) => u.duplex?.level === 'jour').length;
       return {
         typeId: t.id,
         label: t.label,
-        count: list.length,
+        count: list.filter(countsHere).length,
         area: list.reduce((s, u) => s + u.area, 0),
+        ...(dpx ? { duplex: dpx } : {}),
       };
     })
-    .filter((t) => t.count > 0);
+    .filter((t) => t.area > 0);
   for (const xs of [cores, circulation, open]) for (const x of xs) x.polygon = simplify(x.polygon);
   const sum = (xs: LayoutArea[]) => xs.reduce((s, x) => s + x.area, 0);
   const footprints = solids.map((s) => normalizePolygon(s.footprint));
   const summary: StoreyLayoutSummary = {
-    units: units.length,
+    units: units.filter(countsHere).length,
     byType,
     unitArea: units.reduce((s, u) => s + u.area, 0),
     coreArea: sum(cores),
     circulationArea: sum(circulation),
     openArea: sum(open),
     footprintArea: footprints.reduce((s, p) => s + polygonArea(p), 0),
-    facadeViolations: units.filter((u) => !u.facadeOk).length,
+    facadeViolations: units.filter((u) => !u.facadeOk && countsHere(u)).length,
   };
   const r1 = (x: number) => Math.round(x * 10) / 10;
   const signature = [
     usage,
     ...footprints.map((p) => p.outer.map(([x, y]) => `${r1(x)},${r1(y)}`).join(';')),
-    ...units.map((u) => `${u.typeId}:${r1(u.area)}`),
+    ...units.map((u) => `${u.typeId}${u.duplex ? `/${u.duplex.level}` : ''}:${r1(u.area)}`),
   ].join('|');
   const out: StoreyLayout = {
     massId: mass.id,
@@ -1190,10 +1260,13 @@ export function storeyLayout(
     summary,
     signature,
   };
-  if (cores.length && units.length)
-    out.unitsPerCore = Math.round((units.length / cores.length) * 10) / 10;
-  return out;
+  if (cores.length && summary.units)
+    out.unitsPerCore = Math.round((summary.units / cores.length) * 10) / 10;
+  return { layout: out, pins };
 }
+
+/** A dwelling counts on the storey of its entrance (the séjour level of a duplex). */
+const countsHere = (u: LayoutUnit): boolean => u.duplex?.level !== 'nuit';
 
 /** True when the midpoint of `seg` lies on one of `lines` (±2 cm). */
 function onLine([a, b]: [Vec2, Vec2], lines: readonly [Vec2, Vec2][]): boolean {
@@ -1263,6 +1336,197 @@ function nearestCoreIndex(cores: LayoutArea[], p: Polygon): number {
   return best;
 }
 
+// ---------------------------------------------------------------------------
+// Duplex dwellings
+// ---------------------------------------------------------------------------
+
+export const DEFAULT_DUPLEX: DuplexConfig = { enabled: false, fromStorey: 3, entry: 'lower' };
+
+/** Area of the internal stair of a duplex (both levels together), m². */
+export const DUPLEX_STAIR_AREA = 4;
+
+/** Duplex configuration of a building: its own, else the project default, else off. */
+export function resolveDuplex(
+  mass: Pick<Mass, 'duplex'>,
+  settings: Pick<Settings, 'duplex'>,
+): DuplexConfig {
+  return { ...DEFAULT_DUPLEX, ...(settings.duplex ?? {}), ...(mass.duplex ?? {}) };
+}
+
+/** Types of the mix that may be duplex: the configured ones, else those with ≥ 3 rooms. */
+export function duplexTypeIds(mix: readonly UnitType[], cfg: DuplexConfig): string[] {
+  return (cfg.types ?? mix.filter((t) => unitRooms(t) >= 3).map((t) => t.id)).filter((id) => {
+    const t = mix.find((x) => x.id === id);
+    return !!t && unitRooms(t) >= 2;
+  });
+}
+
+/** Share of the simplex variant of a duplex type: only used where no duplex fits the area. */
+const SIMPLEX_FALLBACK_SHARE = 1e-6;
+
+/**
+ * Unit mix of one storey of a duplex pair: duplex types as one level (half the area plus half
+ * the stair), simplex types with half their share (they exist on both storeys, a duplex once).
+ * Duplex types keep a simplex variant for dwellings too large for a duplex level (e.g. the
+ * two dwellings of a Zweispänner landing).
+ */
+export function duplexMix(mix: readonly UnitType[], ids: readonly string[]): UnitType[] {
+  const half = (a: number) => Math.round((a / 2 + DUPLEX_STAIR_AREA / 2) * 10) / 10;
+  return mix.flatMap((t) =>
+    ids.includes(t.id)
+      ? [
+          {
+            ...t,
+            duplex: true,
+            areaMin: half(t.areaMin),
+            areaTarget: half(t.areaTarget),
+            areaMax: half(t.areaMax),
+          },
+          { ...t, share: SIMPLEX_FALLBACK_SHARE },
+        ]
+      : [{ ...t, share: t.share / 2 }],
+  );
+}
+
+const footprintKey = (st: StoreyLayout) =>
+  st.footprints
+    .map((p) => p.outer.map(([x, y]) => `${Math.round(x * 20)},${Math.round(y * 20)}`).join(';'))
+    .join('|');
+
+/**
+ * Internal stair of a duplex: 1.0 × 2.6 m in the part of the dwelling without rooms, else
+ * (open stair) in the séjour, never in a bedroom.
+ */
+function duplexStair(
+  unit: Polygon,
+  bedrooms: readonly Polygon[],
+  sejour: readonly Polygon[],
+): Polygon | undefined {
+  return (
+    stairIn(unit, difference([unit], [...bedrooms, ...sejour])) ??
+    stairIn(unit, difference([unit], bedrooms))
+  );
+}
+
+function stairIn(unit: Polygon, free: Polygon[]): Polygon | undefined {
+  const rest = free.filter((p) => polygonArea(p) > 2.5);
+  if (!rest.length) return undefined;
+  const e = orientedExtents(unit.outer);
+  const c = ringCentroid(rest.reduce((a, b) => (polygonArea(b) > polygonArea(a) ? b : a)).outer);
+  let best: { poly: Polygon; d: number } | undefined;
+  for (const ang of [e.angle, e.angle + Math.PI / 2]) {
+    const u: Vec2 = [Math.cos(ang), Math.sin(ang)];
+    const n: Vec2 = [-u[1], u[0]];
+    const f: Frame = { o: [0, 0], u, n };
+    const [a0, b0, a1, b1] = frameExtents(f, [unit]);
+    const w = 2.6;
+    const h = 1.0;
+    for (let a = a0 + 0.1; a + w <= a1 - 0.1 + 1e-9; a += 0.25)
+      for (let b = b0 + 0.1; b + h <= b1 - 0.1 + 1e-9; b += 0.25) {
+        const poly = rectPoly(f, [a, b, a + w, b + h]);
+        const inside = intersection(rest, [poly]).reduce((x, q) => x + polygonArea(q), 0);
+        if (inside < w * h - 0.02) continue;
+        const d = dist(ringCentroid(poly.outer), c);
+        if (!best || d < best.d - 1e-9) best = { poly, d };
+      }
+  }
+  return best?.poly;
+}
+
+/**
+ * Duplex pairs of a mass: consecutive residential storeys from `fromStorey` up with the same
+ * footprint. Both storeys are laid out with the duplex mix (core positions of the simplex
+ * layout kept) and the duplex dwellings of the two storeys are linked level by level.
+ */
+function applyDuplex(
+  mass: Mass,
+  byStorey: Map<number, StoreySolid[]>,
+  settings: Settings,
+  access: AccessType,
+  storeys: StoreyLayout[],
+  pins: Map<number, number[][]>,
+): StoreyLayout[] {
+  const cfg = resolveDuplex(mass, settings);
+  if (!cfg.enabled || access === 'reihenhaus') return storeys;
+  const ids = duplexTypeIds(settings.unitMix, cfg);
+  if (!ids.length) return storeys;
+  const dSettings: Settings = { ...settings, unitMix: duplexMix(settings.unitMix, ids) };
+  const out = [...storeys];
+  const lowerLevel = cfg.entry === 'upper' ? 'nuit' : 'jour';
+  const upperLevel = lowerLevel === 'jour' ? 'nuit' : 'jour';
+  for (let i = 0; i + 1 < out.length; i++) {
+    const lo = out[i]!;
+    const hi = out[i + 1]!;
+    if (
+      lo.storeyIndex < cfg.fromStorey ||
+      hi.storeyIndex !== lo.storeyIndex + 1 ||
+      lo.usage !== 'wohnen' ||
+      hi.usage !== 'wohnen' ||
+      !lo.units.length ||
+      !hi.units.length ||
+      footprintKey(lo) !== footprintKey(hi)
+    )
+      continue;
+    const p = pins.get(lo.storeyIndex);
+    const pass = (level: 'jour' | 'nuit') => (p ? { pins: p, duplex: level } : { duplex: level });
+    const L = layoutStorey(
+      mass,
+      byStorey.get(lo.storeyIndex)!,
+      dSettings,
+      access,
+      pass(lowerLevel),
+    ).layout;
+    const U = layoutStorey(
+      mass,
+      byStorey.get(hi.storeyIndex)!,
+      dSettings,
+      access,
+      pass(upperLevel),
+    ).layout;
+    const ld = L.units.filter((u) => u.duplex);
+    const ud = U.units.filter((u) => u.duplex);
+    if (!ld.length || ld.length !== ud.length) continue;
+    // link the levels (same polygons on both storeys)
+    const pairs: [LayoutUnit, LayoutUnit][] = [];
+    for (const a of ld) {
+      const ca = ringCentroid(a.polygon.outer);
+      const b = ud.find(
+        (x) => x.typeId === a.typeId && dist(ringCentroid(x.polygon.outer), ca) < 0.05,
+      );
+      if (b) pairs.push([a, b]);
+    }
+    if (pairs.length !== ld.length) continue;
+    for (const [a, b] of pairs) {
+      const total = a.area + b.area;
+      const rooms = [...a.rooms, ...b.rooms];
+      const loggias = [a.outdoor, b.outdoor]
+        .filter((o) => o?.kind === 'loggia')
+        .map((o) => o!.polygon);
+      const stair = duplexStair(
+        a.polygon,
+        [...rooms.filter((r) => r.kind !== 'sejour').map((r) => r.polygon), ...loggias],
+        rooms.filter((r) => r.kind === 'sejour').map((r) => r.polygon),
+      );
+      for (const [u, part] of [
+        [a, 'lower'],
+        [b, 'upper'],
+      ] as const) {
+        u.duplex = {
+          level: u.duplex!.level,
+          part,
+          storeys: [lo.storeyIndex, hi.storeyIndex],
+          totalArea: total,
+          ...(stair ? { stair } : {}),
+        };
+      }
+    }
+    out[i] = L;
+    out[i + 1] = U;
+    i++;
+  }
+  return out;
+}
+
 /** Layouts of all above-ground storeys of one mass (from its storey solids). */
 export function massLayout(
   mass: Mass,
@@ -1278,9 +1542,15 @@ export function massLayout(
     list.push(s);
     byStorey.set(s.storeyIndex, list);
   }
-  const storeys = [...byStorey.keys()]
+  const pins = new Map<number, number[][]>();
+  const simplex = [...byStorey.keys()]
     .sort((a, b) => a - b)
-    .map((i) => storeyLayout(mass, byStorey.get(i)!, settings, access));
+    .map((i) => {
+      const r = layoutStorey(mass, byStorey.get(i)!, settings, access);
+      pins.set(i, r.pins);
+      return r.layout;
+    });
+  const storeys = applyDuplex(mass, byStorey, settings, access, simplex, pins);
   const counts = new Map<string, LayoutTypeCount>();
   let units = 0;
   let unitArea = 0;
@@ -1289,9 +1559,10 @@ export function massLayout(
     // a terraced house spans all storeys: count it once (on its lowest residential storey)
     if (houses && st !== storeys.find((s) => s.units.length)) continue;
     for (const t of st.summary.byType) {
-      const c = counts.get(t.typeId) ?? { ...t, count: 0, area: 0 };
+      const c = counts.get(t.typeId) ?? { typeId: t.typeId, label: t.label, count: 0, area: 0 };
       c.count += t.count;
       c.area += t.area;
+      if (t.duplex) c.duplex = (c.duplex ?? 0) + t.duplex;
       counts.set(t.typeId, c);
     }
     units += st.summary.units;

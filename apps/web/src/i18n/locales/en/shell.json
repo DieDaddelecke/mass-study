@@ -491,5 +491,17 @@
     "mode": "Mode",
     "facade": "Façade",
     "volume": "Whole volume"
+  },
+  "duplex": {
+    "title": "Duplex",
+    "enabled": "Duplex dwellings",
+    "from": "From storey",
+    "entry": "Entrance and living room",
+    "entryLower": "Lower level",
+    "entryUpper": "Upper level",
+    "types": "Types as duplex",
+    "note": "Two stacked storeys from {{storey}} up. Entrance always on the living-room level; living room and accessible bedroom on the day level, further bedrooms on the night level. Façade rules per level.",
+    "none": "No duplex: the dwellings of this plan are too large for one duplex level.",
+    "count": "{{count}} duplex"
   }
 }

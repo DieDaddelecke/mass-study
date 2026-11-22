@@ -47,7 +47,13 @@ export function GranulometryLegend({
             ? (m.totals.byType.find((b) => b.typeId === type.id)?.count ?? 0)
             : m.storeys
                 .filter((st) => st.storeyIndex === level)
-                .reduce((n, st) => n + st.units.filter((u) => u.typeId === type.id).length, 0)),
+                .reduce(
+                  (n, st) =>
+                    n +
+                    st.units.filter((u) => u.typeId === type.id && u.duplex?.level !== 'nuit')
+                      .length,
+                  0,
+                )),
         0,
       ),
     }))

@@ -14,7 +14,14 @@ import {
   type UnitType,
   type Vec2,
 } from '@kubatur/core';
-import { roomColor, serviceColor, unitColor, unitLabelPoint } from '@kubatur/drawing';
+import {
+  labelObstacles,
+  roomColor,
+  serviceColor,
+  unitColor,
+  unitLabelPoint,
+  unitTitle,
+} from '@kubatur/drawing';
 import {
   BufferGeometry,
   Color,
@@ -112,6 +119,32 @@ function storeyLiftOf(
 
 const big = (ps: Polygon[], min = 0.02) => ps.filter((p) => polygonArea(p) > min);
 
+/** Floor of the stair opening of a duplex (upper level). */
+const STAIR_VOID = '#f7f6f2';
+const DUPLEX_STAIR_COLOR = '#d9d6ce';
+
+/** Steps of a straight duplex stair (rectangle, along its long side) up to `zTop`. */
+function addSteps(stair: Polygon, z0: number, zTop: number, parts: BufferGeometry[]): void {
+  const r = stair.outer;
+  if (r.length !== 4) return;
+  const [p0, p1, , p3] = r as [Vec2, Vec2, Vec2, Vec2];
+  let e1: Vec2 = [p1[0] - p0[0], p1[1] - p0[1]];
+  let e2: Vec2 = [p3[0] - p0[0], p3[1] - p0[1]];
+  if (Math.hypot(...e2) > Math.hypot(...e1)) [e1, e2] = [e2, e1];
+  const n = Math.max(3, Math.round((zTop - z0) / 0.17));
+  for (let i = 0; i < n; i++) {
+    const a0 = i / n;
+    const a1 = (i + 1) / n;
+    const at = (a: number, b: number): Vec2 => [
+      p0[0] + e1[0] * a + e2[0] * b,
+      p0[1] + e1[1] * a + e2[1] * b,
+    ];
+    const step: Polygon = { outer: [at(a0, 0), at(a1, 0), at(a1, 1), at(a0, 1)] };
+    const g = colored(step, z0, z0 + ((i + 1) * (zTop - z0)) / n, DUPLEX_STAIR_COLOR);
+    if (g) parts.push(g);
+  }
+}
+
 /** Ring of thickness `t` along the inside of the outlines of `polys`. */
 function wallRing(polys: readonly Polygon[], t: number): Polygon[] {
   if (!polys.length) return [];
@@ -168,6 +201,7 @@ export function buildStoreyCut(
   wallColor: string,
   loggias: ReadonlyMap<string, Polygon[]> = new Map(),
   stairRules: StairRules = DEFAULT_STAIR_RULES,
+  duplexText = 'duplex',
 ): StoreyCutScene {
   const layoutOf = new Map<string, MassLayout['storeys'][number]>();
   const aboveOf = new Map<string, MassLayout['storeys'][number]>();
@@ -220,12 +254,24 @@ export function buildStoreyCut(
         // party walls around the dwelling, partitions around its rooms
         wall(wallRing(inside, WALLS.party / 2));
         for (const r of u.rooms ?? []) wall(wallRing([r.polygon], WALLS.room / 2));
-        const at: Vec2 = unitLabelPoint(u.polygon, u.rooms ?? []);
+        // internal stair of a duplex: steps rising to the cut on the lower level, the stair
+        // opening (light, with a low railing) on the upper level
+        const stair = u.duplex?.stair;
+        if (stair) {
+          if (u.duplex!.part === 'lower') addSteps(stair, z0, zc, parts);
+          else {
+            add([stair], z0, z0 + FLOOR * 0.4, STAIR_VOID);
+            wall(wallRing([stair], WALLS.room / 2));
+          }
+        }
+        const at: Vec2 = unitLabelPoint(u.polygon, labelObstacles(u));
         labels.push({
           massId,
           at: [at[0], at[1], zc + 0.4],
-          title: `${u.label}${u.outOfRange ? '*' : ''}${u.facadeOk ? '' : ' !'}`,
-          sub: `${Math.round(u.area)} m²`,
+          title: unitTitle(u, duplexText),
+          sub: u.duplex
+            ? `${Math.round(u.area)} / ${Math.round(u.duplex.totalArea)} m²`
+            : `${Math.round(u.area)} m²`,
           warn: !u.facadeOk,
         });
       }
