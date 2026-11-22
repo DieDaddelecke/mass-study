@@ -29,6 +29,8 @@
     "title": "Elements to create",
     "zones": "Zones (area, name, number)",
     "morphs": "Volumes (Morphs)",
+    "stairs": "Stairs (flights and landings, as morphs)",
+    "stairsHint": "The stairs sit inside the volumes: show zones or hide volumes to see them.",
     "slabs": "Slabs",
     "offsetX": "Offset X",
     "offsetY": "Offset Y",
@@ -53,7 +55,7 @@
   },
   "preview": {
     "title": "Preview",
-    "summary": "{{zones}} zones, {{morphs}} volumes, {{slabs}} slabs on {{storeys}} levels, on layer “MS - Massenstudie”.",
+    "summary": "{{zones}} zones, {{morphs}} volumes, {{stairs}} stairs, {{slabs}} slabs on {{storeys}} levels, on layer “MS - Massenstudie”.",
     "level": "Level",
     "storey": "Storey",
     "archicadStory": "Archicad story",
@@ -75,11 +77,12 @@
     "zones": "Creating zones…",
     "slabs": "Creating slabs…",
     "morphs": "Creating volumes…",
+    "stairs": "Creating stairs…",
     "tag": "Tagging elements…",
     "done": "Done"
   },
   "result": {
-    "created": "Created: {{zones}} zones, {{morphs}} volumes, {{slabs}} slabs.",
+    "created": "Created: {{zones}} zones, {{morphs}} volumes, {{stairs}} stairs, {{slabs}} slabs.",
     "deleted": "{{count}} previous elements deleted.",
     "zoneFallback": "Archicad refused every zone (zone stamp or library missing). Volumes were created instead. Load the project's Archicad library and transfer again.",
     "removed": "{{count}} elements removed from Archicad.",

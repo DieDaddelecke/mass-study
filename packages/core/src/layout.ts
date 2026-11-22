@@ -63,6 +63,20 @@ export interface LayoutArea {
   area: number;
   /** Core number within the storey (cores only). */
   index?: number;
+  /** Oriented rectangle of the core (cores only), for the stair inside it. */
+  box?: CoreBox;
+}
+
+/**
+ * Oriented rectangle in world coordinates: corner `o`, unit axis `u` (along the bar, length
+ * `w`) and unit axis `n` (across the depth, length `d`, pointing away from the access side).
+ */
+export interface CoreBox {
+  o: Vec2;
+  u: Vec2;
+  n: Vec2;
+  w: number;
+  d: number;
 }
 
 export interface LayoutUnit {
@@ -115,6 +129,8 @@ export interface StoreyLayout {
   access: AccessType;
   setback: boolean;
   z0: number;
+  /** Finished floor level of the storey above (z0 + floor-to-floor height). */
+  z1: number;
   /** Footprints of the storey (one per section). */
   footprints: Polygon[];
   cores: LayoutArea[];
@@ -195,6 +211,12 @@ function rectPoly(f: Frame, [a0, b0, a1, b1]: Rect): Polygon {
   return normalizePolygon({
     outer: [toWorld(f, a0, b0), toWorld(f, a1, b0), toWorld(f, a1, b1), toWorld(f, a0, b1)],
   });
+}
+
+/** Oriented rectangle of a (clipped) piece in a bar frame. */
+function boxOf(f: Frame, p: Polygon): CoreBox {
+  const [a0, b0, a1, b1] = frameExtents(f, [p]);
+  return { o: toWorld(f, a0, b0), u: f.u, n: f.n, w: a1 - a0, d: b1 - b0 };
 }
 
 const validRect = (r: Rect): boolean => r[2] - r[0] > 1e-6 && r[3] - r[1] > 1e-6;
@@ -855,7 +877,13 @@ export function storeyLayout(
       const coreBase = cores.length;
       for (const r of plan.cores) {
         for (const p of clip(bar.region, rectPoly(bar.frame, r)))
-          cores.push({ kind: 'core', polygon: p, area: polygonArea(p), index: cores.length });
+          cores.push({
+            kind: 'core',
+            polygon: p,
+            area: polygonArea(p),
+            index: cores.length,
+            box: boxOf(bar.frame, p),
+          });
       }
       const coreOf = (c: number): number =>
         c < 0
@@ -1153,6 +1181,7 @@ export function storeyLayout(
     access: effAccess,
     setback: first.setback,
     z0: first.z0,
+    z1: Math.max(...solids.map((x) => x.z1)),
     footprints,
     cores,
     circulation,

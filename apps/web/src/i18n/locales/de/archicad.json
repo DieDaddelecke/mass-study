@@ -29,6 +29,8 @@
     "title": "Zu erzeugende Elemente",
     "zones": "Zonen (Fläche, Name, Nummer)",
     "morphs": "Volumen (Morphs)",
+    "stairs": "Treppen (Läufe und Podeste, als Morphs)",
+    "stairsHint": "Die Treppen liegen in den Volumen: Zonen anzeigen oder Volumen ausblenden, um sie zu sehen.",
     "slabs": "Decken",
     "offsetX": "Versatz X",
     "offsetY": "Versatz Y",
@@ -53,7 +55,7 @@
   },
   "preview": {
     "title": "Vorschau",
-    "summary": "{{zones}} Zonen, {{morphs}} Volumen, {{slabs}} Decken auf {{storeys}} Ebenen, auf der Ebene „MS - Massenstudie“.",
+    "summary": "{{zones}} Zonen, {{morphs}} Volumen, {{stairs}} Treppen, {{slabs}} Decken auf {{storeys}} Ebenen, auf der Ebene „MS - Massenstudie“.",
     "level": "Höhe",
     "storey": "Geschoss",
     "archicadStory": "Archicad-Geschoss",
@@ -75,11 +77,12 @@
     "zones": "Zonen anlegen…",
     "slabs": "Decken anlegen…",
     "morphs": "Volumen anlegen…",
+    "stairs": "Treppen anlegen…",
     "tag": "Elemente markieren…",
     "done": "Fertig"
   },
   "result": {
-    "created": "Angelegt: {{zones}} Zonen, {{morphs}} Volumen, {{slabs}} Decken.",
+    "created": "Angelegt: {{zones}} Zonen, {{morphs}} Volumen, {{stairs}} Treppen, {{slabs}} Decken.",
     "deleted": "{{count}} vorherige Elemente gelöscht.",
     "zoneFallback": "Archicad hat alle Zonen abgelehnt (Zonenstempel oder Bibliothek fehlt). Stattdessen wurden Volumen angelegt. Bibliothek im Projekt laden und erneut übertragen.",
     "removed": "{{count}} Elemente aus Archicad entfernt.",

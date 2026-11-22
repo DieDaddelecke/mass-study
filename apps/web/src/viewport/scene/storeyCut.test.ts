@@ -47,9 +47,17 @@ describe('storey cut', () => {
     expect(geo.getAttribute('color').count).toBe(geo.getAttribute('position').count);
     const box = new Box3().setFromBufferAttribute(geo.getAttribute('position') as never);
     expect(box.min.z).toBeCloseTo(s2.z0, 3);
-    // walls end at the cut (plus the cut face), well below the next floor
-    expect(box.max.z).toBeCloseTo(s2.z0 + CUT_HEIGHT + 0.02, 3);
+    // the stairs in the cores rise up to (just below) the next floor …
+    expect(box.max.z).toBeGreaterThan(s2.z0 + CUT_HEIGHT + 1);
     expect(box.max.z).toBeLessThan(s2.z1);
+    // … while without stair rules for a storey on top (no storey above) the walls end at the cut
+    const top = Math.max(...solids.map((s) => s.storeyIndex));
+    const st = solids.find((s) => s.storeyIndex === top)!;
+    const cutTop = buildStoreyCut(solids, layouts, top, p.settings.unitMix, '#ffffff');
+    const boxTop = new Box3().setFromBufferAttribute(
+      cutTop.masses[0]!.geometry.getAttribute('position') as never,
+    );
+    expect(boxTop.max.z).toBeCloseTo(st.z0 + Math.min(CUT_HEIGHT, (st.z1 - st.z0) * 0.6) + 0.02, 3);
     const units = layouts[0]!.storeys.find((s) => s.storeyIndex === 2)!.units;
     expect(cut.labels).toHaveLength(units.length);
   });

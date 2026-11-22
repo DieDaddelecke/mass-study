@@ -153,17 +153,20 @@ export function ArchicadDialog() {
             <section className="ac-section">
               <h3>{t('options.title')}</h3>
               <div className="ac-checks">
-                {(['zones', 'morphs', 'slabs'] as const).map((k) => (
+                {(['zones', 'morphs', 'stairs', 'slabs'] as const).map((k) => (
                   <label key={k}>
                     <input
                       type="checkbox"
-                      checked={s.options[k]}
+                      checked={!!s.options[k]}
                       onChange={(e) => s.setOptions({ [k]: e.target.checked })}
                     />
                     {t(`options.${k}`)}
                   </label>
                 ))}
               </div>
+              {s.options.stairs && s.options.morphs && (
+                <p className="ac-help">{t('options.stairsHint')}</p>
+              )}
               <div className="ac-place">
                 <Row label={t('options.offsetX')}>
                   <NumField
@@ -291,6 +294,7 @@ export function ArchicadDialog() {
                 {t('preview.summary', {
                   zones: plan.counts.zones,
                   morphs: plan.counts.morphs,
+                  stairs: plan.counts.stairs,
                   slabs: plan.counts.slabs,
                   storeys: plan.counts.storeys,
                 })}

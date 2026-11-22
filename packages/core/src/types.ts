@@ -180,6 +180,25 @@ export interface OutdoorRules {
 }
 
 /** Central derived structure. 3D, areas, drawings, IFC and Archicad are generated from it. */
+/** Dimensions of the stair (escalier à deux volées) and lift modelled inside every core. */
+export interface StairRules {
+  /** Flight width between walls / handrails, m (FR logements collectifs: ≥ 1.00 clear). */
+  flightWidth: number;
+  /** Maximum riser height, m (FR: ≤ 0.17). */
+  maxRiser: number;
+  /** Going (giron), m (FR: ≥ 0.28). */
+  going: number;
+  /** Gap between the two flights (jour), m. */
+  gap: number;
+  /** Thickness of the stair flights (paillasse) and landings, m. */
+  waist: number;
+  /** Core walls (cage d'escalier), m. */
+  wall: number;
+  /** Lift shaft (gaine d'ascenseur) outer size, m; 0 = no lift. */
+  liftWidth: number;
+  liftDepth: number;
+}
+
 export interface StoreySolid {
   massId: string;
   segment?: number;
@@ -425,6 +444,8 @@ export interface Settings {
     corridorWidth?: number;
     /** Depth of the landing in front of the core (palier), m (default 1.5). */
     landingDepth?: number;
+    /** Stair and lift inside the cores (defaults: DEFAULT_STAIR_RULES). */
+    stair?: Partial<StairRules>;
   };
   unitMix: UnitType[];
   /** Office façade rules for dwellings (defaults when missing). */
