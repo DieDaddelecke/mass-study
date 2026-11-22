@@ -75,8 +75,8 @@ export function App() {
         ) : (
           <>
             <main className="stage">
-              {activeView === '3d' ? (
-                <Viewport3D />
+              {activeView === '3d' || activeView === 'plan' ? (
+                <Viewport3D plan={activeView === 'plan'} />
               ) : activeView === 'areas' ? (
                 <TablesView />
               ) : (

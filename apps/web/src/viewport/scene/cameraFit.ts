@@ -77,3 +77,29 @@ export function cubeRegion(p: V3, band = 0.17): V3 {
   const r = (c: number): number => (c > 0.5 - band ? 1 : c < -(0.5 - band) ? -1 : 0);
   return [r(p[0]), r(p[1]), r(p[2])];
 }
+
+/** Height of the plan camera above the target (parallel projection: only the depth range). */
+export const PLAN_HEIGHT = 1000;
+
+/**
+ * Plan view (2D): camera straight above the centre of `box` (a hair south of it so that north
+ * points up on screen), zoom in pixels per metre so the box fills `margin` of the viewport.
+ */
+export function planFit(
+  box: BBox3,
+  widthPx: number,
+  heightPx: number,
+  margin = 0.85,
+): { target: V3; position: V3; zoom: number } {
+  const b = isEmptyBox(box) ? { min: [-10, -10, 0] as V3, max: [10, 10, 10] as V3 } : box;
+  const cx = (b.min[0] + b.max[0]) / 2;
+  const cy = (b.min[1] + b.max[1]) / 2;
+  const dx = Math.max(1, b.max[0] - b.min[0]);
+  const dy = Math.max(1, b.max[1] - b.min[1]);
+  const zoom = Math.min((widthPx * margin) / dx, (heightPx * margin) / dy);
+  return {
+    target: [cx, cy, 0],
+    position: [cx, cy - PLAN_HEIGHT * 1e-4, PLAN_HEIGHT],
+    zoom: Math.max(0.05, zoom),
+  };
+}

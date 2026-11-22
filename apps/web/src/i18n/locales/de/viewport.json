@@ -48,6 +48,16 @@
   },
   "cut": {
     "title": "Schnitt",
-    "off": "Ganzes Volumen zeigen"
+    "off": "Ganzes Volumen zeigen",
+    "roof": "Dach",
+    "planTitle": "Geschoss"
+  },
+  "plan": {
+    "mode": "Ansichtsmodus",
+    "to3d": "3D-Ansicht (bearbeitbar)",
+    "toPlan": "2D-Planansicht (bearbeitbar)",
+    "short": "Plan",
+    "overlay": "Nordpfeil und Maßstab",
+    "toggle": "3D / 2D-Plan umschalten"
   }
 }

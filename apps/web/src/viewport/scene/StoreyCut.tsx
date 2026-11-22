@@ -1,3 +1,4 @@
+import { labelLayerRef } from './controlsRef';
 import { Html } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { MassLayout, Polygon, StairRules, StoreySolid, UnitType } from '@kubatur/core';
@@ -68,7 +69,14 @@ export function StoreyCut({
         </mesh>
       ))}
       {scene.labels.map((l, i) => (
-        <Html key={i} position={l.at} center zIndexRange={[1, 0]} style={{ pointerEvents: 'none' }}>
+        <Html
+          portal={labelLayerRef as React.RefObject<HTMLElement>}
+          key={i}
+          position={l.at}
+          center
+          zIndexRange={[1, 0]}
+          style={{ pointerEvents: 'none' }}
+        >
           <div className={`vp-cut-label${l.warn ? ' is-warn' : ''}`}>
             <b>{l.title}</b>
             <span>{l.sub}</span>

@@ -10,6 +10,7 @@ import {
   fitBox,
   isEmptyBox,
   orthoZoomFor,
+  planFit,
   SW_ISO_DIR,
   type BBox3,
   type V3,
@@ -53,23 +54,30 @@ export function modelBox(
   return b;
 }
 
-/** Last view (kept across projection switches). */
-const lastView: { pos: V3; target: V3 } | null = null as { pos: V3; target: V3 } | null;
-const viewMemo = { current: lastView };
+interface SavedView {
+  pos: V3;
+  target: V3;
+  zoom: number;
+}
+/** Last 3D view and last plan view (kept across projection / view switches). */
+const viewMemo: { current: SavedView | null } = { current: null };
+const planMemo: { current: SavedView | null } = { current: null };
 
 interface Props {
   project: Project;
   solids: readonly SolidResult[];
   projection: 'perspective' | 'orthographic';
+  /** Editable plan view: straight down, parallel projection, no orbiting. */
+  plan?: boolean;
 }
 
-export function CameraRig({ project, solids, projection }: Props) {
+export function CameraRig({ project, solids, projection, plan = false }: Props) {
   const ref = useRef<CameraControlsImpl>(null);
   const size = useThree((s) => s.size);
   const controlsEnabled = useViewportStore((s) => s.controlsEnabled);
   const zoomReq = useViewportStore((s) => s.zoomExtentsRequest);
   const homeReq = useViewportStore((s) => s.homeRequest);
-  const ortho = projection === 'orthographic';
+  const ortho = plan || projection === 'orthographic';
 
   const apply = useCallback(
     (fit: { position: V3; target: V3; distance: number }, animate: boolean) => {
@@ -88,9 +96,23 @@ export function CameraRig({ project, solids, projection }: Props) {
     [apply, size.width, size.height],
   );
 
+  const fitPlan = useCallback(
+    (box: BBox3, animate: boolean) => {
+      const c = ref.current;
+      if (!c) return;
+      const f = planFit(box, size.width, size.height);
+      void c.setLookAt(...f.position, ...f.target, animate);
+      void c.zoomTo(f.zoom, animate);
+    },
+    [size.width, size.height],
+  );
+
   const home = useCallback(
-    (animate: boolean) => fit(modelBox(project, solids, 25), SW_ISO_DIR, animate),
-    [fit, project.id],
+    (animate: boolean) =>
+      plan
+        ? fitPlan(modelBox(project, solids, 25), animate)
+        : fit(modelBox(project, solids, 25), SW_ISO_DIR, animate),
+    [fit, fitPlan, plan, project.id],
   );
 
   // register + initial view (or restore after projection switch)
@@ -98,18 +120,22 @@ export function CameraRig({ project, solids, projection }: Props) {
     const c = ref.current;
     if (!c) return;
     controlsRef.current = c;
-    const v = viewMemo.current;
-    if (v) {
+    const memo = plan ? planMemo : viewMemo;
+    const v = memo.current;
+    if (v && plan) {
+      void c.setLookAt(...v.pos, ...v.target, false);
+      void c.zoomTo(v.zoom, false);
+    } else if (v) {
       const d = Math.hypot(v.pos[0] - v.target[0], v.pos[1] - v.target[1], v.pos[2] - v.target[2]);
       apply({ position: v.pos, target: v.target, distance: d }, false);
     } else home(false);
     return () => {
       const p = c.camera.position;
       const t = c.getTarget(new Vector3());
-      viewMemo.current = { pos: [p.x, p.y, p.z], target: [t.x, t.y, t.z] };
+      memo.current = { pos: [p.x, p.y, p.z], target: [t.x, t.y, t.z], zoom: c.camera.zoom };
       if (controlsRef.current === c) controlsRef.current = null;
     };
-  }, [ortho]);
+  }, [ortho, plan]);
 
   // new project → home
   const firstProject = useRef(project.id);
@@ -125,6 +151,7 @@ export function CameraRig({ project, solids, projection }: Props) {
     firstZoom.current = zoomReq;
     const c = ref.current;
     if (!c) return;
+    if (plan) return fitPlan(modelBox(project, solids), true);
     const t = c.getTarget(new Vector3());
     const p = c.camera.position;
     fit(modelBox(project, solids), [p.x - t.x, p.y - t.y, p.z - t.z], true);
@@ -137,13 +164,14 @@ export function CameraRig({ project, solids, projection }: Props) {
     home(true);
   }, [homeReq, home]);
 
-  // modifier keys: Shift+middle = orbit, Alt+left = orbit (laptops)
+  // modifier keys: Shift+middle = orbit, Alt+left = orbit (laptops); in plan: pan instead
+  const orbit = plan ? ACTION.TRUCK : ACTION.ROTATE;
   useEffect(() => {
     const upd = (e: KeyboardEvent) => {
       const c = ref.current;
       if (!c) return;
-      c.mouseButtons.middle = e.shiftKey ? ACTION.ROTATE : ACTION.TRUCK;
-      c.mouseButtons.left = e.altKey ? ACTION.ROTATE : ACTION.NONE;
+      c.mouseButtons.middle = e.shiftKey ? orbit : ACTION.TRUCK;
+      c.mouseButtons.left = e.altKey ? orbit : ACTION.NONE;
     };
     window.addEventListener('keydown', upd);
     window.addEventListener('keyup', upd);
@@ -151,7 +179,7 @@ export function CameraRig({ project, solids, projection }: Props) {
       window.removeEventListener('keydown', upd);
       window.removeEventListener('keyup', upd);
     };
-  }, []);
+  }, [orbit]);
 
   // pointerdown carries modifier state too (keys pressed outside the window)
   const gl = useThree((s) => s.gl);
@@ -160,12 +188,12 @@ export function CameraRig({ project, solids, projection }: Props) {
     const onDown = (e: PointerEvent) => {
       const c = ref.current;
       if (!c) return;
-      c.mouseButtons.middle = e.shiftKey ? ACTION.ROTATE : ACTION.TRUCK;
-      c.mouseButtons.left = e.altKey ? ACTION.ROTATE : ACTION.NONE;
+      c.mouseButtons.middle = e.shiftKey ? orbit : ACTION.TRUCK;
+      c.mouseButtons.left = e.altKey ? orbit : ACTION.NONE;
     };
     el.addEventListener('pointerdown', onDown, { capture: true });
     return () => el.removeEventListener('pointerdown', onDown, { capture: true });
-  }, [gl]);
+  }, [gl, orbit]);
 
   return (
     <>
@@ -176,6 +204,8 @@ export function CameraRig({ project, solids, projection }: Props) {
         dollyToCursor
         infinityDolly={false}
         minDistance={2}
+        azimuthRotateSpeed={plan ? 0 : 1}
+        polarRotateSpeed={plan ? 0 : 1}
         maxDistance={8000}
         smoothTime={0.2}
         draggingSmoothTime={0.05}
@@ -186,7 +216,7 @@ export function CameraRig({ project, solids, projection }: Props) {
           wheel: ortho ? ACTION.ZOOM : ACTION.DOLLY,
         }}
         touches={{
-          one: ACTION.TOUCH_ROTATE,
+          one: plan ? ACTION.TOUCH_TRUCK : ACTION.TOUCH_ROTATE,
           two: ACTION.TOUCH_DOLLY_TRUCK,
           three: ACTION.TOUCH_TRUCK,
         }}
