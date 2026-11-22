@@ -38,7 +38,6 @@
     "sdpZones": "SDP zone per storey",
     "walls": "Walls (façade, stair cores, party walls)",
     "roofs": "Pitched roofs",
-    "noZoneStamp": "No zone stamp is loaded in this project: Archicad will refuse every zone. Load the Archicad 28 library (Library Manager) and refresh.",
     "facadeWall": "Façade wall thickness",
     "interiorWall": "Interior wall thickness"
   },
@@ -72,7 +71,7 @@
     "noStories": "The Archicad project has no stories.",
     "noMasses": "The active variant has no masses.",
     "teamwork": "Teamwork project: elements must be reservable.",
-    "librariesMissing": "Libraries unavailable in Archicad: {{names}}. If the zone stamp is in one of them, Archicad refuses zones; they are then replaced by volumes.",
+    "librariesMissing": "Libraries unavailable in Archicad: {{names}}. Most templates keep their zone stamp there: without it Archicad refuses every zone (SDP zones then become volumes). In the Library Manager, point the library to its location on this computer and refresh.",
     "levelWithoutStory": "Level {{level}} m ({{label}}) has no Archicad story at that height: placed on “{{story}}” with an offset.",
     "belowLowestStory": "Level {{level}} m ({{label}}) is below the lowest Archicad story.",
     "sharedStory": "Levels {{labels}} all fall on story “{{story}}”: their zones overlap and Archicad refuses them. They will be created as morphs. Adjust the stories to avoid this."

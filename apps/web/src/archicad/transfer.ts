@@ -34,9 +34,9 @@ export interface ArchicadSnapshot {
   /** Layer of the zone tool defaults; new zones land there (Tapir 2.0 has no layerIndex for zones). */
   zoneLayer?: { guid: string; name: string };
   /**
-   * Zone stamps (library parts of type "Room") Archicad can load. 0 means every zone is refused
-   * ("Failed to create new Zone"), typically an office template whose stamp library is missing.
-   * Undefined when the bridge or Tapir cannot tell.
+   * Zone stamps (library parts of type "Room") Tapir could read. Not reliable: live, Tapir 2.0.0
+   * skipped every stamp of a loaded library (0 found) while zones were created fine. Only the
+   * missing-library warning (GetLibraries) is shown to the user.
    */
   zoneStamps?: number;
   /** A loaded zone stamp, given to the zone categories Kubatur creates. */
@@ -290,6 +290,11 @@ async function ensureCategories(
     const a = existing.find((x) => x.name === d.name);
     if (a) map.set(d.name, a.attributeId);
   }
+  // the project's own categories by name (office templates have "T1" … "T5")
+  for (const a of existing) {
+    const k = `=${a.name.trim().toLowerCase()}`;
+    if (!map.has(k)) map.set(k, a.attributeId);
+  }
   return map;
 }
 
@@ -443,7 +448,10 @@ export async function executePlan(
 
     // zones: dwellings, cores, circulation first; the SDP zones overlap them afterwards
     const zoneData = (i: PlanItem) => {
-      const cat = i.category && categories.get(i.category.name);
+      // a dwelling takes the project's category of its type (e.g. "T3") when there is one
+      const own =
+        i.role === 'unit' ? categories.get(`=${i.zone!.name.trim().toLowerCase()}`) : undefined;
+      const cat = own ?? (i.category && categories.get(i.category.name));
       return { ...i.zone!, ...(cat ? { categoryAttributeId: cat } : {}) };
     };
     const onZoneRefused = (i: PlanItem, message: string) => {

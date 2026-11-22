@@ -38,7 +38,6 @@
     "sdpZones": "Zone SDP par étage",
     "walls": "Murs (façades, cages d'escalier, séparatifs)",
     "roofs": "Toitures inclinées",
-    "noZoneStamp": "Aucun tampon de zone n'est chargé dans ce projet : Archicad refusera toutes les zones. Chargez la bibliothèque Archicad 28 (Gestionnaire de bibliothèques) puis actualisez.",
     "facadeWall": "Épaisseur murs de façade",
     "interiorWall": "Épaisseur murs intérieurs"
   },
@@ -72,7 +71,7 @@
     "noStories": "Le projet Archicad n'a pas d'étages.",
     "noMasses": "La variante active ne contient aucun volume.",
     "teamwork": "Projet Teamwork : les éléments doivent pouvoir être réservés.",
-    "librariesMissing": "Bibliothèques indisponibles dans Archicad : {{names}}. Si le tampon de zone en fait partie, Archicad refuse les zones ; elles seront alors remplacées par des volumes.",
+    "librariesMissing": "Bibliothèques indisponibles dans Archicad : {{names}}. Le tampon de zone de la plupart des modèles s'y trouve : sans elle, Archicad refuse toutes les zones (les zones SDP deviennent alors des volumes). Dans le Gestionnaire de bibliothèques, pointez la bibliothèque vers son emplacement sur cet ordinateur, puis actualisez.",
     "levelWithoutStory": "Niveau {{level}} m ({{label}}) sans étage Archicad à cette hauteur : placé sur « {{story}} » avec décalage.",
     "belowLowestStory": "Niveau {{level}} m ({{label}}) sous l'étage Archicad le plus bas.",
     "sharedStory": "Les niveaux {{labels}} tombent tous sur l'étage « {{story}} » : leurs zones se chevauchent et Archicad les refuse. Elles seront créées comme volumes. Adaptez les étages pour l'éviter."

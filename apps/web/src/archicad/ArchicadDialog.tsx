@@ -176,9 +176,6 @@ export function ArchicadDialog() {
               {s.options.stairs && s.options.morphs && (
                 <p className="ac-help">{t('options.stairsHint')}</p>
               )}
-              {(s.options.zones || s.options.sdpZones) && s.snapshot.zoneStamps === 0 && (
-                <p className="ac-help is-warn">{t('options.noZoneStamp')}</p>
-              )}
               {s.options.walls && (
                 <div className="ac-place">
                   <Row label={t('options.facadeWall')}>

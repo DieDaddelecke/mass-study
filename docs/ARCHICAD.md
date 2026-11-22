@@ -58,7 +58,9 @@ Seit dem Umbau auf **native Archicad-Elemente** entsteht standardmäßig ein ech
 
 **Aktualisieren:** Im Modus „Remplacer“ werden zuerst alle Elemente mit derselben `kubatur.projectId` gelöscht, dann neu erzeugt. Andere Elemente werden nie angefasst.
 
-**Zonenstempel:** Ohne ladbaren Zonenstempel lehnt Archicad jede Zone ab („Failed to create new Zone“). In der Bürovorlage verwenden alle Kategorien „Marque de zone 02 27“ aus der AC27-Bibliothek; ist in Archicad 28 keine Zonenstempel-Bibliothek geladen, findet `GetAvailableLibraryParts` (Typ `Room`) keinen einzigen Stempel. Die App prüft das beim Verbinden und warnt im Dialog („Bibliothèque Archicad 28 laden“). Ist ein Stempel geladen, bekommen die neuen `MS - …`-Kategorien diesen Stempel (`stampMainGuid`/`stampRevGuid`).
+**Zonenstempel:** Ohne ladbaren Zonenstempel lehnt Archicad jede Zone ab („Failed to create new Zone“). In der Bürovorlage verwenden alle Kategorien „Marque de zone 02 27“ aus der französischen AC27-Bibliothek; die Vorlage sucht sie unter einem Pfad (`D:\ownCloud\…\AC27\…`), den es auf diesem Rechner nicht gibt. Abhilfe: im Bibliotheksmanager auf den lokalen Pfad umstellen (`…\OpenCloud\SA2 Architecture\000_BASES\ArchiCAD\AC27\Bibliothèque Archicad 27\Bibliothèque Objets 27.lcf`). Live geprüft am 22.11.2026: danach entstehen Wohnungs- und überlappende SDP-Zonen (`allowOverlap: true`, kein Dialog). Die Vorschau warnt bei nicht verfügbaren Bibliotheken. (`GetAvailableLibraryParts` mit Typ `Room` liefert in Tapir 2.0.0 auch bei geladener Bibliothek 0 Stempel und taugt nicht als Prüfung.)
+
+**Kategorien:** Eine Wohnungszone bekommt die Kategorie der Vorlage mit dem Namen ihres Typs („T3“), sonst `MS - <Nutzung>`; SDP-Zonen `MS - SDP`, Treppenhaus und Flure `MS - Circulations`.
 
 **Ausweichwege:** Lehnt Archicad alle Zonen ab, wird für jede SDP-Zone ein Geschossvolumen (Morph) erzeugt, damit das Geschoss nicht fehlt; der Dialog erklärt die Ursache. Lehnt Archicad eine Treppe ab, entstehen deren Läufe und Podest als Morphs.
 

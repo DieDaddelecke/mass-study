@@ -362,6 +362,32 @@ describe('executePlan', () => {
     expect((await readSnapshot(ac, 19723, 'p1')).zoneStamps).toBe(0);
   });
 
+  it("gives dwelling zones the project's own category of their type (T1 … T5)", async () => {
+    const ac = new FakeArchicad();
+    ac.attributes.ZoneCategory!.push(
+      ...['T1', 'T2', 'T3', 'T4', 'T5'].map((name, i) => ({
+        attributeId: { guid: `C-${name}` },
+        index: 10 + i,
+        name,
+      })),
+    );
+    await executePlan(ac, 19723, plan(), { projectId: 'p1', mode: 'create' });
+    const zones = [...ac.elements.values()].filter((e) => e.type === 'Zone');
+    const data = zones.map(
+      (e) => e.data as { name: string; categoryAttributeId?: { guid: string } },
+    );
+    const units = data.filter((d) => /^T\d$/.test(d.name));
+    expect(units.length).toBeGreaterThan(0);
+    for (const d of units) expect(d.categoryAttributeId!.guid).toBe(`C-${d.name}`);
+    // SDP zones keep the Kubatur category
+    const ms = ac.attributes.ZoneCategory!.find((c) => c.name === 'MS - SDP')!;
+    expect(
+      data
+        .filter((d) => d.name.startsWith('SDP'))
+        .every((d) => d.categoryAttributeId!.guid === ms.attributeId.guid),
+    ).toBe(true);
+  });
+
   it('replaces SDP zones by morphs when Archicad refuses every zone', async () => {
     const ac = new FakeArchicad();
     ac.refuseZones = true;

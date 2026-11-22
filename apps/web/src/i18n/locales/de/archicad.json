@@ -38,7 +38,6 @@
     "sdpZones": "SDP-Zone je Geschoss",
     "walls": "Wände (Fassade, Treppenhaus, Wohnungstrennwände)",
     "roofs": "Geneigte Dächer",
-    "noZoneStamp": "In diesem Projekt ist kein Zonenstempel geladen: Archicad lehnt alle Zonen ab. Bibliothèque Archicad 28 im Bibliotheksmanager laden und aktualisieren.",
     "facadeWall": "Dicke Fassadenwände",
     "interiorWall": "Dicke Innenwände"
   },
@@ -72,7 +71,7 @@
     "noStories": "Das Archicad-Projekt hat keine Geschosse.",
     "noMasses": "Die aktive Variante enthält keine Baukörper.",
     "teamwork": "Teamwork-Projekt: Elemente müssen reserviert werden können.",
-    "librariesMissing": "Nicht verfügbare Bibliotheken in Archicad: {{names}}. Liegt der Zonenstempel darin, lehnt Archicad Zonen ab; sie werden dann durch Volumen ersetzt.",
+    "librariesMissing": "In Archicad nicht verfügbare Bibliotheken: {{names}}. Dort liegt meist der Zonenstempel der Vorlage: ohne sie lehnt Archicad alle Zonen ab (SDP-Zonen werden dann Volumen). Im Bibliotheksmanager den Pfad der Bibliothek auf diesem Rechner eintragen und aktualisieren.",
     "levelWithoutStory": "Ebene {{level}} m ({{label}}) ohne Archicad-Geschoss auf dieser Höhe: auf „{{story}}“ mit Versatz gelegt.",
     "belowLowestStory": "Ebene {{level}} m ({{label}}) liegt unter dem untersten Archicad-Geschoss.",
     "sharedStory": "Die Ebenen {{labels}} liegen alle im Geschoss „{{story}}“: Ihre Zonen überlappen, Archicad lehnt sie ab. Sie werden als Morphs erzeugt. Geschosse anpassen, um das zu vermeiden."
