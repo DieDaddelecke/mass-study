@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { VisualStyle } from '../store/tools';
 import { useUiStore } from '../store/uiStore';
 import { useViewportStore } from './viewportStore';
+import { LIT_STYLES } from './scene/looks';
 
 const STYLES: VisualStyle[] = [
   'wireframe',
@@ -25,7 +26,7 @@ export function ViewControlBar() {
   const setSun = useViewportStore((s) => s.setSunEnabled);
   const zoomExtents = useViewportStore((s) => s.requestZoomExtents);
   const home = useViewportStore((s) => s.requestHome);
-  const sunActive = style === 'realistic' && sun;
+  const sunActive = LIT_STYLES.has(style) && sun;
   const magnet = useUiStore((s) => s.snap.enabled && s.snap.magnet);
   const setSnap = useUiStore((s) => s.setSnap);
   const persp = projection === 'perspective';
@@ -61,8 +62,8 @@ export function ViewControlBar() {
         aria-label={t('bar.sun')}
         aria-pressed={sunActive}
         onClick={() => {
-          if (style !== 'realistic') {
-            setStyle('realistic');
+          if (!LIT_STYLES.has(style)) {
+            setStyle('shaded');
             setSun(true);
           } else setSun(!sun);
         }}
