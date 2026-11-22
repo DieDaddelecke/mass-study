@@ -10,6 +10,7 @@ import {
   normalizePolygon,
   pointInPolygon,
   polygonArea,
+  union,
 } from './geometry.js';
 import type {
   FacadeSide,
@@ -47,6 +48,11 @@ export interface LayoutOutdoor {
   position: 'front' | 'side' | 'remote';
   /** Meets minimum area and depth and touches the séjour. */
   ok: boolean;
+  /**
+   * Loggias only: the shape to cut out of the building volume. The loggia extended a little
+   * beyond the façade, so that the cut opens the façade despite rounding of the outlines.
+   */
+  cut?: Polygon;
 }
 
 export function resolveOutdoorRules(settings: Pick<Settings, 'outdoorRules'>): OutdoorRules {
@@ -72,6 +78,10 @@ export function outdoorMinDepth(kind: OutdoorType, rules: OutdoorRules): number 
 }
 
 type Seg = [Vec2, Vec2];
+
+/** How far a loggia's volume cut reaches beyond / inside its façade line, m. */
+const CUT_OUT = 0.3;
+const CUT_IN = 0.05;
 
 /** Orientation of a façade piece of `inside` (outward normal: N / E / S / W). */
 export function facadeSide([a, b]: Seg, inside: Polygon): FacadeSide {
@@ -206,6 +216,25 @@ export function placeOutdoor(
     const area = polygonArea(polygon);
     const width = area / c.depth;
     const minDepth = c.kind === 'loggia' ? rules.loggiaMinDepth : rules.balconMinDepth;
+    let cut: Polygon | undefined;
+    if (c.kind === 'loggia') {
+      // extent of the loggia along the façade, then a strip from outside to just inside it
+      let s0 = Infinity;
+      let s1 = -Infinity;
+      for (const p of polygon.outer) {
+        const t = (p[0] - c.o[0]) * c.n[0] + (p[1] - c.o[1]) * c.n[1];
+        if (t > 0.05) continue;
+        const s = (p[0] - c.o[0]) * c.u[0] + (p[1] - c.o[1]) * c.u[1];
+        s0 = Math.min(s0, s);
+        s1 = Math.max(s1, s);
+      }
+      cut =
+        s1 - s0 > 0.05
+          ? union([polygon, box(c, s0, s1, -CUT_OUT, CUT_IN)]).reduce((x, y) =>
+              polygonArea(y) > polygonArea(x) ? y : x,
+            )
+          : polygon;
+    }
     return {
       kind: c.kind,
       polygon,
@@ -215,6 +244,7 @@ export function placeOutdoor(
       side: c.side,
       position: o.position,
       ok: area >= rules.minArea - 0.05 && c.depth >= minDepth - 1e-6 && o.position !== 'remote',
+      ...(cut ? { cut } : {}),
     };
   }
   return undefined;

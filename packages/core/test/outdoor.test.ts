@@ -112,6 +112,12 @@ describe('outdoor spaces', () => {
     expect(o.depth).toBeCloseTo(1.8);
     const inside = intersection([o.polygon], [unit]).reduce((s, p) => s + polygonArea(p), 0);
     expect(inside).toBeCloseTo(o.area, 3);
+    // the volume cut covers the loggia and reaches beyond the façade (opens it despite rounding)
+    const cut = o.cut!;
+    const covered = intersection([cut], [o.polygon]).reduce((s, p) => s + polygonArea(p), 0);
+    expect(covered).toBeCloseTo(o.area, 3);
+    const outside = intersection([cut], [rect(-5, -5, 15, 0)]);
+    expect(outside.reduce((s, p) => s + polygonArea(p), 0)).toBeCloseTo(o.width * 0.3, 2);
   });
 
   it('attaches the outdoor space next to the séjour when its façade has none', () => {

@@ -1,6 +1,8 @@
 import {
   difference,
   effectiveParapet,
+  intersection,
+  polygonArea,
   type PlantingZone,
   type RoofPiece,
   type ContextBuilding,
@@ -30,7 +32,13 @@ import { roofGeometry } from './roofGeometry';
 const EMPTY_ZONES: PlantingZone[] = [];
 import { Surroundings, Z } from './Surroundings';
 import { FatSegments } from './FatSegments';
-import { buildGranulometry, buildOutdoor, storeyKey, type OutdoorScene } from './granulometry';
+import {
+  buildGranulometry,
+  buildOutdoor,
+  LOGGIA_SLAB,
+  storeyKey,
+  type OutdoorScene,
+} from './granulometry';
 import {
   contextRange,
   buildContextGeometry,
@@ -282,6 +290,16 @@ function extrudeAll(polys: readonly Polygon[], z0: number, z1: number): BufferGe
   return out;
 }
 
+function mergeAll(gs: (BufferGeometry | null)[]): BufferGeometry | null {
+  const list = gs
+    .filter((g): g is BufferGeometry => !!g)
+    .map((g) => (g.index ? g.toNonIndexed() : g));
+  if (list.length <= 1) return list[0] ?? null;
+  const out = mergeGeometries(list, false);
+  for (const g of list) g.dispose();
+  return out;
+}
+
 function buildMasses(
   project: Project,
   solids: readonly SolidResult[],
@@ -305,9 +323,20 @@ function buildMasses(
   }
   for (const { solid: s } of solids) {
     const z1 = zTop(s);
-    const cut = cuts.get(storeyKey(s));
-    const polys = cut ? difference([s.footprint], cut) : [s.footprint];
-    const g = extrudeAll(polys, s.z0, z1);
+    const f = footprintKey(s.footprint);
+    const cutPolys = cuts.get(storeyKey(s));
+    // loggias: cut out up to the slab of the storey above (or the roof)
+    const zc = s.z1 - LOGGIA_SLAB;
+    const loggias =
+      cutPolys && zc > s.z0
+        ? intersection([s.footprint], cutPolys).filter((p) => polygonArea(p) > 0.05)
+        : [];
+    const g = loggias.length
+      ? mergeAll([
+          extrudeAll(difference([s.footprint], cutPolys!), s.z0, zc),
+          extrudePolygon(s.footprint, zc, z1),
+        ])
+      : extrudePolygon(s.footprint, s.z0, z1);
     if (!g) continue;
     const face = covered.has(storeyKey(s))
       ? z1 > s.z1
@@ -317,17 +346,10 @@ function buildMasses(
     out.push({ massId: s.massId, usage: s.usage, geometry: g, face });
     const e = edges.get(s.massId) ?? { thick: [], thin: [] };
     edges.set(s.massId, e);
-    const f = footprintKey(s.footprint);
     const coveredBelow = tops.has(k(s.massId, s.z0, f));
     const coveredAbove = bottoms.has(k(s.massId, z1, f));
-    for (const p of polys)
-      prismEdges(
-        p,
-        s.z0,
-        z1,
-        { bottom: !coveredBelow || !!cut, top: !coveredAbove || !!cut },
-        e.thick,
-      );
+    prismEdges(s.footprint, s.z0, z1, { bottom: !coveredBelow, top: !coveredAbove }, e.thick);
+    for (const p of loggias) prismEdges(p, s.z0, zc, {}, e.thick);
     if (coveredBelow) prismEdges(s.footprint, s.z0, z1, { top: false, vertical: false }, e.thin);
     if (s.top && z1 > s.z1)
       prismEdges(s.footprint, s.z1, s.z1, { top: false, vertical: false }, e.thin);
