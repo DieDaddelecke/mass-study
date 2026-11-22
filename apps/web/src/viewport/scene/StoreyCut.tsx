@@ -2,6 +2,7 @@ import { Html } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { MassLayout, Polygon, StoreySolid, UnitType } from '@kubatur/core';
 import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { VisualStyle } from '../../store/tools';
 import { buildStoreyCut } from './storeyCut';
 
@@ -34,6 +35,8 @@ export function StoreyCut({
   shadows: boolean;
   pick: (id: string) => PickHandlers;
 }) {
+  const { t } = useTranslation('drawing');
+  const duplexText = t('fp.duplexShort.duplex');
   const scene = useMemo(
     () =>
       buildStoreyCut(
@@ -43,8 +46,9 @@ export function StoreyCut({
         mix,
         wallColor,
         loggias,
+        duplexText,
       ),
-    [solids, layouts, level, mix, wallColor, loggias],
+    [solids, layouts, level, mix, wallColor, loggias, duplexText],
   );
   useEffect(() => () => scene.masses.forEach((m) => m.geometry.dispose()), [scene]);
   return (

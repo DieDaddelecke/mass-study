@@ -62,6 +62,19 @@ export function roomProgram(rooms: number, rules: UnitRules): { kind: RoomKind; 
   return out;
 }
 
+/**
+ * Rooms of one level of a duplex: the entrance level (jour) holds the séjour and the PMR
+ * bedroom (accessible from the entrance), the other level (nuit) the further bedrooms.
+ */
+export function duplexProgram(
+  rooms: number,
+  level: 'jour' | 'nuit',
+  rules: UnitRules,
+): { kind: RoomKind; min: number }[] {
+  const all = roomProgram(rooms, rules);
+  return level === 'jour' ? all.slice(0, 2) : all.slice(2);
+}
+
 function makeRun(unit: Polygon, [a, b]: Seg): Run | undefined {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   if (len < MIN_RUN) return undefined;
@@ -124,7 +137,8 @@ function freeGap(run: Run, taken: readonly Polygon[]): [number, number] {
 export function unitRoomLayout(
   unit: Polygon,
   facadeSegments: readonly Seg[],
-  rooms: number,
+  /** Number of main rooms (T3 = 3) or an explicit room program (duplex levels). */
+  rooms: number | readonly { kind: RoomKind; min: number }[],
   rules: UnitRules,
   /** Preference of a façade piece for the séjour (higher first), e.g. where a balcony goes. */
   preferSejour?: (seg: Seg) => number,
@@ -139,7 +153,8 @@ export function unitRoomLayout(
     .filter((r): r is Run => !!r && r.depth > 1.5)
     .sort((a, b) => b.length - a.length);
   if (!runs.length) return [];
-  const program = roomProgram(rooms, rules);
+  const program = typeof rooms === 'number' ? roomProgram(rooms, rules) : rooms;
+  if (!program.length) return [];
   const free = (r: Run) => r.length - r.used - (r.rooms.length ? wall : 0);
 
   const attempt = (caps: readonly number[], grow = true): LayoutRoom[] => {

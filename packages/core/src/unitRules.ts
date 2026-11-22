@@ -29,17 +29,19 @@ export function unitRooms(t: Pick<UnitType, 'id' | 'label' | 'rooms'>): number {
   return n >= 1 ? n : 1;
 }
 
-/** Minimum façade length of a dwelling type under the rules, m. */
+/**
+ * Minimum façade length of a dwelling type under the rules, m. A duplex level (`duplex`) needs
+ * the longer of its two levels: séjour + chambre PMR (jour) or the further bedrooms (nuit).
+ */
 export function requiredFacade(
-  t: Pick<UnitType, 'id' | 'label' | 'rooms'>,
+  t: Pick<UnitType, 'id' | 'label' | 'rooms' | 'duplex'>,
   rules: UnitRules = DEFAULT_UNIT_RULES,
 ): number {
-  const r = unitRooms(t);
-  const v =
-    rules.livingMinFacade +
-    (r >= 2 ? rules.pmrBedroomMinFacade : 0) +
-    Math.max(0, r - 2) * rules.bedroomMinFacade +
-    (r - 1) * rules.interiorWall;
+  const v = Math.max(
+    ...roomLevels(t, rules).map(
+      (w) => w.reduce((a, b) => a + b, 0) + Math.max(0, w.length - 1) * rules.interiorWall,
+    ),
+  );
   return Math.round(v * 1000) / 1000;
 }
 
@@ -167,6 +169,20 @@ export function roomMinWidths(
 }
 
 /**
+ * Minimum room widths per level of a type: one level for a simplex dwelling; for a duplex the
+ * entrance level (séjour + chambre PMR, accessible) and the other level (further bedrooms).
+ */
+export function roomLevels(
+  t: Pick<UnitType, 'id' | 'label' | 'rooms' | 'duplex'>,
+  rules: UnitRules = DEFAULT_UNIT_RULES,
+): number[][] {
+  const all = roomMinWidths(t, rules);
+  if (!t.duplex) return [all];
+  const nuit = all.slice(2);
+  return nuit.length ? [all.slice(0, 2), nuit] : [all.slice(0, 2)];
+}
+
+/**
  * Assignment of rooms (minimum widths) to façade pieces (lengths) so that every piece holds its
  * rooms side by side with a partition between them; a room is never split over two pieces.
  * Returns the piece index of every room, or null when no assignment fits. With `pref`, the
@@ -218,11 +234,11 @@ export function assignRooms(
 
 /** True when the rooms of a type fit on façade pieces of the given lengths. */
 export function roomsFit(
-  t: Pick<UnitType, 'id' | 'label' | 'rooms'>,
+  t: Pick<UnitType, 'id' | 'label' | 'rooms' | 'duplex'>,
   pieces: readonly number[],
   rules: UnitRules = DEFAULT_UNIT_RULES,
 ): boolean {
-  return assignRooms(roomMinWidths(t, rules), pieces, rules.interiorWall) !== null;
+  return roomLevels(t, rules).every((w) => assignRooms(w, pieces, rules.interiorWall) !== null);
 }
 
 /**
@@ -230,20 +246,23 @@ export function roomsFit(
  * façade, 2: through dwelling or gallery + façade): rooms are not split over two façades.
  */
 export function minUnitWidth(
-  t: Pick<UnitType, 'id' | 'label' | 'rooms'>,
+  t: Pick<UnitType, 'id' | 'label' | 'rooms' | 'duplex'>,
   sides: number,
   rules: UnitRules = DEFAULT_UNIT_RULES,
   /** Further façade pieces of fixed length (e.g. a short return beside a core). */
   extra: readonly number[] = [],
 ): number {
-  const w = roomMinWidths(t, rules);
+  const levels = roomLevels(t, rules);
   const bins = Math.max(1, Math.round(sides));
   const fits = (x: number) =>
-    assignRooms(
-      w,
-      [...new Array<number>(bins).fill(x), ...extra.filter((e) => e > 0)],
-      rules.interiorWall,
-    ) !== null;
+    levels.every(
+      (w) =>
+        assignRooms(
+          w,
+          [...new Array<number>(bins).fill(x), ...extra.filter((e) => e > 0)],
+          rules.interiorWall,
+        ) !== null,
+    );
   let lo = 0;
   let hi = requiredFacade(t, rules);
   if (fits(lo)) return 0;

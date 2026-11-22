@@ -59,6 +59,11 @@ export function buildDrawing(
           i18n.t('drawing:fp.facadeTip', { facade: formatNumber(f), min: formatNumber(r) }),
         roomText: (k) => i18n.t(`drawing:fp.roomShort.${k}`),
         outdoorText: (k) => i18n.t(`drawing:fp.outdoorShort.${k}`),
+        duplexText: {
+          duplex: i18n.t('drawing:fp.duplexShort.duplex'),
+          jour: i18n.t('drawing:fp.duplexShort.jour'),
+          nuit: i18n.t('drawing:fp.duplexShort.nuit'),
+        },
       });
     }
     case 'elevN':
