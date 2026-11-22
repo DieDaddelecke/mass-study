@@ -68,8 +68,17 @@ READ_COMMANDS = {
     "GetSurveyPointTransformation",
     "GetCoordinateOrigins",
     "GetLayerOfElementDefaults",
+    "GetAvailableLibraryParts",
 }
-CREATE_COMMANDS = {"CreateZones", "CreateSlabs", "CreateMorphs", "SetElementUserData"}
+CREATE_COMMANDS = {
+    "CreateZones",
+    "CreateSlabs",
+    "CreateMorphs",
+    "CreateWalls",
+    "CreateRoofs",
+    "CreateStairs",
+    "SetElementUserData",
+}
 GUARDED_COMMANDS = {
     "DeleteElements",
     "SetDetailsOfElements",
@@ -179,8 +188,10 @@ def _require_own(ac: Archicad, port: int, elements: list[dict[str, Any]]) -> Non
         raise BridgeRefusal("refused: could not verify all elements")
 
 
-# Zone tool default layer seen before the bridge switched it to an "MS - " layer, per port.
-_previous_zone_layer: dict[int, str] = {}
+# Tool default layers Kubatur switches while it creates elements Tapir 2.0.0 cannot give a layer.
+LAYER_DEFAULT_TYPES = ("Zone", "Stair", "Roof")
+# Default layer seen before the bridge switched it to an "MS - " layer, per (port, element type).
+_previous_layer: dict[tuple[int, str], str] = {}
 _previous_lock = threading.Lock()
 
 
@@ -190,23 +201,25 @@ def _guard_layer_defaults(ac: Archicad, port: int, p: dict[str, Any]) -> None:
         raise BridgeRefusal("refused: exactly one layer default can be set")
     it = items[0]
     guid = (it.get("layerId") or {}).get("guid") if isinstance(it.get("layerId"), dict) else None
-    if it.get("elementType") != "Zone" or not guid:
-        raise BridgeRefusal("refused: only the Zone tool's default layer can be set")
+    etype = it.get("elementType")
+    if etype not in LAYER_DEFAULT_TYPES or not guid:
+        raise BridgeRefusal("refused: only the Zone, Stair and Roof default layers can be set")
     layers = ac.tapir(port, "GetAttributesByType", {"attributeType": "Layer"}).get("attributes", [])
     target = next((a for a in layers if (a.get("attributeId") or {}).get("guid") == guid), None)
     if target is None:
         raise BridgeRefusal("refused: unknown layer")
+    key = (port, etype)
     with _previous_lock:
         if str(target.get("name", "")).startswith(NAME_PREFIX):
-            current = ac.tapir(port, "GetLayerOfElementDefaults", {"elementTypes": ["Zone"]})
+            current = ac.tapir(port, "GetLayerOfElementDefaults", {"elementTypes": [etype]})
             cur = (current.get("layersOfElementDefaults") or [{}])[0]
             cur_guid = (cur.get("layerId") or {}).get("guid")
             if cur_guid and not str(cur.get("layerName", "")).startswith(NAME_PREFIX):
-                _previous_zone_layer[port] = cur_guid
-        elif _previous_zone_layer.get(port) == guid:
-            _previous_zone_layer.pop(port, None)
+                _previous_layer[key] = cur_guid
+        elif _previous_layer.get(key) == guid:
+            _previous_layer.pop(key, None)
         else:
-            raise BridgeRefusal("refused: the Zone default layer can only be restored to its previous layer")
+            raise BridgeRefusal(f"refused: the {etype} default layer can only be restored to its previous layer")
 
 
 def _guard_stories(ac: Archicad, port: int, p: dict[str, Any]) -> None:

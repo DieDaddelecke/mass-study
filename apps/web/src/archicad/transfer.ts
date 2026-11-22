@@ -1,16 +1,14 @@
-import type { Usage } from '@kubatur/core';
 import type { ArchicadCaller } from './bridgeClient';
 import {
-  categoryName,
   KEY_ITEM,
   KEY_PROJECT,
   KEY_REV,
   LAYER_NAME,
   morphForZone,
-  USAGE_COLORS,
   type PlanItem,
   type StorySetting,
   type TransferPlan,
+  type ZoneCategoryDef,
 } from './plan';
 import {
   isError,
@@ -20,7 +18,6 @@ import {
   type ErrorItem,
   type GetStoriesResult,
   type GuidRef,
-  type MorphData,
   type TapirLibrary,
   type TapirStory,
 } from './tapir';
@@ -36,10 +33,34 @@ export interface ArchicadSnapshot {
   ownElements: number;
   /** Layer of the zone tool defaults; new zones land there (Tapir 2.0 has no layerIndex for zones). */
   zoneLayer?: { guid: string; name: string };
+  /**
+   * Zone stamps (library parts of type "Room") Archicad can load. 0 means every zone is refused
+   * ("Failed to create new Zone"), typically an office template whose stamp library is missing.
+   * Undefined when the bridge or Tapir cannot tell.
+   */
+  zoneStamps?: number;
+  /** A loaded zone stamp, given to the zone categories Kubatur creates. */
+  zoneStamp?: ZoneStamp;
+}
+
+export interface ZoneStamp {
+  name: string;
+  mainGuid: string;
+  revGuid: string;
 }
 
 export interface TransferReport {
-  created: { zones: number; slabs: number; morphs: number; stairs: number };
+  created: {
+    zones: number;
+    sdpZones: number;
+    walls: number;
+    slabs: number;
+    roofs: number;
+    morphs: number;
+    stairs: number;
+  };
+  /** Stairs Archicad refused, created as morphs (flights and landing) instead. */
+  stairFallbacks: number;
   deleted: number;
   /** Zones were refused by Archicad as a whole and replaced by morphs. */
   zoneFallback: boolean;
@@ -51,7 +72,9 @@ export interface TransferReport {
 export type Progress = (step: string, done: number, total: number) => void;
 
 const CHUNK = 40;
-const OWN_TYPES = ['Zone', 'Slab', 'Morph'] as const;
+const OWN_TYPES = ['Zone', 'Slab', 'Morph', 'Wall', 'Roof', 'Stair'] as const;
+/** Element types without layerIndex in Tapir 2.0.0: their tool default layer is switched instead. */
+type DefaultLayerType = 'Zone' | 'Stair' | 'Roof';
 
 function chunks<T>(a: readonly T[], n = CHUNK): T[][] {
   const out: T[][] = [];
@@ -73,9 +96,11 @@ export async function readSnapshot(
     ),
   ]);
   const own = await findOwnElements(c, port, projectId);
-  const zoneLayer = await getZoneLayer(c, port);
+  const zoneLayer = await getDefaultLayer(c, port, 'Zone');
+  const stamps = await findZoneStamps(c, port);
   return {
     zoneLayer,
+    ...stamps,
     stories: stories.stories,
     libraries: libs.libraries,
     isUntitled: !!info.isUntitled,
@@ -91,15 +116,16 @@ interface LayerOfDefaults {
   layerName?: string;
 }
 
-async function getZoneLayer(
+async function getDefaultLayer(
   c: ArchicadCaller,
   port: number,
+  elementType: DefaultLayerType,
 ): Promise<{ guid: string; name: string } | undefined> {
   try {
     const r = await c.call<{ layersOfElementDefaults: (LayerOfDefaults | { error: unknown })[] }>(
       port,
       'GetLayerOfElementDefaults',
-      { elementTypes: ['Zone'] },
+      { elementTypes: [elementType] },
     );
     const d = r.layersOfElementDefaults[0];
     return d && 'layerId' in d ? { guid: d.layerId.guid, name: d.layerName ?? '' } : undefined;
@@ -108,16 +134,52 @@ async function getZoneLayer(
   }
 }
 
-async function setZoneLayer(c: ArchicadCaller, port: number, guid: string): Promise<boolean> {
+async function setDefaultLayer(
+  c: ArchicadCaller,
+  port: number,
+  elementType: DefaultLayerType,
+  guid: string,
+): Promise<boolean> {
   try {
     const r = await c.call<{ executionResults: { success: boolean }[] }>(
       port,
       'SetLayerOfElementDefaults',
-      { layersOfElementDefaults: [{ elementType: 'Zone', layerId: { guid } }] },
+      { layersOfElementDefaults: [{ elementType, layerId: { guid } }] },
     );
     return !!r.executionResults[0]?.success;
   } catch {
     return false;
+  }
+}
+
+/** Splits a library part unique ID "{main}-{rev}" into its two GUIDs (with braces). */
+export function splitUnId(unId: string): { mainGuid: string; revGuid: string } | null {
+  const hex = unId.replace(/[{}]/g, '');
+  const m = /^([0-9a-f-]{36})-([0-9a-f-]{36})$/i.exec(hex);
+  return m ? { mainGuid: `{${m[1]!.toUpperCase()}}`, revGuid: `{${m[2]!.toUpperCase()}}` } : null;
+}
+
+/** Zone stamps Archicad can load (GetAvailableLibraryParts, type "Room"). */
+async function findZoneStamps(
+  c: ArchicadCaller,
+  port: number,
+): Promise<{ zoneStamps?: number; zoneStamp?: ZoneStamp }> {
+  try {
+    const r = await c.call<{
+      libraryParts: { guid?: string; documentName?: string }[];
+      skippedCount?: number;
+    }>(port, 'GetAvailableLibraryParts', { filterByTypeId: 'Room' });
+    const parts = r.libraryParts.filter((p) => p.guid && p.documentName);
+    const pick =
+      parts.find((p) => /marque de zone|zone stamp|zonenstempel/i.test(p.documentName!)) ??
+      parts[0];
+    const ids = pick && splitUnId(pick.guid!);
+    return {
+      zoneStamps: parts.length,
+      ...(pick && ids ? { zoneStamp: { name: pick.documentName!, ...ids } } : {}),
+    };
+  } catch {
+    return {}; // older Tapir or bridge
   }
 }
 
@@ -192,9 +254,9 @@ async function ensureLayer(c: ArchicadCaller, port: number): Promise<AttributeHe
 async function ensureCategories(
   c: ArchicadCaller,
   port: number,
-  usages: readonly Usage[],
-  usageLabel: (u: Usage) => string,
-): Promise<Map<Usage, GuidRef>> {
+  defs: readonly ZoneCategoryDef[],
+  stamp?: ZoneStamp,
+): Promise<Map<string, GuidRef>> {
   const list = async () =>
     (
       await c.call<{ attributes: AttributeHeader[] }>(port, 'GetAttributesByType', {
@@ -202,26 +264,31 @@ async function ensureCategories(
       })
     ).attributes;
   let existing = await list();
-  const missing = usages.filter(
-    (u) => !existing.some((a) => a.name === categoryName(usageLabel(u))),
-  );
+  const missing = defs.filter((d) => !existing.some((a) => a.name === d.name));
   if (missing.length) {
     await c.call(port, 'CreateZoneCategories', {
-      zoneCategoryDataArray: missing.map((u) => {
-        const [red, green, blue] = USAGE_COLORS[u];
+      zoneCategoryDataArray: missing.map((d) => {
+        const [red, green, blue] = d.color;
         return {
-          name: categoryName(usageLabel(u)),
-          categoryCode: `MS-${u}`,
+          name: d.name,
+          categoryCode: d.code,
           color: { red, green, blue },
+          ...(stamp
+            ? {
+                stampName: stamp.name,
+                stampMainGuid: stamp.mainGuid,
+                stampRevGuid: stamp.revGuid,
+              }
+            : {}),
         };
       }),
     });
     existing = await list();
   }
-  const map = new Map<Usage, GuidRef>();
-  for (const u of usages) {
-    const a = existing.find((x) => x.name === categoryName(usageLabel(u)));
-    if (a) map.set(u, a.attributeId);
+  const map = new Map<string, GuidRef>();
+  for (const d of defs) {
+    const a = existing.find((x) => x.name === d.name);
+    if (a) map.set(d.name, a.attributeId);
   }
   return map;
 }
@@ -232,8 +299,9 @@ export const TAG_FAILED = 'not tagged:';
 
 /**
  * Executes a plan. Order: layer and categories → (replace) delete our previous elements →
- * create → tag with user data. Never touches the story structure and never deletes
- * elements that do not carry this project's id.
+ * slabs, walls, roofs, stairs, zones (dwellings first, then the overlapping SDP zones), volumes
+ * → tag with user data. Never touches the story structure and never deletes elements that do
+ * not carry this project's id.
  */
 export async function executePlan(
   c: ArchicadCaller,
@@ -242,13 +310,15 @@ export async function executePlan(
   ctx: {
     projectId: string;
     mode: 'create' | 'replace';
-    usageLabel: (u: Usage) => string;
     rev?: string;
+    /** Loaded zone stamp for new zone categories (from the snapshot). */
+    zoneStamp?: ZoneStamp;
     onProgress?: Progress;
   },
 ): Promise<TransferReport> {
   const report: TransferReport = {
-    created: { zones: 0, slabs: 0, morphs: 0, stairs: 0 },
+    created: { zones: 0, sdpZones: 0, walls: 0, slabs: 0, roofs: 0, morphs: 0, stairs: 0 },
+    stairFallbacks: 0,
     deleted: 0,
     zoneFallback: false,
     standIns: 0,
@@ -258,125 +328,173 @@ export async function executePlan(
   const total = plan.items.length;
   let done = 0;
   const progress = (step: string) => ctx.onProgress?.(step, done, total);
+  const of = (k: PlanItem['kind']) => plan.items.filter((i) => i.kind === k);
+  const label = (i: PlanItem) => `${i.massName} ${i.storeyLabel}`.trim();
 
   progress('prepare');
   const layer = await ensureLayer(c, port);
   const layerIndex = layer?.index;
-  const zones = plan.items.filter((i) => i.kind === 'zone');
+  const zones = of('zone');
   const categories = zones.length
-    ? await ensureCategories(c, port, plan.usages, ctx.usageLabel)
-    : new Map<Usage, GuidRef>();
+    ? await ensureCategories(c, port, plan.categories, ctx.zoneStamp)
+    : new Map<string, GuidRef>();
 
   if (ctx.mode === 'replace') {
     progress('delete');
     report.deleted = await removeOwnElements(c, port, ctx.projectId);
   }
 
-  const created: { ref: ElementRef; item: PlanItem; kind: PlanItem['kind'] }[] = [];
-  let restoreZoneLayer: string | undefined;
-  const collect = (items: PlanItem[], res: ElementIdOrError[], kind: PlanItem['kind']) => {
-    res.forEach((r, i) => {
-      const item = items[i]!;
-      if (isError(r))
-        report.errors.push({
-          item: `${item.massName} ${item.storeyLabel}`,
-          message: r.error.message,
-        });
-      else created.push({ ref: r, item, kind });
-    });
-  };
+  /** created element → its tag (item key) and what it counts as */
+  const created: {
+    ref: ElementRef;
+    item: PlanItem;
+    key: string;
+    count?: keyof TransferReport['created'];
+  }[] = [];
+  const withLayer = <T extends object>(x: T): T => (layerIndex ? { ...x, layerIndex } : x);
 
-  // zones: Tapir 2.0 cannot give zones a layer, they take the zone tool's default layer.
-  // When that layer is hidden or locked (office templates), Archicad refuses to tag,
-  // move or delete them. So the default is switched to our layer only while zones are
-  // created, and then restored.
-  const refusedZones: PlanItem[] = [];
-  let zoneLayerSet = false;
-  if (zones.length && layer) {
-    const before = await getZoneLayer(c, port);
-    if (before && before.guid !== layer.attributeId.guid) {
-      zoneLayerSet = await setZoneLayer(c, port, layer.attributeId.guid);
-      if (zoneLayerSet) restoreZoneLayer = before.guid;
-    } else zoneLayerSet = !!before;
-  }
-  try {
-    for (const part of chunks(zones)) {
-      progress('zones');
-      const res = await c.call<{ elements: ElementIdOrError[] }>(port, 'CreateZones', {
-        zonesData: part.map((i) => {
-          const cat = categories.get(i.usage);
-          return { ...i.zone!, ...(cat ? { categoryAttributeId: cat } : {}) };
-        }),
+  /** Creates items in chunks; refused items go to `onRefused` (or into the errors). */
+  const run = async <T>(
+    step: string,
+    command: string,
+    field: string,
+    items: PlanItem[],
+    data: (i: PlanItem) => T,
+    count: keyof TransferReport['created'] | undefined,
+    onRefused?: (i: PlanItem, message: string) => void,
+  ) => {
+    for (const part of chunks(items)) {
+      progress(step);
+      const res = await c.call<{ elements: ElementIdOrError[] }>(port, command, {
+        [field]: part.map(data),
       });
       res.elements.forEach((r, k) => {
         const item = part[k]!;
         if (isError(r)) {
-          refusedZones.push(item);
-          if (!ZONE_REFUSED.test(r.error.message))
-            report.errors.push({
-              item: `${item.massName} ${item.storeyLabel}`,
-              message: r.error.message,
-            });
-        } else created.push({ ref: r, item, kind: 'zone' });
+          if (onRefused) onRefused(item, r.error.message);
+          else report.errors.push({ item: label(item), message: r.error.message });
+        } else created.push({ ref: r, item, key: item.key, ...(count ? { count } : {}) });
       });
       done += part.length;
     }
+  };
+
+  // Zones, stairs and roofs have no layerIndex in Tapir 2.0.0; they take their tool's default
+  // layer, which in office templates is often hidden or locked (Archicad then refuses to tag,
+  // move or delete them). So the defaults are switched to our layer while we create, then restored.
+  const restore: [DefaultLayerType, string][] = [];
+  const needed = new Set<DefaultLayerType>([
+    ...(zones.length ? (['Zone'] as const) : []),
+    ...(of('stair').some((i) => i.stair) ? (['Stair'] as const) : []),
+    ...(of('roof').length ? (['Roof'] as const) : []),
+  ]);
+  const layerSet = new Set<DefaultLayerType>();
+  if (layer)
+    for (const t of needed) {
+      const before = await getDefaultLayer(c, port, t);
+      if (before && before.guid !== layer.attributeId.guid) {
+        if (await setDefaultLayer(c, port, t, layer.attributeId.guid)) {
+          restore.push([t, before.guid]);
+          layerSet.add(t);
+        }
+      } else if (before) layerSet.add(t);
+    }
+
+  const refusedZones: PlanItem[] = [];
+  try {
+    await run('slabs', 'CreateSlabs', 'slabsData', of('slab'), (i) => withLayer(i.slab!), 'slabs');
+    await run('walls', 'CreateWalls', 'wallsData', of('wall'), (i) => withLayer(i.wall!), 'walls');
+    await run('roofs', 'CreateRoofs', 'roofsData', of('roof'), (i) => i.roof!, 'roofs');
+
+    // stairs: native; a refused stair (or one without a native form) becomes morphs
+    const stairs = of('stair');
+    const fallbacks: PlanItem[] = stairs.filter((i) => !i.stair);
+    await run(
+      'stairs',
+      'CreateStairs',
+      'stairsData',
+      stairs.filter((i) => i.stair),
+      (i) => i.stair!,
+      'stairs',
+      (i) => fallbacks.push(i),
+    );
+    const parts = fallbacks.flatMap((i) =>
+      (i.fallback ?? []).map((m, k) => ({
+        ...i,
+        kind: 'morph' as const,
+        key: `${i.key}#${k}`,
+        morph: m,
+      })),
+    );
+    if (parts.length) {
+      const before = created.length;
+      await run(
+        'stairs',
+        'CreateMorphs',
+        'morphsData',
+        parts,
+        (i) => withLayer(i.morph!),
+        undefined,
+      );
+      const stairsMade = new Set(created.slice(before).map((x) => x.key.replace(/#\d+$/, '')));
+      report.stairFallbacks = stairsMade.size;
+      report.created.stairs += stairsMade.size;
+    }
+
+    // zones: dwellings, cores, circulation first; the SDP zones overlap them afterwards
+    const zoneData = (i: PlanItem) => {
+      const cat = i.category && categories.get(i.category.name);
+      return { ...i.zone!, ...(cat ? { categoryAttributeId: cat } : {}) };
+    };
+    const onZoneRefused = (i: PlanItem, message: string) => {
+      refusedZones.push(i);
+      if (!ZONE_REFUSED.test(message)) report.errors.push({ item: label(i), message });
+    };
+    await run(
+      'zones',
+      'CreateZones',
+      'zonesData',
+      zones.filter((i) => i.role !== 'sdp'),
+      zoneData,
+      'zones',
+      onZoneRefused,
+    );
+    await run(
+      'zones',
+      'CreateZones',
+      'zonesData',
+      zones.filter((i) => i.role === 'sdp'),
+      zoneData,
+      'sdpZones',
+      onZoneRefused,
+    );
   } finally {
-    if (restoreZoneLayer) await setZoneLayer(c, port, restoreZoneLayer);
+    for (const [t, guid] of restore) await setDefaultLayer(c, port, t, guid);
   }
   report.zoneFallback = zones.length > 0 && refusedZones.length === zones.length;
 
-  // slabs
-  const slabs = plan.items.filter((i) => i.kind === 'slab');
-  for (const part of chunks(slabs)) {
-    progress('slabs');
-    const res = await c.call<{ elements: ElementIdOrError[] }>(port, 'CreateSlabs', {
-      slabsData: part.map((i) => ({ ...i.slab!, ...(layerIndex ? { layerIndex } : {}) })),
-    });
-    collect(part, res.elements, 'slab');
-    done += part.length;
-  }
-
-  // morphs (+ stand-ins for refused zones when morphs are not already planned for them)
-  const morphs = plan.items.filter((i) => i.kind === 'morph');
+  // volumes, plus a volume for every refused SDP zone (the storey would be missing otherwise)
+  const morphs = of('morph');
   const planned = new Set(morphs.map((m) => m.key.replace(/\|morph$/, '')));
   const standIns: PlanItem[] = refusedZones
-    .filter((z) => !planned.has(z.key.replace(/\|zone$/, '')))
+    .filter((z) => z.role === 'sdp' && !planned.has(z.key.replace(/\|sdp\|zone$/, '')))
     .map((z) => ({
       ...z,
       kind: 'morph' as const,
-      key: z.key.replace(/\|zone$/, '|morph'),
+      key: z.key.replace(/\|sdp\|zone$/, '|morph'),
       morph: morphForZone(z)!,
     }));
-  report.standIns = report.zoneFallback ? 0 : standIns.length;
-  const allMorphs = [...morphs, ...standIns];
-  for (const part of chunks(allMorphs)) {
-    progress('morphs');
-    const res = await c.call<{ elements: ElementIdOrError[] }>(port, 'CreateMorphs', {
-      morphsData: part.map((i): MorphData => ({
-        ...i.morph!,
-        ...(layerIndex ? { layerIndex } : {}),
-      })),
-    });
-    collect(part, res.elements, 'morph');
-    done += part.length;
-  }
+  report.standIns = standIns.length;
+  await run(
+    'morphs',
+    'CreateMorphs',
+    'morphsData',
+    [...morphs, ...standIns],
+    (i) => withLayer(i.morph!),
+    'morphs',
+  );
 
-  // stairs: flights and landings as morphs
-  const stairs = plan.items.filter((i) => i.kind === 'stair');
-  for (const part of chunks(stairs)) {
-    progress('stairs');
-    const res = await c.call<{ elements: ElementIdOrError[] }>(port, 'CreateMorphs', {
-      morphsData: part.map((i): MorphData => ({
-        ...i.morph!,
-        ...(layerIndex ? { layerIndex } : {}),
-      })),
-    });
-    collect(part, res.elements, 'stair');
-    done += part.length;
-  }
-
-  // tags + layer for zones
+  // tags
   progress('tag');
   for (const part of chunks(created, 200)) {
     const r = await c.call<{ executionResults?: ({ success: boolean } & Partial<ErrorItem>)[] }>(
@@ -387,10 +505,7 @@ export async function executePlan(
           elementId: x.ref.elementId,
           userData: [
             { key: KEY_PROJECT, value: ctx.projectId },
-            {
-              key: KEY_ITEM,
-              value: x.item.key.replace(/\|(zone|morph|slab|stair)$/, `|${x.kind}`),
-            },
+            { key: KEY_ITEM, value: x.key },
             { key: KEY_REV, value: rev },
           ],
         })),
@@ -398,16 +513,24 @@ export async function executePlan(
     );
     (r.executionResults ?? []).forEach((x, i) => {
       if (x.success) return;
-      const it = part[i]!;
       report.errors.push({
-        item: `${it.item.massName} ${it.item.storeyLabel}`,
+        item: label(part[i]!.item),
         message: `${TAG_FAILED} ${x.error?.message ?? ''}`.trim(),
       });
     });
   }
-  const createdZones = created.filter((x) => x.kind === 'zone');
-  if (layerIndex && createdZones.length && !zoneLayerSet)
-    for (const part of chunks(createdZones, 200))
+  // elements of types whose default layer could not be switched: move them onto our layer
+  const typeOf: Partial<Record<PlanItem['kind'], DefaultLayerType>> = {
+    zone: 'Zone',
+    stair: 'Stair',
+    roof: 'Roof',
+  };
+  const stray = created.filter((x) => {
+    const t = typeOf[x.item.kind];
+    return t && !layerSet.has(t) && !x.key.includes('#');
+  });
+  if (layerIndex && stray.length)
+    for (const part of chunks(stray, 200))
       await c
         .call(port, 'SetDetailsOfElements', {
           elementsWithDetails: part.map((x) => ({
@@ -417,12 +540,7 @@ export async function executePlan(
         })
         .catch((e: unknown) => report.errors.push({ message: `layer: ${String(e)}` }));
 
-  for (const x of created)
-    if (x.kind !== 'stair') report.created[`${x.kind}s` as 'zones' | 'slabs' | 'morphs']++;
-  // a stair counts once (its flights and landing are separate morphs)
-  report.created.stairs = new Set(
-    created.filter((x) => x.kind === 'stair').map((x) => x.item.key.replace(/[fl]\d+\|/, '|')),
-  ).size;
+  for (const x of created) if (x.count) report.created[x.count]++;
   done = total;
   progress('done');
   return report;

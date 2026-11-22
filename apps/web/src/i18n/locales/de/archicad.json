@@ -27,14 +27,20 @@
   },
   "options": {
     "title": "Zu erzeugende Elemente",
-    "zones": "Zonen (Fläche, Name, Nummer)",
-    "morphs": "Volumen (Morphs)",
-    "stairs": "Treppen (Läufe und Podeste, als Morphs)",
-    "stairsHint": "Die Treppen liegen in den Volumen: Zonen anzeigen oder Volumen ausblenden, um sie zu sehen.",
-    "slabs": "Decken",
+    "zones": "Zonen je Wohnung (mit Treppenhäusern und Fluren)",
+    "morphs": "Volumen (Morphs, Massenstudie)",
+    "stairs": "Archicad-Treppen (zweiläufig mit Podest)",
+    "stairsHint": "Die Treppen liegen in den Volumen: Volumen ausblenden, um sie zu sehen.",
+    "slabs": "Decken (Geschossdecken, Flachdächer, Treppenlöcher)",
     "offsetX": "Versatz X",
     "offsetY": "Versatz Y",
-    "rotation": "Drehung"
+    "rotation": "Drehung",
+    "sdpZones": "SDP-Zone je Geschoss",
+    "walls": "Wände (Fassade, Treppenhaus, Wohnungstrennwände)",
+    "roofs": "Geneigte Dächer",
+    "noZoneStamp": "In diesem Projekt ist kein Zonenstempel geladen: Archicad lehnt alle Zonen ab. Bibliothèque Archicad 28 im Bibliotheksmanager laden und aktualisieren.",
+    "facadeWall": "Dicke Fassadenwände",
+    "interiorWall": "Dicke Innenwände"
   },
   "mode": {
     "replace": "Bereits übertragene Elemente ersetzen ({{count}})",
@@ -55,7 +61,7 @@
   },
   "preview": {
     "title": "Vorschau",
-    "summary": "{{zones}} Zonen, {{morphs}} Volumen, {{stairs}} Treppen, {{slabs}} Decken auf {{storeys}} Ebenen, auf der Ebene „MS - Massenstudie“.",
+    "summary": "{{zones}} Wohnungszonen, {{sdpZones}} SDP-Zonen, {{walls}} Wände, {{slabs}} Decken, {{roofs}} Dächer, {{stairs}} Treppen, {{morphs}} Volumen auf {{storeys}} Ebenen, auf der Ebene „MS - Massenstudie“.",
     "level": "Höhe",
     "storey": "Geschoss",
     "archicadStory": "Archicad-Geschoss",
@@ -79,16 +85,24 @@
     "morphs": "Volumen anlegen…",
     "stairs": "Treppen anlegen…",
     "tag": "Elemente markieren…",
-    "done": "Fertig"
+    "done": "Fertig",
+    "walls": "Wände anlegen…",
+    "roofs": "Dächer anlegen…"
   },
   "result": {
-    "created": "Angelegt: {{zones}} Zonen, {{morphs}} Volumen, {{stairs}} Treppen, {{slabs}} Decken.",
+    "created": "Angelegt: {{zones}} Wohnungszonen, {{sdpZones}} SDP-Zonen, {{walls}} Wände, {{slabs}} Decken, {{roofs}} Dächer, {{stairs}} Treppen, {{morphs}} Volumen.",
     "deleted": "{{count}} vorherige Elemente gelöscht.",
-    "zoneFallback": "Archicad hat alle Zonen abgelehnt (Zonenstempel oder Bibliothek fehlt). Stattdessen wurden Volumen angelegt. Bibliothek im Projekt laden und erneut übertragen.",
+    "zoneFallback": "Archicad hat alle Zonen abgelehnt (Zonenstempel oder Bibliothek fehlt). Bibliothèque Archicad 28 im Projekt laden und erneut übertragen.",
     "removed": "{{count}} Elemente aus Archicad entfernt.",
-    "standIns": "{{count}} von Archicad abgelehnte Zonen (Überlappung) wurden durch Morphs ersetzt."
+    "standIns": "{{count}} von Archicad abgelehnte SDP-Zonen wurden durch Volumen ersetzt.",
+    "stairFallbacks": "{{count}} Treppen hat Archicad abgelehnt; sie wurden als Volumen (Läufe und Podest) angelegt."
   },
   "pill": {
     "ready": "Archicad: verbunden – Übertragung öffnen"
+  },
+  "zoneNames": {
+    "core": "Cage d'escalier",
+    "circulation": "Circulations",
+    "sdp": "SDP"
   }
 }

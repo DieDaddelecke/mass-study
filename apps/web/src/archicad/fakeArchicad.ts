@@ -20,9 +20,19 @@ export class FakeArchicad implements ArchicadCaller {
     ZoneCategory: [{ attributeId: { guid: 'C-1' }, index: 1, name: 'Zone' }],
   };
   log: string[] = [];
+  /** Data of the zone categories created (stamp fields). */
+  categoryData: any[] = [];
   refuseZones = false;
-  /** Layer of the zone tool defaults (guid). */
-  zoneDefaultLayer = 'L-Z';
+  /** Refuse every stair (to test the morph fallback). */
+  refuseStairs = false;
+  /** Tool default layers (guid) of the tools without layerIndex in Tapir 2.0.0. */
+  defaultLayers: Record<string, string> = { Zone: 'L-Z', Stair: 'L-Z', Roof: 'L-Z' };
+  get zoneDefaultLayer() {
+    return this.defaultLayers.Zone!;
+  }
+  set zoneDefaultLayer(g: string) {
+    this.defaultLayers.Zone = g;
+  }
   /** Hidden layers: elements on them cannot be tagged, changed or deleted. */
   hiddenLayers = new Set<string>(['L-Z']);
   /** Untitled (test) project: SetStories allowed. */
@@ -63,7 +73,7 @@ export class FakeArchicad implements ArchicadCaller {
         const err = check(it);
         if (err) return { error: { code: -2130313112, message: err } };
         const g = this.guid();
-        const layer = type === 'Zone' ? this.zoneDefaultLayer : 'L-1';
+        const layer = this.defaultLayers[type] ?? 'L-1';
         this.elements.set(g, { type, data: it, layer });
         return { elementId: { guid: g } };
       }),
@@ -94,12 +104,12 @@ export class FakeArchicad implements ArchicadCaller {
       case 'GetLayerOfElementDefaults':
         return {
           layersOfElementDefaults: p.elementTypes.map((t: string) =>
-            t === 'Zone'
+            this.defaultLayers[t]
               ? {
                   elementType: t,
-                  layerId: { guid: this.zoneDefaultLayer },
+                  layerId: { guid: this.defaultLayers[t] },
                   layerName: this.attributes.Layer!.find(
-                    (l) => l.attributeId.guid === this.zoneDefaultLayer,
+                    (l) => l.attributeId.guid === this.defaultLayers[t],
                   )?.name,
                 }
               : { error: { code: 1, message: 'unsupported' } },
@@ -108,8 +118,9 @@ export class FakeArchicad implements ArchicadCaller {
       case 'SetLayerOfElementDefaults':
         return {
           executionResults: p.layersOfElementDefaults.map((it: any) => {
-            if (it.elementType === 'Zone') this.zoneDefaultLayer = it.layerId.guid;
-            return { success: it.elementType === 'Zone' };
+            const ok = it.elementType in this.defaultLayers;
+            if (ok) this.defaultLayers[it.elementType] = it.layerId.guid;
+            return { success: ok };
           }),
         };
       case 'SetStories':
@@ -130,6 +141,7 @@ export class FakeArchicad implements ArchicadCaller {
       case 'CreateZoneCategories': {
         const kind = command === 'CreateLayers' ? 'Layer' : 'ZoneCategory';
         const arr = p.layerDataArray ?? p.zoneCategoryDataArray;
+        if (kind === 'ZoneCategory') this.categoryData.push(...arr);
         return {
           attributeIds: arr.map((a: any) => {
             if (!String(a.name).startsWith('MS - ')) throw new Error('refused: prefix');
@@ -156,12 +168,38 @@ export class FakeArchicad implements ArchicadCaller {
             ? 'Failed to create new Zone'
             : !this.stories.some((s) => s.index === z.floorIndex)
               ? 'bad floor'
-              : this.overlaps(z)
+              : !z.allowOverlap && this.overlaps(z)
                 ? 'Zones overlap'
                 : null,
         );
       case 'CreateSlabs':
         return this.create('Slab', p.slabsData, () => null);
+      case 'CreateWalls':
+        return this.create('Wall', p.wallsData, (w) =>
+          w.height > 0 && w.thickness > 0 ? null : 'bad wall',
+        );
+      case 'CreateRoofs':
+        return this.create('Roof', p.roofsData, (r) =>
+          r.polygonCoordinates.length >= 3 && r.angle > 0 ? null : 'bad roof',
+        );
+      case 'CreateStairs':
+        return this.create('Stair', p.stairsData, () =>
+          this.refuseStairs ? 'Failed to create new Stair' : null,
+        );
+      case 'GetAvailableLibraryParts':
+        return this.refuseZones
+          ? { libraryParts: [], skippedCount: 24 }
+          : {
+              libraryParts: [
+                {
+                  guid: '{4AE64969-2731-4802-86B3-08DD03364006}-{AE163506-E14C-46A2-9E09-B08E24712238}',
+                  index: 1,
+                  documentName: 'Marque de zone 28',
+                  typeId: 'Room',
+                },
+              ],
+              skippedCount: 0,
+            };
       case 'CreateMorphs':
         return this.create('Morph', p.morphsData, (m) => {
           const n = m.body.vertices.length;

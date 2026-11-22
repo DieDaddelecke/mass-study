@@ -42,7 +42,7 @@ class BridgeTest(unittest.TestCase):
         self.mock.untitled = True
         self.mock.stories = [dict(x) for x in __import__("mock_archicad").DEFAULT_STORIES]
         self.mock.zone_default_layer = self.mock.attributes["Layer"][1]["attributeId"]["guid"]
-        bridge._previous_zone_layer.clear()
+        bridge._previous_layer.clear()
 
     # -- helpers -----------------------------------------------------------
     def req(self, path, body=None, token=TOKEN, origin=ORIGIN, method=None):
@@ -179,11 +179,33 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(self._set_zone_layer(original), 200)
         self.assertEqual(self.mock.zone_default_layer, original["guid"])
         self.assertEqual(self._set_zone_layer(original), 403)
-        # only the Zone tool
+        # only the Zone, Stair and Roof tools (Tapir 2.0.0 gives them no layerIndex)
         status = self.call(
             "SetLayerOfElementDefaults", {"layersOfElementDefaults": [{"elementType": "Wall", "layerId": ms}]}
         )[0]
         self.assertEqual(status, 403)
+
+    def test_stair_and_roof_default_layers_switch_and_restore(self):
+        ms = self._layer("MS - Massenstudie")
+        for t in ("Stair", "Roof"):
+            original = {"guid": self.mock.default_layers[t]}
+            set_ = lambda lid: self.call(  # noqa: E731
+                "SetLayerOfElementDefaults", {"layersOfElementDefaults": [{"elementType": t, "layerId": lid}]}
+            )[0]
+            self.assertEqual(set_(ms), 200)
+            self.assertEqual(self.mock.default_layers[t], ms["guid"])
+            self.assertEqual(set_(original), 200)
+            self.assertEqual(self.mock.default_layers[t], original["guid"])
+            self.assertEqual(set_(original), 403)
+
+    def test_native_create_commands_pass(self):
+        wall = {"begCoordinate": {"x": 0, "y": 0}, "endCoordinate": {"x": 5, "y": 0}, "floorIndex": 0, "zCoordinate": 0, "height": 2.7}
+        self.assertEqual(self.call("CreateWalls", {"wallsData": [wall]})[0], 200)
+        stair = {"baseLinePoints": [{"x": 0, "y": 0}, {"x": 0, "y": 3}], "zCoordinate": 0, "totalHeight": 3}
+        self.assertEqual(self.call("CreateStairs", {"stairsData": [stair]})[0], 200)
+        roof = {"level": 3, "polygonCoordinates": [{"x": 0, "y": 0}, {"x": 5, "y": 0}, {"x": 5, "y": 5}]}
+        self.assertEqual(self.call("CreateRoofs", {"roofsData": [roof]})[0], 200)
+        self.assertEqual(self.call("GetAvailableLibraryParts", {"filterByTypeId": "Room"})[0], 200)
 
     def test_set_stories_only_in_untitled_project(self):
         new = [

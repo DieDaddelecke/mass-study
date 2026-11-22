@@ -13,6 +13,7 @@ import {
   type PlanOptions,
   type StorySetting,
   type TransferPlan,
+  type ZoneLabels,
 } from './plan';
 import {
   applyStories,
@@ -70,11 +71,7 @@ interface ArchicadState {
   setMode: (m: 'create' | 'replace') => void;
   connect: () => Promise<void>;
   selectInstance: (port: number, projectId: string) => Promise<void>;
-  transfer: (
-    project: Project,
-    plan: TransferPlan,
-    usageLabel: (u: Usage) => string,
-  ) => Promise<void>;
+  transfer: (project: Project, plan: TransferPlan) => Promise<void>;
   remove: (project: Project) => Promise<void>;
   /** Replaces the Archicad stories (test projects only; the bridge enforces it). */
   adjustStories: (project: Project, stories: StorySetting[]) => Promise<void>;
@@ -161,7 +158,7 @@ export const useArchicadStore = create<ArchicadState>((set, get) => ({
     }
   },
 
-  transfer: async (project, plan, usageLabel) => {
+  transfer: async (project, plan) => {
     const { port, mode } = get();
     if (port === undefined) return;
     set({
@@ -175,7 +172,7 @@ export const useArchicadStore = create<ArchicadState>((set, get) => ({
       const report = await executePlan(client(get()), port, plan, {
         projectId: project.id,
         mode,
-        usageLabel,
+        ...(get().snapshot?.zoneStamp ? { zoneStamp: get().snapshot!.zoneStamp! } : {}),
         onProgress: (step, done, total) => set({ progress: { step, done, total } }),
       });
       set({ report });
@@ -224,8 +221,10 @@ export function planFor(
   snapshot: ArchicadSnapshot,
   options: PlanOptions,
   usageLabel: (u: Usage) => string,
+  zoneLabels?: ZoneLabels,
 ): TransferPlan {
   return buildPlan({
+    ...(zoneLabels ? { zoneLabels } : {}),
     project,
     masses: activeVariant(project).masses,
     stories: snapshot.stories,

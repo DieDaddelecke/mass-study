@@ -1,7 +1,12 @@
 import {
+  effectiveParapet,
+  isPitched,
   layoutStairs,
   massLayout,
+  massRoofPieces,
+  resolveStairRules,
   normalizePolygon,
+  union,
   type CoreStair,
   type Mass,
   type Polygon,
@@ -10,18 +15,28 @@ import {
   type Usage,
   type Vec2,
   massToSolids,
-  USAGES,
 } from '@kubatur/core';
 import type {
   Coordinate2D,
   Coordinate3D,
   MorphBody,
   MorphData,
+  RoofData,
   SlabData,
+  StairData,
   TapirLibrary,
   TapirStory,
+  WallData,
   ZoneData,
 } from './tapir';
+import {
+  facadeWalls,
+  interiorWalls,
+  levelSlabs,
+  nativeStair,
+  planeRoof,
+  type WallSegment,
+} from './native';
 
 /**
  * Pure transfer planning: project → the Archicad elements to create.
@@ -60,18 +75,36 @@ export interface PlacementOptions {
 }
 
 export interface PlanOptions extends PlacementOptions {
+  /** One zone per dwelling, plus zones for cores, circulation and open floor areas. */
   zones: boolean;
+  /** One zone per storey with its whole floor area (surface de plancher). */
+  sdpZones: boolean;
+  /** Façade walls and interior walls (cores, party walls). */
+  walls: boolean;
+  /** One slab per floor level (and roof slabs), with stair openings. */
   slabs: boolean;
-  morphs: boolean;
-  /** Stairs of the cores (flights and landings) as morphs. */
+  /** Pitched roofs as Archicad roofs. */
+  roofs: boolean;
+  /** Core stairs as Archicad stairs (morphs only where Archicad refuses one). */
   stairs: boolean;
+  /** Storey volumes as morphs (massing study look). */
+  morphs: boolean;
+  /** Façade wall thickness, m. */
+  facadeWall: number;
+  /** Interior (party / corridor) wall thickness, m. */
+  interiorWall: number;
 }
 
 export const DEFAULT_OPTIONS: PlanOptions = {
   zones: true,
-  slabs: false,
-  morphs: true,
+  sdpZones: true,
+  walls: true,
+  slabs: true,
+  roofs: true,
   stairs: true,
+  morphs: false,
+  facadeWall: 0.2,
+  interiorWall: 0.18,
   offsetX: 0,
   offsetY: 0,
   rotationDeg: 0,
@@ -88,10 +121,20 @@ export interface StoreyMatch {
   exact: boolean;
 }
 
-export type ItemKind = 'zone' | 'slab' | 'morph' | 'stair';
+export type ItemKind = 'zone' | 'slab' | 'wall' | 'roof' | 'morph' | 'stair';
+
+/** What a zone stands for: a dwelling, a core, circulation, an open floor area or a whole storey (SDP). */
+export type ZoneRole = 'unit' | 'core' | 'circulation' | 'open' | 'sdp';
+
+/** Zone category of a zone item ("MS - Logement", "MS - SDP" …). */
+export interface ZoneCategoryDef {
+  name: string;
+  code: string;
+  color: [number, number, number];
+}
 
 export interface PlanItem {
-  /** Stable key, stored as user data: `${massId}|${segment}|${storeyIndex}|${kind}` */
+  /** Stable key, stored as user data: `${massId}|${part}|${storeyIndex}|${kind}` */
   key: string;
   kind: ItemKind;
   massName: string;
@@ -101,8 +144,15 @@ export interface PlanItem {
   /** Absolute finished-floor level of the storey (m). */
   z0: number;
   zone?: ZoneData;
+  role?: ZoneRole;
+  category?: ZoneCategoryDef;
   slab?: SlabData;
+  wall?: WallData;
+  roof?: RoofData;
+  stair?: StairData;
   morph?: MorphData;
+  /** Morphs that stand in for a stair Archicad refuses (flights and landing). */
+  fallback?: MorphData[];
 }
 
 export type PlanWarning =
@@ -114,13 +164,38 @@ export type PlanWarning =
   | { code: 'teamwork' }
   | { code: 'noMasses' };
 
+export interface PlanCounts {
+  zones: number;
+  sdpZones: number;
+  walls: number;
+  slabs: number;
+  roofs: number;
+  morphs: number;
+  stairs: number;
+  storeys: number;
+}
+
 export interface TransferPlan {
   storeys: StoreyMatch[];
   items: PlanItem[];
-  usages: Usage[];
+  /** Zone categories the zones use. */
+  categories: ZoneCategoryDef[];
   warnings: PlanWarning[];
-  counts: { zones: number; slabs: number; morphs: number; stairs: number; storeys: number };
+  counts: PlanCounts;
 }
+
+/** Names of the non-dwelling zones, localised by the caller. */
+export interface ZoneLabels {
+  core: string;
+  circulation: string;
+  sdp: string;
+}
+
+export const DEFAULT_ZONE_LABELS: ZoneLabels = {
+  core: "Cage d'escalier",
+  circulation: 'Circulations',
+  sdp: 'SDP',
+};
 
 export interface PlanInput {
   project: Project;
@@ -131,6 +206,7 @@ export interface PlanInput {
   options: PlanOptions;
   /** Localised usage names ("Logement"…), used for zone names. */
   usageLabel: (u: Usage) => string;
+  zoneLabels?: ZoneLabels;
 }
 
 // ---------------------------------------------------------------------------
@@ -310,126 +386,201 @@ export function itemKey(
   return `${s.massId}|${s.segment ?? 0}|${s.storeyIndex}|${kind}`;
 }
 
+const SDP_COLOR: [number, number, number] = [0.85, 0.85, 0.85];
+const CIRCULATION_COLOR: [number, number, number] = [0.8, 0.8, 0.72];
+
+const placeRing = (ring: readonly Vec2[], o: PlacementOptions) => ring.map((p) => placePoint(p, o));
+
+function placedPolygon(p: Polygon, o: PlacementOptions) {
+  const poly = normalizePolygon(p);
+  return {
+    outer: placeRing(poly.outer, o),
+    holes: (poly.holes ?? []).map((h) => placeRing(h, o)),
+    area: round(netArea(poly)),
+  };
+}
+
 export function buildPlan(input: PlanInput): TransferPlan {
   const { options: o } = input;
+  const labels = input.zoneLabels ?? DEFAULT_ZONE_LABELS;
   const warnings: PlanWarning[] = [];
   const items: PlanItem[] = [];
   const storeys = new Map<string, StoreyMatch>();
-  const usages = new Set<Usage>();
+  const categories = new Map<string, ZoneCategoryDef>();
+  const zoneStoreys = new Set<string>();
 
   if (!input.stories.length) warnings.push({ code: 'noStories' });
   if (!input.masses.length) warnings.push({ code: 'noMasses' });
   if (input.isTeamwork) warnings.push({ code: 'teamwork' });
   const missingLibs = (input.libraries ?? []).filter((l) => !l.available).map((l) => l.name);
-  if (o.zones && missingLibs.length)
+  if ((o.zones || o.sdpZones) && missingLibs.length)
     warnings.push({ code: 'librariesMissing', names: missingLibs });
 
   const lowest = [...input.stories].sort((a, b) => a.level - b.level)[0];
+  const home = (z: number) => matchStory(z, input.stories)?.story ?? lowest;
+  const category = (name: string, code: string, color: [number, number, number]) => {
+    const c = { name: categoryName(name), code, color };
+    categories.set(c.name, c);
+    return c;
+  };
+  const usageCategory = (u: Usage) => category(input.usageLabel(u), `MS-${u}`, USAGE_COLORS[u]);
+
+  /** Registers the level of a storey (preview table, warnings). Null without any story. */
+  const storeyMatch = (z0: number, label: string): StoreyMatch | null => {
+    const sk = `${round(z0)}`;
+    const known = storeys.get(sk);
+    if (known) return known;
+    let match = matchStory(z0, input.stories);
+    if (!match) {
+      if (!lowest) return null;
+      warnings.push({ code: 'belowLowestStory', elevation: z0, label });
+      match = { story: lowest, exact: false };
+    }
+    const { story } = match;
+    const m: StoreyMatch = {
+      elevation: round(z0),
+      label,
+      storyIndex: story.index,
+      storyName: story.name,
+      storyLevel: story.level,
+      offset: round(z0 - story.level),
+      exact: match.exact,
+    };
+    storeys.set(sk, m);
+    if (!match.exact && story.level <= z0)
+      warnings.push({ code: 'levelWithoutStory', elevation: z0, label, storyName: story.name });
+    return m;
+  };
 
   for (const mass of input.masses) {
-    const solids = massToSolids(mass, input.project.settings);
-    if (o.stairs) {
-      const layout = massLayout(mass, solids, input.project.settings);
-      for (const list of layoutStairs([layout], input.project.settings).values())
-        for (const st of list) {
-          const match = matchStory(st.z0, input.stories) ?? (lowest && { story: lowest });
-          if (!match) continue;
-          const label = solids.find((x) => x.storeyIndex === st.storeyIndex)?.label ?? '';
-          for (const { part, body } of stairBodies(st, o))
-            items.push({
-              key: `${mass.id}|stair${st.coreIndex}${part}|${st.storeyIndex}|stair`,
-              kind: 'stair',
-              massName: mass.name,
-              storeyLabel: label,
-              usage: 'wohnen',
-              area: 0,
-              z0: round(st.z0),
-              morph: {
-                basePoint: { x: 0, y: 0, z: round(st.z0) },
-                floorIndex: match.story.index,
-                body,
-                id: `MS-${mass.name}-${label}-ESC${st.coreIndex + 1}`.replace(/\s+/g, ''),
+    const solids = massToSolids(mass, input.project.settings).filter((s) => s.z1 - s.z0 > 0);
+    const slabT = mass.storeys.slabThickness > 0 ? mass.storeys.slabThickness : 0.25;
+    const tag = mass.name.replace(/\s+/g, '');
+    const layout =
+      o.zones || o.walls || o.stairs || o.slabs
+        ? massLayout(mass, solids, input.project.settings)
+        : null;
+    const stairs: CoreStair[] = layout
+      ? [...layoutStairs([layout], input.project.settings).values()].flat()
+      : [];
+    const labelOf = (storeyIndex: number) =>
+      solids.find((x) => x.storeyIndex === storeyIndex)?.label ?? '';
+
+    for (const s of solids) storeyMatch(s.z0, s.label);
+
+    // --- zones: dwellings, cores, circulation, open areas -------------------------------
+    if (o.zones && layout)
+      for (const st of layout.storeys) {
+        const m = storeyMatch(st.z0, st.label);
+        if (!m) continue;
+        const height = round(st.z1 - st.z0);
+        zoneStoreys.add(`${m.storyIndex}|${m.elevation}`);
+        const base = {
+          massName: mass.name,
+          storeyLabel: st.label,
+          usage: st.usage,
+          z0: round(st.z0),
+          kind: 'zone' as const,
+        };
+        const zone = (
+          part: string,
+          poly: Polygon,
+          name: string,
+          number: string,
+          role: ZoneRole,
+          cat: ZoneCategoryDef,
+        ) => {
+          const pp = placedPolygon(poly, o);
+          if (pp.outer.length < 3) return;
+          items.push({
+            ...base,
+            key: `${mass.id}|${part}|${st.storeyIndex}|zone`,
+            area: pp.area,
+            role,
+            category: cat,
+            zone: {
+              floorIndex: m.storyIndex,
+              name,
+              numberStr: number,
+              height,
+              bottomOffset: m.offset,
+              allowOverlap: false,
+              geometry: {
+                polygonCoordinates: pp.outer,
+                ...(pp.holes.length ? { holes: pp.holes.map((h) => ({ polygonOutline: h })) } : {}),
               },
-            });
-        }
-    }
-    for (const s of solids) {
-      const height = round(s.z1 - s.z0);
-      if (height <= 0) continue;
-      let match = matchStory(s.z0, input.stories);
-      if (!match) {
-        if (!lowest) continue;
-        warnings.push({ code: 'belowLowestStory', elevation: s.z0, label: s.label });
-        match = { story: lowest, exact: false };
-      }
-      const { story } = match;
-      const sk = `${round(s.z0)}`;
-      if (!storeys.has(sk)) {
-        storeys.set(sk, {
-          elevation: round(s.z0),
-          label: s.label,
-          storyIndex: story.index,
-          storyName: story.name,
-          storyLevel: story.level,
-          offset: round(s.z0 - story.level),
-          exact: match.exact,
-        });
-        if (!match.exact && story.level <= s.z0)
-          warnings.push({
-            code: 'levelWithoutStory',
-            elevation: s.z0,
-            label: s.label,
-            storyName: story.name,
+            },
           });
+        };
+        const prefix = `${tag}-${st.label}`.replace(/\s+/g, '');
+        st.units.forEach((u, i) =>
+          zone(
+            `u${i}`,
+            u.polygon,
+            u.label,
+            `${prefix}-${String(i + 1).padStart(2, '0')}`,
+            'unit',
+            usageCategory(st.usage),
+          ),
+        );
+        st.open.forEach((a, i) =>
+          zone(
+            `o${i}`,
+            a.polygon,
+            input.usageLabel(st.usage),
+            `${prefix}-${st.units.length + i + 1}`,
+            'open',
+            usageCategory(st.usage),
+          ),
+        );
+        const circ = category(labels.circulation, 'MS-circulation', CIRCULATION_COLOR);
+        st.cores.forEach((c, i) =>
+          zone(`k${i}`, c.polygon, labels.core, `${prefix}-ESC${i + 1}`, 'core', circ),
+        );
+        st.circulation.forEach((c, i) =>
+          zone(`c${i}`, c.polygon, labels.circulation, `${prefix}-C${i + 1}`, 'circulation', circ),
+        );
       }
 
-      const poly = normalizePolygon(s.footprint);
-      if (poly.outer.length < 3) continue;
-      const outer = poly.outer.map((p) => placePoint(p, o));
-      const holes = (poly.holes ?? []).map((h) => h.map((p) => placePoint(p, o)));
-      const area = round(netArea(poly));
-      const number = `MS-${mass.name}-${s.label}`.replace(/\s+/g, '');
+    // --- SDP zone per storey, and storey volumes (morphs) -----------------------------------
+    for (const s of solids) {
+      const m = storeyMatch(s.z0, s.label);
+      if (!m) continue;
+      const pp = placedPolygon(s.footprint, o);
+      if (pp.outer.length < 3) continue;
+      const height = round(s.z1 - s.z0);
+      const number = `MS-${tag}-${s.label}`.replace(/\s+/g, '');
       const base = {
         massName: mass.name,
         storeyLabel: s.label,
         usage: s.usage,
-        area,
+        area: pp.area,
         z0: round(s.z0),
       };
-      usages.add(s.usage);
-      const holes2d = holes.map((h) => ({ polygonOutline: h }));
-
-      if (o.zones)
+      const holes2d = pp.holes.map((h) => ({ polygonOutline: h }));
+      if (o.sdpZones) {
+        zoneStoreys.add(`${m.storyIndex}|${m.elevation}`);
         items.push({
           ...base,
-          key: itemKey(s, 'zone'),
+          key: itemKey(s, 'zone').replace(/\|zone$/, '|sdp|zone'),
           kind: 'zone',
+          role: 'sdp',
+          category: category(labels.sdp, 'MS-SDP', SDP_COLOR),
           zone: {
-            floorIndex: story.index,
-            name: input.usageLabel(s.usage),
-            numberStr: number,
+            floorIndex: m.storyIndex,
+            name: `${labels.sdp} ${input.usageLabel(s.usage)}`,
+            numberStr: `${number}-SDP`,
             height,
-            bottomOffset: round(s.z0 - story.level),
-            allowOverlap: false,
-            geometry: { polygonCoordinates: outer, ...(holes.length ? { holes: holes2d } : {}) },
+            bottomOffset: m.offset,
+            // dwelling zones lie inside: the SDP zone overlaps them on purpose
+            allowOverlap: o.zones,
+            geometry: {
+              polygonCoordinates: pp.outer,
+              ...(holes2d.length ? { holes: holes2d } : {}),
+            },
           },
         });
-      if (o.slabs)
-        items.push({
-          ...base,
-          key: itemKey(s, 'slab'),
-          kind: 'slab',
-          slab: {
-            floorIndex: story.index,
-            level: round(s.z0),
-            thickness: mass.storeys.slabThickness > 0 ? mass.storeys.slabThickness : 0.25,
-            structureType: 'Basic',
-            referencePlaneLocation: 'Top',
-            polygonCoordinates: outer,
-            ...(holes.length ? { holes: holes2d } : {}),
-            id: number,
-          },
-        });
+      }
       if (o.morphs)
         items.push({
           ...base,
@@ -437,20 +588,198 @@ export function buildPlan(input: PlanInput): TransferPlan {
           kind: 'morph',
           morph: {
             basePoint: { x: 0, y: 0, z: round(s.z0) },
-            floorIndex: story.index,
-            body: extrudeBody(outer, holes, height),
+            floorIndex: m.storyIndex,
+            body: extrudeBody(pp.outer, pp.holes, height),
             id: number,
           },
         });
     }
+
+    // --- walls ---------------------------------------------------------------------------
+    if (o.walls) {
+      const parapet = effectiveParapet(mass, mass.storeys);
+      // sections of one storey with the same levels share their façade (no double walls)
+      const groups = new Map<string, StoreySolid[]>();
+      for (const s of solids) {
+        const k = `${s.storeyIndex}|${s.z0.toFixed(3)}|${s.z1.toFixed(3)}`;
+        groups.set(k, [...(groups.get(k) ?? []), s]);
+      }
+      const segs: { seg: WallSegment; s: StoreySolid; top: boolean; n: string }[] = [];
+      for (const list of groups.values()) {
+        const s = list[0]!;
+        const fps = list.length > 1 ? union(list.map((x) => x.footprint)) : [s.footprint];
+        const top = list.every((x) => x.top);
+        fps.forEach((fp, k) =>
+          facadeWalls(fp, o.facadeWall).forEach((seg, i) =>
+            segs.push({ seg, s, top, n: `f${s.segment ?? 0}.${k}.${i}` }),
+          ),
+        );
+      }
+      if (layout) {
+        const coreT = resolveCoreWall(input.project);
+        for (const st of layout.storeys) {
+          const s = solids.find(
+            (x) => x.storeyIndex === st.storeyIndex && Math.abs(x.z0 - st.z0) < 1e-6,
+          );
+          if (!s) continue;
+          interiorWalls(st, { interior: o.interiorWall, core: coreT }).forEach((seg, i) =>
+            segs.push({ seg, s: { ...s, z1: st.z1 }, top: false, n: `i${i}` }),
+          );
+        }
+      }
+      for (const { seg, s, top, n } of segs) {
+        const m = storeyMatch(s.z0, s.label);
+        if (!m) continue;
+        const a = placePoint(seg.a, o);
+        const b = placePoint(seg.b, o);
+        // up to the underside of the slab above; flat-roof façades rise to the parapet top
+        const up = seg.kind === 'facade' && top && parapet > 0 ? parapet : -slabT;
+        const height = round(s.z1 - s.z0 + up);
+        if (height <= 0) continue;
+        items.push({
+          key: `${mass.id}|${n}|${s.storeyIndex}|wall`,
+          kind: 'wall',
+          massName: mass.name,
+          storeyLabel: s.label,
+          usage: s.usage,
+          area: 0,
+          z0: round(s.z0),
+          wall: {
+            begCoordinate: a,
+            endCoordinate: b,
+            floorIndex: m.storyIndex,
+            zCoordinate: m.offset,
+            height,
+            thickness: round(seg.thickness),
+            referenceLineLocation: 'Center',
+            structureType: 'Basic',
+          },
+        });
+      }
+    }
+
+    // --- slabs: one per floor level, roof slabs, stair openings ------------------------------
+    if (o.slabs)
+      levelSlabs(solids, stairs).forEach((sl, i) => {
+        const pp = placedPolygon(sl.polygon, o);
+        if (pp.outer.length < 3) return;
+        const story = home(sl.z);
+        if (!story) return;
+        items.push({
+          key: `${mass.id}|s${i}|${sl.storeyIndex}|slab`,
+          kind: 'slab',
+          massName: mass.name,
+          storeyLabel: labelOf(sl.storeyIndex),
+          usage: solids.find((x) => x.storeyIndex === sl.storeyIndex)?.usage ?? 'wohnen',
+          area: pp.area,
+          z0: round(sl.z),
+          slab: {
+            floorIndex: story.index,
+            level: round(sl.z),
+            thickness: slabT,
+            structureType: 'Basic',
+            referencePlaneLocation: 'Top',
+            polygonCoordinates: pp.outer,
+            ...(pp.holes.length ? { holes: pp.holes.map((h) => ({ polygonOutline: h })) } : {}),
+            id: `MS-${tag}-${sl.roof ? 'TOIT' : 'PH'}-${labelOf(sl.storeyIndex)}`.replace(
+              /\s+/g,
+              '',
+            ),
+          },
+        });
+      });
+
+    // --- pitched roofs -------------------------------------------------------------------------
+    if (o.roofs && isPitched(mass.roof))
+      massRoofPieces(mass, solids).forEach((piece, i) => {
+        const r = planeRoof(piece);
+        const story = home(piece.z0);
+        if (!r || !story) return;
+        const pp = placedPolygon(r.polygon, o);
+        if (pp.outer.length < 3) return;
+        items.push({
+          key: `${mass.id}|r${i}|top|roof`,
+          kind: 'roof',
+          massName: mass.name,
+          storeyLabel: '',
+          usage: 'wohnen',
+          area: pp.area,
+          z0: round(r.level),
+          roof: {
+            level: round(r.level),
+            floorIndex: story.index,
+            thickness: slabT,
+            structureType: 'Basic',
+            polygonCoordinates: pp.outer,
+            ...(pp.holes.length ? { holes: pp.holes.map((h) => ({ polygonOutline: h })) } : {}),
+            pivotLine: {
+              begCoordinate: placePoint(r.pivot[0], o),
+              endCoordinate: placePoint(r.pivot[1], o),
+            },
+            angle: round(r.angle),
+          },
+        });
+      });
+
+    // --- stairs: native U-shaped stairs, morphs as fallback ----------------------------------
+    if (o.stairs)
+      for (const st of stairs) {
+        const story = home(st.z0);
+        if (!story) continue;
+        const label = labelOf(st.storeyIndex);
+        const id = `MS-${tag}-${label}-ESC${st.coreIndex + 1}`.replace(/\s+/g, '');
+        const fallback = stairBodies(st, o).map(({ body }): MorphData => ({
+          basePoint: { x: 0, y: 0, z: round(st.z0) },
+          floorIndex: story.index,
+          body,
+          id,
+        }));
+        const n = nativeStair(st);
+        const item: PlanItem = {
+          key: `${mass.id}|stair${st.coreIndex}|${st.storeyIndex}|stair`,
+          kind: 'stair',
+          massName: mass.name,
+          storeyLabel: label,
+          usage: 'wohnen',
+          area: 0,
+          z0: round(st.z0),
+          fallback,
+        };
+        if (n)
+          item.stair = {
+            baseLinePoints: n.points.map((p) => placePoint(p, o)),
+            baselinePosition: n.baseline,
+            zCoordinate: round(n.z0),
+            floorIndex: story.index,
+            totalHeight: round(n.height),
+            flightWidth: round(n.flightWidth),
+            stepNum: n.risers,
+            riserHeight: round(n.riser),
+            treadDepth: round(n.going),
+            baseLineEdges: [
+              { segmentType: 'Flight' },
+              { segmentType: 'Landing' },
+              { segmentType: 'Flight' },
+            ],
+            baseLineVertices: [
+              { turnType: 'None' },
+              { turnType: 'Landing' },
+              { turnType: 'Landing' },
+              { turnType: 'None' },
+            ],
+            id,
+          };
+        items.push(item);
+      }
   }
 
   const sortedStoreys = [...storeys.values()].sort((a, b) => a.elevation - b.elevation);
-  if (o.zones) {
+  if (o.zones || o.sdpZones) {
     // Zones of several levels on one Archicad story overlap in plan: Archicad refuses them.
     const byStory = new Map<number, StoreyMatch[]>();
     for (const m of sortedStoreys)
-      byStory.set(m.storyIndex, [...(byStory.get(m.storyIndex) ?? []), m]);
+      if (zoneStoreys.has(`${m.storyIndex}|${m.elevation}`))
+        byStory.set(m.storyIndex, [...(byStory.get(m.storyIndex) ?? []), m]);
     for (const list of byStory.values())
       if (list.length > 1)
         warnings.push({
@@ -459,21 +788,28 @@ export function buildPlan(input: PlanInput): TransferPlan {
           labels: list.map((m) => m.label),
         });
   }
+  const count = (k: ItemKind, f: (i: PlanItem) => boolean = () => true) =>
+    items.filter((i) => i.kind === k && f(i)).length;
   return {
     storeys: sortedStoreys,
     items,
-    usages: USAGES.filter((u) => usages.has(u)),
+    categories: [...categories.values()],
     warnings,
     counts: {
-      zones: items.filter((i) => i.kind === 'zone').length,
-      slabs: items.filter((i) => i.kind === 'slab').length,
-      morphs: items.filter((i) => i.kind === 'morph').length,
-      stairs: new Set(
-        items.filter((i) => i.kind === 'stair').map((i) => i.key.replace(/[fl]\d+\|/, '|')),
-      ).size,
+      zones: count('zone', (i) => i.role !== 'sdp'),
+      sdpZones: count('zone', (i) => i.role === 'sdp'),
+      walls: count('wall'),
+      slabs: count('slab'),
+      roofs: count('roof'),
+      morphs: count('morph'),
+      stairs: count('stair'),
       storeys: sortedStoreys.length,
     },
   };
+}
+
+function resolveCoreWall(project: Project): number {
+  return resolveStairRules(project.settings).wall;
 }
 
 /** Morph stand-in for a zone that Archicad refused (e.g. missing zone stamp). */

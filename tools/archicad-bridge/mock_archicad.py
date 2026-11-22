@@ -45,10 +45,19 @@ class MockArchicad:
             ],
             "ZoneCategory": [{"attributeId": {"guid": _guid()}, "index": 1, "name": "Zone"}],
         }
-        self.zone_default_layer = self.attributes["Layer"][1]["attributeId"]["guid"]
+        hidden = self.attributes["Layer"][1]["attributeId"]["guid"]
+        self.default_layers: dict[str, str] = {"Zone": hidden, "Stair": hidden, "Roof": hidden}
         self.untitled = True
         self.log: list[tuple[str, Any]] = []
         self.lock = threading.Lock()
+
+    @property
+    def zone_default_layer(self) -> str:
+        return self.default_layers["Zone"]
+
+    @zone_default_layer.setter
+    def zone_default_layer(self, guid: str) -> None:
+        self.default_layers["Zone"] = guid
 
     # -- helpers -----------------------------------------------------------
     def add_foreign(self, kind: str) -> str:
@@ -99,14 +108,16 @@ class MockArchicad:
             name_of = {a["attributeId"]["guid"]: a["name"] for a in self.attributes["Layer"]}
             return {
                 "layersOfElementDefaults": [
-                    {"elementType": t, "layerId": {"guid": self.zone_default_layer}, "layerName": name_of.get(self.zone_default_layer, "")}
+                    {"elementType": t, "layerId": {"guid": self.default_layers[t]}, "layerName": name_of.get(self.default_layers[t], "")}
+                    if t in self.default_layers
+                    else {"error": {"code": 1, "message": "unsupported"}}
                     for t in p["elementTypes"]
                 ]
             }
         if name == "SetLayerOfElementDefaults":
             for it in p["layersOfElementDefaults"]:
-                if it["elementType"] == "Zone":
-                    self.zone_default_layer = it["layerId"]["guid"]
+                if it["elementType"] in self.default_layers:
+                    self.default_layers[it["elementType"]] = it["layerId"]["guid"]
             return {"executionResults": [{"success": True} for _ in p["layersOfElementDefaults"]]}
         if name == "SetStories":
             base = p["stories"][0].get("index", self.stories[0]["index"]) if p["stories"] else 0
@@ -141,6 +152,36 @@ class MockArchicad:
                 self._require(s, "level", "polygonCoordinates")
                 self._floor_ok(s.get("floorIndex", 0))
             return self._create("Slab", p["slabsData"], check)
+        if name == "CreateWalls":
+            def check(w: dict[str, Any]) -> None:
+                self._require(w, "begCoordinate", "endCoordinate")
+                self._floor_ok(w.get("floorIndex", 0))
+            return self._create("Wall", p["wallsData"], check)
+        if name == "CreateRoofs":
+            def check(r: dict[str, Any]) -> None:
+                self._require(r, "level", "polygonCoordinates")
+                self._floor_ok(r.get("floorIndex", 0))
+            return self._create("Roof", p["roofsData"], check)
+        if name == "CreateStairs":
+            def check(st: dict[str, Any]) -> None:
+                self._require(st, "baseLinePoints")
+                if len(st["baseLinePoints"]) < 2:
+                    raise ValueError("Failed to create new Stair")
+            return self._create("Stair", p["stairsData"], check)
+        if name == "GetAvailableLibraryParts":
+            if self.refuse_zones:
+                return {"libraryParts": [], "skippedCount": 24}
+            return {
+                "libraryParts": [
+                    {
+                        "guid": "{4AE64969-2731-4802-86B3-08DD03364006}-{AE163506-E14C-46A2-9E09-B08E24712238}",
+                        "index": 1,
+                        "documentName": "Marque de zone 28",
+                        "typeId": "Room",
+                    }
+                ],
+                "skippedCount": 0,
+            }
         if name == "CreateMorphs":
             def check(m: dict[str, Any]) -> None:
                 self._require(m, "basePoint")

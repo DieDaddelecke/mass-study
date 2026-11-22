@@ -27,14 +27,20 @@
   },
   "options": {
     "title": "Éléments à créer",
-    "zones": "Zones (surfaces, nom, numéro)",
-    "morphs": "Volumes (Morphs)",
-    "stairs": "Escaliers (volées et paliers, en Morphs)",
-    "stairsHint": "Les escaliers sont dans les volumes : affichez les zones ou masquez les volumes pour les voir.",
-    "slabs": "Dalles",
+    "zones": "Zones par logement (avec cages d'escalier et circulations)",
+    "morphs": "Volumes (Morphs, étude de masse)",
+    "stairs": "Escaliers Archicad (deux volées, palier)",
+    "stairsHint": "Les escaliers sont dans les volumes : masquez les volumes pour les voir.",
+    "slabs": "Dalles (planchers et toitures-terrasses, trémies d'escalier)",
     "offsetX": "Décalage X",
     "offsetY": "Décalage Y",
-    "rotation": "Rotation"
+    "rotation": "Rotation",
+    "sdpZones": "Zone SDP par étage",
+    "walls": "Murs (façades, cages d'escalier, séparatifs)",
+    "roofs": "Toitures inclinées",
+    "noZoneStamp": "Aucun tampon de zone n'est chargé dans ce projet : Archicad refusera toutes les zones. Chargez la bibliothèque Archicad 28 (Gestionnaire de bibliothèques) puis actualisez.",
+    "facadeWall": "Épaisseur murs de façade",
+    "interiorWall": "Épaisseur murs intérieurs"
   },
   "mode": {
     "replace": "Remplacer les éléments déjà transférés ({{count}})",
@@ -55,7 +61,7 @@
   },
   "preview": {
     "title": "Aperçu",
-    "summary": "{{zones}} zones, {{morphs}} volumes, {{stairs}} escaliers, {{slabs}} dalles sur {{storeys}} niveaux, sur le calque « MS - Massenstudie ».",
+    "summary": "{{zones}} zones de logement, {{sdpZones}} zones SDP, {{walls}} murs, {{slabs}} dalles, {{roofs}} toitures, {{stairs}} escaliers, {{morphs}} volumes sur {{storeys}} niveaux, sur le calque « MS - Massenstudie ».",
     "level": "Niveau",
     "storey": "Étage",
     "archicadStory": "Étage Archicad",
@@ -79,16 +85,24 @@
     "morphs": "Création des volumes…",
     "stairs": "Création des escaliers…",
     "tag": "Marquage des éléments…",
-    "done": "Terminé"
+    "done": "Terminé",
+    "walls": "Création des murs…",
+    "roofs": "Création des toitures…"
   },
   "result": {
-    "created": "Créés : {{zones}} zones, {{morphs}} volumes, {{stairs}} escaliers, {{slabs}} dalles.",
+    "created": "Créés : {{zones}} zones de logement, {{sdpZones}} zones SDP, {{walls}} murs, {{slabs}} dalles, {{roofs}} toitures, {{stairs}} escaliers, {{morphs}} volumes.",
     "deleted": "{{count}} éléments précédents supprimés.",
-    "zoneFallback": "Archicad a refusé toutes les zones (tampon de zone ou bibliothèque manquants). Des volumes ont été créés à la place. Chargez la bibliothèque Archicad du projet puis relancez.",
+    "zoneFallback": "Archicad a refusé toutes les zones (tampon de zone ou bibliothèque manquants). Chargez la bibliothèque Archicad 28 du projet puis relancez.",
     "removed": "{{count}} éléments retirés d'Archicad.",
-    "standIns": "{{count}} zones refusées par Archicad (chevauchement) ont été remplacées par des volumes."
+    "standIns": "{{count}} zones SDP refusées par Archicad ont été remplacées par des volumes.",
+    "stairFallbacks": "{{count}} escaliers refusés par Archicad ont été créés en volumes (volées et paliers)."
   },
   "pill": {
     "ready": "Archicad : connecté – ouvrir le transfert"
+  },
+  "zoneNames": {
+    "core": "Cage d'escalier",
+    "circulation": "Circulations",
+    "sdp": "SDP"
   }
 }
