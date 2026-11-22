@@ -29,7 +29,7 @@ import { useLayers } from './sceneLayers';
 import { startMassDrag } from '../tools/ToolLayer';
 import { Plantings } from './Plantings';
 import { roofGeometry } from './roofGeometry';
-import { StoreyCut } from './StoreyCut';
+import { StoreyCut } from './StoreyCutLayer';
 import { massesCutAt } from './storeyCut';
 
 const EMPTY_ZONES: PlantingZone[] = [];
