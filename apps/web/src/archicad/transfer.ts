@@ -39,7 +39,7 @@ export interface ArchicadSnapshot {
 }
 
 export interface TransferReport {
-  created: { zones: number; slabs: number; morphs: number };
+  created: { zones: number; slabs: number; morphs: number; stairs: number };
   deleted: number;
   /** Zones were refused by Archicad as a whole and replaced by morphs. */
   zoneFallback: boolean;
@@ -248,7 +248,7 @@ export async function executePlan(
   },
 ): Promise<TransferReport> {
   const report: TransferReport = {
-    created: { zones: 0, slabs: 0, morphs: 0 },
+    created: { zones: 0, slabs: 0, morphs: 0, stairs: 0 },
     deleted: 0,
     zoneFallback: false,
     standIns: 0,
@@ -362,6 +362,20 @@ export async function executePlan(
     done += part.length;
   }
 
+  // stairs: flights and landings as morphs
+  const stairs = plan.items.filter((i) => i.kind === 'stair');
+  for (const part of chunks(stairs)) {
+    progress('stairs');
+    const res = await c.call<{ elements: ElementIdOrError[] }>(port, 'CreateMorphs', {
+      morphsData: part.map((i): MorphData => ({
+        ...i.morph!,
+        ...(layerIndex ? { layerIndex } : {}),
+      })),
+    });
+    collect(part, res.elements, 'stair');
+    done += part.length;
+  }
+
   // tags + layer for zones
   progress('tag');
   for (const part of chunks(created, 200)) {
@@ -373,7 +387,10 @@ export async function executePlan(
           elementId: x.ref.elementId,
           userData: [
             { key: KEY_PROJECT, value: ctx.projectId },
-            { key: KEY_ITEM, value: x.item.key.replace(/\|(zone|morph|slab)$/, `|${x.kind}`) },
+            {
+              key: KEY_ITEM,
+              value: x.item.key.replace(/\|(zone|morph|slab|stair)$/, `|${x.kind}`),
+            },
             { key: KEY_REV, value: rev },
           ],
         })),
@@ -400,7 +417,12 @@ export async function executePlan(
         })
         .catch((e: unknown) => report.errors.push({ message: `layer: ${String(e)}` }));
 
-  for (const x of created) report.created[`${x.kind}s` as 'zones' | 'slabs' | 'morphs']++;
+  for (const x of created)
+    if (x.kind !== 'stair') report.created[`${x.kind}s` as 'zones' | 'slabs' | 'morphs']++;
+  // a stair counts once (its flights and landing are separate morphs)
+  report.created.stairs = new Set(
+    created.filter((x) => x.kind === 'stair').map((x) => x.item.key.replace(/[fl]\d+\|/, '|')),
+  ).size;
   done = total;
   progress('done');
   return report;

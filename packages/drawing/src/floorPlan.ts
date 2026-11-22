@@ -1,5 +1,7 @@
 import {
+  coreStair,
   difference,
+  resolveStairRules,
   intersection,
   pointInPolygon,
   polygonArea,
@@ -13,6 +15,7 @@ import {
   type MassLayout,
   type Polygon,
   type Project,
+  type StairRules,
   type StoreyLayout,
   type StoreySolid,
   type UnitType,
@@ -162,47 +165,86 @@ export function unitLabelPoint(p: Polygon, rooms: readonly LayoutRoom[]): Vec2 {
 
 const fmtArea = (a: number) => `${Math.round(a)} m²`;
 
-/** Stair (two flights) and lift hint inside a rectangular core. */
-function coreSymbol(core: LayoutArea): DItem[] {
-  const r = core.polygon.outer;
-  if (r.length !== 4) return [];
-  const [p0, p1, , p3] = r as [Vec2, Vec2, Vec2, Vec2];
-  let e1: Vec2 = [p1[0] - p0[0], p1[1] - p0[1]];
-  let e2: Vec2 = [p3[0] - p0[0], p3[1] - p0[1]];
-  if (Math.hypot(...e2) > Math.hypot(...e1)) [e1, e2] = [e2, e1];
-  const l1 = Math.hypot(...e1);
-  const l2 = Math.hypot(...e2);
-  if (l1 < 2 || l2 < 2) return [];
-  const at = (s: number, t: number): Vec2 => [
-    p0[0] + e1[0] * s + e2[0] * t,
-    p0[1] + e1[1] * s + e2[1] * t,
-  ];
-  const out: DItem[] = [];
+/**
+ * Stair and lift of a core, as modelled in 3D and transferred to Archicad (`coreStair`): treads,
+ * flight outlines, the intermediate landing, the walking line with its arrow and the lift
+ * shaft with a cross. Falls back to nothing when the core has no oriented box.
+ */
+function coreSymbol(core: LayoutArea, st: StoreyLayout, rules: StairRules): DItem[] {
+  const s = coreStair(
+    core,
+    st.z0,
+    st.z1 > st.z0 + 0.5 ? st.z1 : st.z0 + 3,
+    rules,
+    st.circulation.map((c) => c.polygon),
+  );
+  if (!s) return [];
   const c = FLOOR_PLAN_COLORS.coreLine;
-  // stair: 64 % of the long side, two flights with a centre line
-  const s0 = 0.08;
-  const s1 = 0.64;
-  const steps = Math.max(4, Math.round(((s1 - s0) * l1) / 0.55));
-  for (let i = 0; i <= steps; i++) {
-    const s = s0 + ((s1 - s0) * i) / steps;
-    out.push(line([at(s, 0.1), at(s, 0.9)], 1, 'solid', c));
+  const out: DItem[] = [];
+  for (const f of s.flights) {
+    for (const r of rings(f.polygon)) out.push(line(r, 1, 'solid', c, true));
+    for (const t of f.treads.slice(0, -1)) {
+      // riser line at the far end of each tread (in the rising direction)
+      const [a, b] = treadEdge(t.polygon, f.dir);
+      out.push(line([a, b], 1, 'solid', c));
+    }
   }
-  out.push(line([at(s0, 0.5), at(s1, 0.5)], 1, 'solid', c));
-  // arrow up the first flight
-  out.push(line([at(s0 + 0.02, 0.3), at(s1 - 0.04, 0.3)], 1, 'solid', c));
-  // lift: square with a cross
-  const ls = Math.min(2.2 / l1, 0.28);
-  const lt = Math.min(2.2 / l2, 0.45);
-  const lift: Vec2[] = [
-    at(0.68, 0.1),
-    at(0.68 + ls, 0.1),
-    at(0.68 + ls, 0.1 + lt),
-    at(0.68, 0.1 + lt),
-  ];
-  out.push(line(lift, 1, 'solid', c, true));
-  out.push(line([lift[0]!, lift[2]!], 1, 'solid', c));
-  out.push(line([lift[1]!, lift[3]!], 1, 'solid', c));
+  for (const l of s.landings)
+    for (const r of rings(l.polygon)) out.push(line(r, 1, 'solid', c, true));
+  // walking line: up flight 1, across the landing, up flight 2, arrow at the top
+  const [f1, f2] = s.flights;
+  if (f1 && f2) {
+    const mid = (f: typeof f1, k: number): Vec2 => [
+      f.origin[0] + f.side[0] * (f.width / 2) + f.dir[0] * k,
+      f.origin[1] + f.side[1] * (f.width / 2) + f.dir[1] * k,
+    ];
+    const len = (f: typeof f1) => (f.risers - 1) * f.going;
+    const a0 = mid(f1, 0.15);
+    const a1 = mid(f1, len(f1) + f1.width / 2);
+    const b0 = mid(f2, -f2.width / 2);
+    const b1 = mid(f2, len(f2) - 0.1);
+    out.push(line([a0, a1, b0, b1], 1, 'solid', c));
+    const h = 0.25;
+    const back: Vec2 = [b1[0] - f2.dir[0] * h, b1[1] - f2.dir[1] * h];
+    out.push(
+      line(
+        [
+          [back[0] + f2.side[0] * h * 0.6, back[1] + f2.side[1] * h * 0.6],
+          b1,
+          [back[0] - f2.side[0] * h * 0.6, back[1] - f2.side[1] * h * 0.6],
+        ],
+        1,
+        'solid',
+        c,
+      ),
+    );
+  }
+  if (s.lift) {
+    const r = s.lift.outer;
+    out.push(line(r, 1, 'solid', c, true));
+    if (r.length === 4) {
+      out.push(line([r[0]!, r[2]!], 1, 'solid', c));
+      out.push(line([r[1]!, r[3]!], 1, 'solid', c));
+    }
+  }
   return out;
+}
+
+/** Edge of a tread rectangle that lies furthest along `dir`. */
+function treadEdge(p: Polygon, dir: Vec2): [Vec2, Vec2] {
+  const r = p.outer;
+  let best: [Vec2, Vec2] = [r[0]!, r[1]!];
+  let bestK = -Infinity;
+  for (let i = 0; i < r.length; i++) {
+    const a = r[i]!;
+    const b = r[(i + 1) % r.length]!;
+    const k = ((a[0] + b[0]) / 2) * dir[0] + ((a[1] + b[1]) / 2) * dir[1];
+    if (k > bestK + 1e-9) {
+      bestK = k;
+      best = [a, b];
+    }
+  }
+  return best;
 }
 
 /**
@@ -218,6 +260,7 @@ export function floorPlan(
   opts: FloorPlanOptions = {},
 ): DrawingModel {
   const mix = opts.unitMix ?? project.settings.unitMix;
+  const stairRules = resolveStairRules(project.settings);
   const storeys: StoreyLayout[] = layouts.flatMap((m) =>
     m.storeys.filter((s) => s.storeyIndex === storeyIndex),
   );
@@ -332,7 +375,7 @@ export function floorPlan(
       }
     for (const k of st.cores) {
       items.push(fill(k.polygon, FLOOR_PLAN_COLORS.core));
-      items.push(...coreSymbol(k));
+      items.push(...coreSymbol(k, st, stairRules));
     }
     // walls between units / around cores and circulation (thin)
     for (const u of st.units)

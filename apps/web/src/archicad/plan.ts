@@ -1,5 +1,8 @@
 import {
+  layoutStairs,
+  massLayout,
   normalizePolygon,
+  type CoreStair,
   type Mass,
   type Polygon,
   type Project,
@@ -60,12 +63,15 @@ export interface PlanOptions extends PlacementOptions {
   zones: boolean;
   slabs: boolean;
   morphs: boolean;
+  /** Stairs of the cores (flights and landings) as morphs. */
+  stairs: boolean;
 }
 
 export const DEFAULT_OPTIONS: PlanOptions = {
   zones: true,
   slabs: false,
   morphs: true,
+  stairs: true,
   offsetX: 0,
   offsetY: 0,
   rotationDeg: 0,
@@ -82,7 +88,7 @@ export interface StoreyMatch {
   exact: boolean;
 }
 
-export type ItemKind = 'zone' | 'slab' | 'morph';
+export type ItemKind = 'zone' | 'slab' | 'morph' | 'stair';
 
 export interface PlanItem {
   /** Stable key, stored as user data: `${massId}|${segment}|${storeyIndex}|${kind}` */
@@ -113,7 +119,7 @@ export interface TransferPlan {
   items: PlanItem[];
   usages: Usage[];
   warnings: PlanWarning[];
-  counts: { zones: number; slabs: number; morphs: number; storeys: number };
+  counts: { zones: number; slabs: number; morphs: number; stairs: number; storeys: number };
 }
 
 export interface PlanInput {
@@ -208,6 +214,72 @@ export function extrudeBody(
   return { bodyType: 'Solid', vertices, polygons };
 }
 
+/**
+ * Closed prism for CreateMorphs from a planar ring (any plane) swept by the vector `e`.
+ * The ring is reoriented so that its normal points along `e`; faces are then counter-clockwise
+ * seen from outside, as in `extrudeBody`.
+ */
+export function prismBody(ring: readonly Coordinate3D[], e: Coordinate3D): MorphBody {
+  // Newell normal of the ring
+  let nx = 0;
+  let ny = 0;
+  let nz = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i]!;
+    const b = ring[(i + 1) % ring.length]!;
+    nx += (a.y - b.y) * (a.z + b.z);
+    ny += (a.z - b.z) * (a.x + b.x);
+    nz += (a.x - b.x) * (a.y + b.y);
+  }
+  const r = nx * e.x + ny * e.y + nz * e.z < 0 ? [...ring].reverse() : [...ring];
+  const vertices: Coordinate3D[] = [];
+  const b = r.map((p) => vertices.push({ x: round(p.x), y: round(p.y), z: round(p.z) }) - 1);
+  const t = r.map(
+    (p) => vertices.push({ x: round(p.x + e.x), y: round(p.y + e.y), z: round(p.z + e.z) }) - 1,
+  );
+  const polygons: MorphBody['polygons'] = [{ vertexIds: t }, { vertexIds: [...b].reverse() }];
+  for (let i = 0; i < b.length; i++) {
+    const j = (i + 1) % b.length;
+    polygons.push({ vertexIds: [b[i]!, b[j]!, t[j]!, t[i]!] });
+  }
+  return { bodyType: 'Solid', vertices, polygons };
+}
+
+/** Rotates a plan vector by the placement rotation (no offset). */
+function placeVector(v: Vec2, o: PlacementOptions): Coordinate2D {
+  const a = (o.rotationDeg * Math.PI) / 180;
+  return { x: v[0] * Math.cos(a) - v[1] * Math.sin(a), y: v[0] * Math.sin(a) + v[1] * Math.cos(a) };
+}
+
+/**
+ * Morph bodies of a core stair (one per flight and per landing), local to a base point at
+ * (0, 0, stair.z0), in placed coordinates.
+ */
+export function stairBodies(
+  stair: CoreStair,
+  o: PlacementOptions,
+): { part: string; body: MorphBody }[] {
+  const out: { part: string; body: MorphBody }[] = [];
+  stair.flights.forEach((f, i) => {
+    if (f.profile.length < 3) return;
+    const ring = f.profile.map(([sx, z]) => {
+      const p = placePoint([f.origin[0] + f.dir[0] * sx, f.origin[1] + f.dir[1] * sx], o);
+      return { x: p.x, y: p.y, z: f.z0 - stair.z0 + z };
+    });
+    const side = placeVector([f.side[0] * f.width, f.side[1] * f.width], o);
+    out.push({ part: `f${i + 1}`, body: prismBody(ring, { ...side, z: 0 }) });
+  });
+  stair.landings.forEach((l, i) => {
+    const poly = normalizePolygon(l.polygon);
+    const outer = poly.outer.map((p) => placePoint(p, o));
+    const body = extrudeBody(outer, [], l.thickness);
+    const dz = l.z - l.thickness - stair.z0;
+    for (const v of body.vertices) v.z = round(v.z + dz);
+    out.push({ part: `l${i + 1}`, body });
+  });
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Story matching
 // ---------------------------------------------------------------------------
@@ -256,6 +328,31 @@ export function buildPlan(input: PlanInput): TransferPlan {
 
   for (const mass of input.masses) {
     const solids = massToSolids(mass, input.project.settings);
+    if (o.stairs) {
+      const layout = massLayout(mass, solids, input.project.settings);
+      for (const list of layoutStairs([layout], input.project.settings).values())
+        for (const st of list) {
+          const match = matchStory(st.z0, input.stories) ?? (lowest && { story: lowest });
+          if (!match) continue;
+          const label = solids.find((x) => x.storeyIndex === st.storeyIndex)?.label ?? '';
+          for (const { part, body } of stairBodies(st, o))
+            items.push({
+              key: `${mass.id}|stair${st.coreIndex}${part}|${st.storeyIndex}|stair`,
+              kind: 'stair',
+              massName: mass.name,
+              storeyLabel: label,
+              usage: 'wohnen',
+              area: 0,
+              z0: round(st.z0),
+              morph: {
+                basePoint: { x: 0, y: 0, z: round(st.z0) },
+                floorIndex: match.story.index,
+                body,
+                id: `MS-${mass.name}-${label}-ESC${st.coreIndex + 1}`.replace(/\s+/g, ''),
+              },
+            });
+        }
+    }
     for (const s of solids) {
       const height = round(s.z1 - s.z0);
       if (height <= 0) continue;
@@ -371,6 +468,9 @@ export function buildPlan(input: PlanInput): TransferPlan {
       zones: items.filter((i) => i.kind === 'zone').length,
       slabs: items.filter((i) => i.kind === 'slab').length,
       morphs: items.filter((i) => i.kind === 'morph').length,
+      stairs: new Set(
+        items.filter((i) => i.kind === 'stair').map((i) => i.key.replace(/[fl]\d+\|/, '|')),
+      ).size,
       storeys: sortedStoreys.length,
     },
   };

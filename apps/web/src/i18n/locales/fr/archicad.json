@@ -29,6 +29,8 @@
     "title": "Éléments à créer",
     "zones": "Zones (surfaces, nom, numéro)",
     "morphs": "Volumes (Morphs)",
+    "stairs": "Escaliers (volées et paliers, en Morphs)",
+    "stairsHint": "Les escaliers sont dans les volumes : affichez les zones ou masquez les volumes pour les voir.",
     "slabs": "Dalles",
     "offsetX": "Décalage X",
     "offsetY": "Décalage Y",
@@ -53,7 +55,7 @@
   },
   "preview": {
     "title": "Aperçu",
-    "summary": "{{zones}} zones, {{morphs}} volumes, {{slabs}} dalles sur {{storeys}} niveaux, sur le calque « MS - Massenstudie ».",
+    "summary": "{{zones}} zones, {{morphs}} volumes, {{stairs}} escaliers, {{slabs}} dalles sur {{storeys}} niveaux, sur le calque « MS - Massenstudie ».",
     "level": "Niveau",
     "storey": "Étage",
     "archicadStory": "Étage Archicad",
@@ -75,11 +77,12 @@
     "zones": "Création des zones…",
     "slabs": "Création des dalles…",
     "morphs": "Création des volumes…",
+    "stairs": "Création des escaliers…",
     "tag": "Marquage des éléments…",
     "done": "Terminé"
   },
   "result": {
-    "created": "Créés : {{zones}} zones, {{morphs}} volumes, {{slabs}} dalles.",
+    "created": "Créés : {{zones}} zones, {{morphs}} volumes, {{stairs}} escaliers, {{slabs}} dalles.",
     "deleted": "{{count}} éléments précédents supprimés.",
     "zoneFallback": "Archicad a refusé toutes les zones (tampon de zone ou bibliothèque manquants). Des volumes ont été créés à la place. Chargez la bibliothèque Archicad du projet puis relancez.",
     "removed": "{{count}} éléments retirés d'Archicad.",

@@ -1,6 +1,6 @@
 import { Html } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
-import type { MassLayout, Polygon, StoreySolid, UnitType } from '@kubatur/core';
+import type { MassLayout, Polygon, StairRules, StoreySolid, UnitType } from '@kubatur/core';
 import { useEffect, useMemo } from 'react';
 import type { VisualStyle } from '../../store/tools';
 import { buildStoreyCut } from './storeyCut';
@@ -20,6 +20,7 @@ export function StoreyCut({
   mix,
   wallColor,
   loggias,
+  stairRules,
   style,
   shadows,
   pick,
@@ -30,6 +31,7 @@ export function StoreyCut({
   mix: readonly UnitType[];
   wallColor: string;
   loggias: ReadonlyMap<string, Polygon[]> | undefined;
+  stairRules?: StairRules;
   style: VisualStyle;
   shadows: boolean;
   pick: (id: string) => PickHandlers;
@@ -43,8 +45,9 @@ export function StoreyCut({
         mix,
         wallColor,
         loggias,
+        stairRules,
       ),
-    [solids, layouts, level, mix, wallColor, loggias],
+    [solids, layouts, level, mix, wallColor, loggias, stairRules],
   );
   useEffect(() => () => scene.masses.forEach((m) => m.geometry.dispose()), [scene]);
   return (

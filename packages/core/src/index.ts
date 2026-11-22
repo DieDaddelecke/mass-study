@@ -18,3 +18,4 @@ export * from './rooms.js';
 export * from './outdoor.js';
 export * from './roof.js';
 export * from './green.js';
+export * from './stairs.js';

@@ -8,6 +8,7 @@ import {
   extrudeBody,
   matchStory,
   placePoint,
+  prismBody,
   proposeStories,
   type PlanOptions,
 } from './plan';
@@ -128,8 +129,60 @@ describe('buildPlan', () => {
   });
 
   it('slabs carry absolute levels', () => {
-    const pl = plan({ slabs: true, zones: false, morphs: false });
+    const pl = plan({ slabs: true, zones: false, morphs: false, stairs: false });
     expect(pl.items.every((i) => i.kind === 'slab' && i.slab!.level === i.z0)).toBe(true);
+  });
+});
+
+describe('stairs', () => {
+  const closed = (b: ReturnType<typeof prismBody>) => {
+    const edges = new Map<string, number>();
+    for (const f of b.polygons)
+      f.vertexIds.forEach((v, i) => {
+        const w = f.vertexIds[(i + 1) % f.vertexIds.length]!;
+        const k = `${v}>${w}`;
+        edges.set(k, (edges.get(k) ?? 0) + 1);
+      });
+    // closed and consistently oriented: every directed edge once, its reverse once
+    return [...edges.keys()].every((k) => {
+      const [a, c] = k.split('>');
+      return edges.get(k) === 1 && edges.get(`${c}>${a}`) === 1;
+    });
+  };
+
+  it('prismBody: closed, outward faces for any ring orientation', () => {
+    const ring = [
+      { x: 0, y: 0, z: 0 },
+      { x: 2, y: 0, z: 0 },
+      { x: 2, y: 0, z: 1 },
+      { x: 0, y: 0, z: 1 },
+    ];
+    for (const r of [ring, [...ring].reverse()]) {
+      const b = prismBody(r, { x: 0, y: 1.2, z: 0 });
+      expect(closed(b)).toBe(true);
+      // "top" face (ring + e) has its normal along +y
+      const [p, q, s] = b.polygons[0]!.vertexIds.map((i) => b.vertices[i]!);
+      const ny = (q!.z - p!.z) * (s!.x - p!.x) - (q!.x - p!.x) * (s!.z - p!.z);
+      expect(ny).toBeGreaterThan(0);
+    }
+  });
+
+  it('plans one stair per core and storey (flights + landing as morphs on the right story)', () => {
+    const pl = plan();
+    const st = pl.items.filter((i) => i.kind === 'stair');
+    expect(pl.counts.stairs).toBeGreaterThan(0);
+    // two flights and one landing per stair
+    expect(st).toHaveLength(pl.counts.stairs * 3);
+    for (const i of st) {
+      expect(closed(i.morph!.body)).toBe(true);
+      expect(i.morph!.basePoint.z).toBe(i.z0);
+      const story = stories.find((s) => s.index === i.morph!.floorIndex)!;
+      expect(story.level).toBeLessThanOrEqual(i.z0 + 0.05);
+      const zs = i.morph!.body.vertices.map((v) => v.z);
+      expect(Math.min(...zs)).toBeGreaterThanOrEqual(-0.3);
+      expect(Math.max(...zs)).toBeLessThanOrEqual(4);
+    }
+    expect(plan({ stairs: false }).counts.stairs).toBe(0);
   });
 });
 
@@ -159,21 +212,24 @@ describe('executePlan', () => {
     // … and the default is restored afterwards
     expect(ac.zoneDefaultLayer).toBe('L-Z');
 
+    const stairParts = pl.items.filter((i) => i.kind === 'stair').length;
+    expect(r1.created.stairs).toBe(pl.counts.stairs);
+    const own = pl.counts.zones + pl.counts.morphs + stairParts;
     const snap = await readSnapshot(ac, 19723, 'p1');
-    expect(snap.ownElements).toBe(pl.counts.zones + pl.counts.morphs);
+    expect(snap.ownElements).toBe(own);
 
     const r2 = await executePlan(ac, 19723, pl, {
       projectId: 'p1',
       mode: 'replace',
       usageLabel: label,
     });
-    expect(r2.deleted).toBe(pl.counts.zones + pl.counts.morphs);
+    expect(r2.deleted).toBe(own);
     expect(ac.count('Zone')).toBe(pl.counts.zones + 1);
     expect(ac.elements.has(foreign)).toBe(true);
     // categories are not duplicated on a second run
     expect(ac.attributes.ZoneCategory!.filter((c) => c.name === 'MS - Logement')).toHaveLength(1);
 
-    expect(await removeOwnElements(ac, 19723, 'p1')).toBe(pl.counts.zones + pl.counts.morphs);
+    expect(await removeOwnElements(ac, 19723, 'p1')).toBe(own);
     expect(ac.elements.size).toBe(1);
   });
 

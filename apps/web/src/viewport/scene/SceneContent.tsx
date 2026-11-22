@@ -3,6 +3,7 @@ import {
   effectiveParapet,
   intersection,
   polygonArea,
+  resolveStairRules,
   type PlantingZone,
   type RoofPiece,
   type ContextBuilding,
@@ -400,6 +401,7 @@ function Masses(props: Props & { pal: ScenePalette; edgeWidth: number }) {
   );
   useEffect(() => () => granulo?.masses.forEach((m) => m.geometry.dispose()), [granulo]);
   const outdoor = useMemo(() => (layouts ? buildOutdoor(layouts) : null), [layouts]);
+  const stairRules = useMemo(() => resolveStairRules(project.settings), [project.settings]);
   useEffect(
     () => () => {
       outdoor?.slabs?.dispose();
@@ -493,6 +495,7 @@ function Masses(props: Props & { pal: ScenePalette; edgeWidth: number }) {
           mix={project.settings.unitMix}
           wallColor={pal.mass}
           loggias={outdoor?.loggias}
+          stairRules={stairRules}
           style={style}
           shadows={shadows}
           pick={pick}
