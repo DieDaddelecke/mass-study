@@ -365,7 +365,10 @@ export async function executePlan(
     field: string,
     items: PlanItem[],
     data: (i: PlanItem) => T,
-    count: keyof TransferReport['created'] | undefined,
+    count:
+      | keyof TransferReport['created']
+      | ((i: PlanItem) => keyof TransferReport['created'])
+      | undefined,
     onRefused?: (i: PlanItem, message: string) => void,
   ) => {
     for (const part of chunks(items)) {
@@ -378,7 +381,10 @@ export async function executePlan(
         if (isError(r)) {
           if (onRefused) onRefused(item, r.error.message);
           else report.errors.push({ item: label(item), message: r.error.message });
-        } else created.push({ ref: r, item, key: item.key, ...(count ? { count } : {}) });
+        } else {
+          const k = typeof count === 'function' ? count(item) : count;
+          created.push({ ref: r, item, key: item.key, ...(k ? { count: k } : {}) });
+        }
       });
       done += part.length;
     }
@@ -446,7 +452,8 @@ export async function executePlan(
       report.created.stairs += stairsMade.size;
     }
 
-    // zones: dwellings, cores, circulation first; the SDP zones overlap them afterwards
+    // zones: dwellings, cores, circulation first; the SDP zones (and zones with holes, whose
+    // overlap check Tapir gets wrong) skip the overlap check and come afterwards
     const zoneData = (i: PlanItem) => {
       // a dwelling takes the project's category of its type (e.g. "T3") when there is one
       const own =
@@ -454,6 +461,8 @@ export async function executePlan(
       const cat = own ?? (i.category && categories.get(i.category.name));
       return { ...i.zone!, ...(cat ? { categoryAttributeId: cat } : {}) };
     };
+    const zoneCount = (i: PlanItem): 'zones' | 'sdpZones' =>
+      i.role === 'sdp' ? 'sdpZones' : 'zones';
     const onZoneRefused = (i: PlanItem, message: string) => {
       refusedZones.push(i);
       if (!ZONE_REFUSED.test(message)) report.errors.push({ item: label(i), message });
@@ -462,18 +471,18 @@ export async function executePlan(
       'zones',
       'CreateZones',
       'zonesData',
-      zones.filter((i) => i.role !== 'sdp'),
+      zones.filter((i) => !i.zone!.allowOverlap),
       zoneData,
-      'zones',
+      zoneCount,
       onZoneRefused,
     );
     await run(
       'zones',
       'CreateZones',
       'zonesData',
-      zones.filter((i) => i.role === 'sdp'),
+      zones.filter((i) => i.zone!.allowOverlap),
       zoneData,
-      'sdpZones',
+      zoneCount,
       onZoneRefused,
     );
   } finally {
