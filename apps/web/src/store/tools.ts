@@ -33,9 +33,13 @@ export type ToolKind = ToolState['kind'];
 export type VisualStyle =
   'wireframe' | 'hiddenLine' | 'shaded' | 'consistentColors' | 'granulometry' | 'realistic';
 
-/** Views. Only `3d` is implemented in phase 3; 2D views arrive with the drawing engine (P6). */
+/**
+ * Views. `3d` and `plan` are the editable working views (same scene and tools; `plan` looks
+ * straight down in parallel projection with a storey selector); the others are dossier previews.
+ */
 export type ViewId =
   | '3d'
+  | 'plan'
   | 'axoSW'
   | 'axoNE'
   | 'site'

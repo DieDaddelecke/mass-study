@@ -66,6 +66,7 @@ import {
   saveAs,
   undo,
   zoomExtents,
+  togglePlan,
 } from './commands';
 import { useShellStore } from './shellStore';
 import { exportActiveCsv, exportAllXlsx, openSchedule } from '../tables/tablesStore';
@@ -312,6 +313,14 @@ export function getCommands(): Command[] {
       label: i18n.t('viewport:cube.home'),
       icon: House,
       run: () => useViewportStore.getState().requestHome(),
+    }),
+    proj({
+      id: 'view.plan',
+      group: 'view',
+      label: i18n.t('viewport:plan.toggle'),
+      icon: SquareDashed,
+      shortcut: 'PL',
+      run: togglePlan,
     }),
     proj({
       id: 'view.projection',

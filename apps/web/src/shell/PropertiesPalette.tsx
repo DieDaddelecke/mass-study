@@ -476,6 +476,8 @@ function ViewProperties() {
   const setStyle = useUiStore((s) => s.setVisualStyle);
   const projection = useUiStore((s) => s.projection);
   const setProjection = useUiStore((s) => s.setProjection);
+  // the plan view is always parallel, seen from above
+  const plan = useUiStore((s) => s.activeView === 'plan');
   const look = useViewportStore((s) => s.look);
   const setLook = useViewportStore((s) => s.setLook);
   const setDialog = useShellStore((s) => s.setDialog);
@@ -544,17 +546,19 @@ function ViewProperties() {
             ))}
           </select>
         </Row>
-        <Row label={t('view.projection')}>
-          <Segmented
-            ariaLabel={t('view.projection')}
-            value={projection}
-            onChange={setProjection}
-            options={[
-              { value: 'perspective', label: t('viewport:bar.persp') },
-              { value: 'orthographic', label: t('viewport:bar.ortho') },
-            ]}
-          />
-        </Row>
+        {!plan && (
+          <Row label={t('view.projection')}>
+            <Segmented
+              ariaLabel={t('view.projection')}
+              value={projection}
+              onChange={setProjection}
+              options={[
+                { value: 'perspective', label: t('viewport:bar.persp') },
+                { value: 'orthographic', label: t('viewport:bar.ortho') },
+              ]}
+            />
+          </Row>
+        )}
       </Group>
       <Group title={t('props.group.project')}>
         <Row label={t('info.crs')}>

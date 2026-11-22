@@ -8,6 +8,7 @@ import {
   Magnet,
   Maximize,
   Palette,
+  SquareDashed,
   Sun,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -29,15 +30,44 @@ const STYLES: VisualStyle[] = [
   'realistic',
 ];
 
-/** Floating view controls (bottom-left): visual style, sun, projection, zoom, home. */
-export function ViewControlBar() {
+/** 3D ↔ plan switch: both are editable working views of the same scene. */
+function ModeSwitch({ plan }: { plan: boolean }) {
+  const { t } = useTranslation('viewport');
+  const openView = useUiStore((s) => s.openView);
+  return (
+    <div className="vp-mode" role="radiogroup" aria-label={t('plan.mode')}>
+      {(
+        [
+          ['3d', Box, t('plan.to3d'), !plan],
+          ['plan', SquareDashed, t('plan.toPlan'), plan],
+        ] as const
+      ).map(([id, Icon, label, on]) => (
+        <button
+          key={id}
+          type="button"
+          role="radio"
+          aria-checked={on}
+          className={`vp-mode-btn${on ? ' is-on' : ''}`}
+          title={label}
+          onClick={() => openView(id)}
+        >
+          <Icon size={14} strokeWidth={1.75} />
+          <span>{id === '3d' ? '3D' : t('plan.short')}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Floating view controls (bottom-left): 3D/plan, visual style, sun, projection, zoom, home. */
+export function ViewControlBar({ plan = false }: { plan?: boolean }) {
   const { t } = useTranslation('viewport');
   const style = useUiStore((s) => s.visualStyle);
   const setStyle = useUiStore((s) => s.setVisualStyle);
   const projection = useUiStore((s) => s.projection);
   const setProjection = useUiStore((s) => s.setProjection);
-  const sun = useViewportStore((s) => s.sunEnabled);
-  const setSun = useViewportStore((s) => s.setSunEnabled);
+  const sun = useViewportStore((s) => (plan ? s.planSun : s.sunEnabled));
+  const setSun = useViewportStore((s) => (plan ? s.setPlanSun : s.setSunEnabled));
   const zoomExtents = useViewportStore((s) => s.requestZoomExtents);
   const home = useViewportStore((s) => s.requestHome);
   const sunActive = LIT_STYLES.has(style) && sun;
@@ -66,6 +96,8 @@ export function ViewControlBar() {
   };
   return (
     <div className="glass vp-bar" role="toolbar" aria-label={t('bar.label')}>
+      <ModeSwitch plan={plan} />
+      <span className="vp-bar-sep" />
       <Menu.Root>
         <Menu.Trigger
           className="vp-style"
@@ -104,16 +136,18 @@ export function ViewControlBar() {
       >
         <Sun size={16} strokeWidth={1.75} />
       </button>
-      <button
-        type="button"
-        className="vp-bar-btn vp-proj"
-        title={persp ? t('bar.toOrtho') : t('bar.toPersp')}
-        aria-label={persp ? t('bar.toOrtho') : t('bar.toPersp')}
-        onClick={() => setProjection(persp ? 'orthographic' : 'perspective')}
-      >
-        <Box size={16} strokeWidth={1.75} />
-        <span>{persp ? t('bar.persp') : t('bar.ortho')}</span>
-      </button>
+      {!plan && (
+        <button
+          type="button"
+          className="vp-bar-btn vp-proj"
+          title={persp ? t('bar.toOrtho') : t('bar.toPersp')}
+          aria-label={persp ? t('bar.toOrtho') : t('bar.toPersp')}
+          onClick={() => setProjection(persp ? 'orthographic' : 'perspective')}
+        >
+          <Box size={16} strokeWidth={1.75} />
+          <span>{persp ? t('bar.persp') : t('bar.ortho')}</span>
+        </button>
+      )}
       <button
         type="button"
         className={`vp-bar-btn${magnet ? ' is-on' : ''}`}
@@ -124,17 +158,19 @@ export function ViewControlBar() {
       >
         <Magnet size={16} strokeWidth={1.75} />
       </button>
-      <button
-        type="button"
-        className={`vp-bar-btn${cutLevel !== null ? ' is-on' : ''}`}
-        title={t('bar.cut')}
-        aria-label={t('bar.cut')}
-        aria-pressed={cutLevel !== null}
-        disabled={!analysis?.result.solids.length}
-        onClick={toggleCut}
-      >
-        <Layers size={16} strokeWidth={1.75} />
-      </button>
+      {!plan && (
+        <button
+          type="button"
+          className={`vp-bar-btn${cutLevel !== null ? ' is-on' : ''}`}
+          title={t('bar.cut')}
+          aria-label={t('bar.cut')}
+          aria-pressed={cutLevel !== null}
+          disabled={!analysis?.result.solids.length}
+          onClick={toggleCut}
+        >
+          <Layers size={16} strokeWidth={1.75} />
+        </button>
+      )}
       <span className="vp-bar-sep" />
       <button
         type="button"

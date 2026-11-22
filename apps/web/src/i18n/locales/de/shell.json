@@ -212,10 +212,13 @@
     "building": "Gebäude {{n}}",
     "hide": "Ausblenden",
     "show": "Einblenden",
-    "doubleClick": "Doppelklick zum Öffnen"
+    "doubleClick": "Doppelklick zum Öffnen",
+    "workViews": "Arbeitsansichten",
+    "previews": "Vorschau Dossier"
   },
   "views": {
     "3d": "3D",
+    "plan": "Plan (2D)",
     "axo": "Axonometrie",
     "axoSW": "Axonometrie SW",
     "axoNE": "Axonometrie NO",

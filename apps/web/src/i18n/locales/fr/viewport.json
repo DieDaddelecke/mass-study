@@ -48,6 +48,16 @@
   },
   "cut": {
     "title": "Coupe",
-    "off": "Afficher tout le volume"
+    "off": "Afficher tout le volume",
+    "roof": "Toiture",
+    "planTitle": "Niveau"
+  },
+  "plan": {
+    "mode": "Mode de vue",
+    "to3d": "Vue 3D (éditable)",
+    "toPlan": "Vue en plan 2D (éditable)",
+    "short": "Plan",
+    "overlay": "Nord et échelle",
+    "toggle": "Basculer 3D / plan 2D"
   }
 }
