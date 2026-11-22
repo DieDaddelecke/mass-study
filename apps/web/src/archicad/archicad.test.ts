@@ -11,6 +11,7 @@ import {
   type Vec2,
 } from '@kubatur/core';
 import { describe, expect, it } from 'vitest';
+import { palaiseauDemo } from '../demo/palaiseau';
 import { BridgeClient } from './bridgeClient';
 import { nativeStair } from './native';
 import { FakeArchicad } from './fakeArchicad';
@@ -127,6 +128,22 @@ describe('buildPlan', () => {
     );
     // keys are unique (they identify the elements in Archicad)
     expect(new Set(pl.items.map((i) => i.key)).size).toBe(pl.items.length);
+  });
+
+  it('zones with holes (open floor around the cores) skip the overlap check', () => {
+    const project = palaiseauDemo(true);
+    const pl = buildPlan({
+      project,
+      masses: project.variants[0]!.masses,
+      stories,
+      options: DEFAULT_OPTIONS,
+      usageLabel: label,
+    });
+    const holed = pl.items.filter((i) => i.zone?.geometry.holes?.length);
+    expect(holed.length).toBeGreaterThan(0);
+    for (const i of holed) expect(i.zone!.allowOverlap).toBe(true);
+    const plain = pl.items.filter((i) => i.role === 'core');
+    for (const i of plain) expect(i.zone!.allowOverlap).toBe(false);
   });
 
   it('never invents stories: levels map onto existing ones with an offset', () => {

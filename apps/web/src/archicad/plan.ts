@@ -504,7 +504,9 @@ export function buildPlan(input: PlanInput): TransferPlan {
               numberStr: number,
               height,
               bottomOffset: m.offset,
-              allowOverlap: false,
+              // Tapir's overlap check ignores holes: the cores inside an open floor area would
+              // count as overlapping, so a zone with holes skips it (created after the others)
+              allowOverlap: pp.holes.length > 0,
               geometry: {
                 polygonCoordinates: pp.outer,
                 ...(pp.holes.length ? { holes: pp.holes.map((h) => ({ polygonOutline: h })) } : {}),
