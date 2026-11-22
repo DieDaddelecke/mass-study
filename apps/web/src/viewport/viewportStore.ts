@@ -18,6 +18,13 @@ function readLook(): SceneLook {
   return 'maquette';
 }
 
+function readCut(): number | null {
+  if (typeof window === 'undefined') return null;
+  const q = new URLSearchParams(window.location.search).get('cut');
+  const n = q === null || q === '' ? NaN : Number(q);
+  return Number.isInteger(n) ? n : null;
+}
+
 /** Visibility of context layers in the 3D view (per session; not stored in the project). */
 export interface ContextLayers {
   buildings: boolean;
@@ -63,6 +70,12 @@ export interface ViewportState {
   /** Ambiance of the 3D view (lighting, colours, soft shadows, ambient occlusion); per browser. */
   look: SceneLook;
   setLook: (look: SceneLook) => void;
+  /**
+   * Storey cut ("coupe par étage"): storey index cut like a floor plan, everything above hidden;
+   * null = whole model. Per session.
+   */
+  cutLevel: number | null;
+  setCutLevel: (level: number | null) => void;
 }
 
 export const useViewportStore = create<ViewportState>()((set) => ({
@@ -85,4 +98,7 @@ export const useViewportStore = create<ViewportState>()((set) => ({
     }
     set({ look });
   },
+  // `?cut=2` opens the view cut at R+2 (screenshots, links)
+  cutLevel: readCut(),
+  setCutLevel: (cutLevel) => set({ cutLevel }),
 }));

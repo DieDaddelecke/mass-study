@@ -34,7 +34,8 @@
     "soon": "coming soon",
     "persp": "Perspective",
     "ortho": "Ortho",
-    "magnet": "Magnetic snapping (hold Alt: off)"
+    "magnet": "Magnetic snapping (hold Alt: off)",
+    "cut": "Storey cut (show the plan of one level)"
   },
   "legend": {
     "title": "Uses",
@@ -44,5 +45,9 @@
     "circulation": "Circulation",
     "other": "Other uses",
     "none": "No dwellings in this variant"
+  },
+  "cut": {
+    "title": "Cut",
+    "off": "Show the whole volume"
   }
 }

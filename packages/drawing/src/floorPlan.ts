@@ -149,7 +149,7 @@ function labelPoint(p: Polygon): Vec2 {
 }
 
 /** Label point of a dwelling: in the part not covered by its rooms when that is large enough. */
-function unitLabelPoint(p: Polygon, rooms: readonly LayoutRoom[]): Vec2 {
+export function unitLabelPoint(p: Polygon, rooms: readonly LayoutRoom[]): Vec2 {
   if (rooms.length) {
     const rest = difference(
       [p],

@@ -44,7 +44,12 @@ const big = (ps: Polygon[]) => ps.filter((p) => polygonArea(p) > 0.05);
 export const storeyKey = (s: Pick<StoreySolid, 'massId' | 'storeyIndex'>) =>
   `${s.massId}#${s.storeyIndex}`;
 
-function colored(poly: Polygon, z0: number, z1: number, color: string): BufferGeometry | null {
+export function colored(
+  poly: Polygon,
+  z0: number,
+  z1: number,
+  color: string,
+): BufferGeometry | null {
   const g = extrudePolygon(poly, z0, z1);
   if (!g) return null;
   const n = g.getAttribute('position').count;
