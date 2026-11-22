@@ -1,7 +1,7 @@
 import type { ContextBuilding, Polygon } from '@kubatur/core';
 import { describe, expect, it } from 'vitest';
 import { USAGE_COLORS, usageColor } from './colors';
-import { cubeRegion, emptyBox, expandBox, fitBox, orthoZoomFor } from './cameraFit';
+import { cubeRegion, emptyBox, expandBox, fitBox, orthoZoomFor, planFit } from './cameraFit';
 import {
   buildContextGeometry,
   contextIdAt,
@@ -109,6 +109,16 @@ describe('camera fit', () => {
     expect(r.position[2]).toBeCloseTo(r.distance);
     // portrait viewport → horizontal fov limits → farther away
     expect(fitBox(box, [0, 0, 1], 90, 0.5, 1).distance).toBeGreaterThan(r.distance);
+  });
+  it('fits the plan view from straight above, north up', () => {
+    const box = expandBox(expandBox(emptyBox(), 0, 0, 0), 100, 40, 15);
+    const r = planFit(box, 1000, 800, 1);
+    expect(r.target).toEqual([50, 20, 0]);
+    expect(r.position[0]).toBe(50);
+    expect(r.position[1]).toBeLessThan(20); // a hair south → north up on screen
+    expect(r.position[1]).toBeCloseTo(20, 0);
+    expect(r.zoom).toBeCloseTo(10); // limited by the width: 1000 px / 100 m
+    expect(planFit(box, 1000, 200, 1).zoom).toBeCloseTo(5); // height: 200 px / 40 m
   });
   it('computes ortho zoom and nav cube regions', () => {
     expect(orthoZoomFor(50, 90, 1000)).toBeCloseTo(10);

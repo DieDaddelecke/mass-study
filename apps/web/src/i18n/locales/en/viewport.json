@@ -48,6 +48,16 @@
   },
   "cut": {
     "title": "Cut",
-    "off": "Show the whole volume"
+    "off": "Show the whole volume",
+    "roof": "Roof",
+    "planTitle": "Level"
+  },
+  "plan": {
+    "mode": "View mode",
+    "to3d": "3D view (editable)",
+    "toPlan": "2D plan view (editable)",
+    "short": "Plan",
+    "overlay": "North and scale",
+    "toggle": "Toggle 3D / 2D plan"
   }
 }

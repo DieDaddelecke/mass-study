@@ -18,9 +18,9 @@ function readLook(): SceneLook {
   return 'maquette';
 }
 
-function readCut(): number | null {
+function readCut(param = 'cut'): number | null {
   if (typeof window === 'undefined') return null;
-  const q = new URLSearchParams(window.location.search).get('cut');
+  const q = new URLSearchParams(window.location.search).get(param);
   const n = q === null || q === '' ? NaN : Number(q);
   return Number.isInteger(n) ? n : null;
 }
@@ -64,6 +64,9 @@ export interface ViewportState {
   /** Sun light with shadows (used by the "realistic" visual style). */
   sunEnabled: boolean;
   setSunEnabled: (v: boolean) => void;
+  /** Sun shadows in the plan view (off by default: they hide the plan north of the volumes). */
+  planSun: boolean;
+  setPlanSun: (v: boolean) => void;
   /** Context layer visibility (layers panel in the shell, rendering in viewport/scene). */
   layers: ContextLayers;
   setLayer: <K extends keyof ContextLayers>(key: K, value: ContextLayers[K]) => void;
@@ -76,6 +79,15 @@ export interface ViewportState {
    */
   cutLevel: number | null;
   setCutLevel: (level: number | null) => void;
+  /**
+   * Storey shown in the editable plan view (2D): cut like `cutLevel`; null = seen from above
+   * (roofs, plan masse). Kept apart from the 3D cut so both views keep their own choice.
+   */
+  planLevel: number | null;
+  setPlanLevel: (level: number | null) => void;
+  /** Plan view scale in screen pixels per metre (scale bar); 0 = unknown. */
+  pxPerMetre: number;
+  setPxPerMetre: (v: number) => void;
 }
 
 export const useViewportStore = create<ViewportState>()((set) => ({
@@ -87,6 +99,8 @@ export const useViewportStore = create<ViewportState>()((set) => ({
   requestHome: () => set((s) => ({ homeRequest: s.homeRequest + 1 })),
   sunEnabled: true,
   setSunEnabled: (sunEnabled) => set({ sunEnabled }),
+  planSun: false,
+  setPlanSun: (planSun) => set({ planSun }),
   layers: DEFAULT_LAYERS,
   setLayer: (key, value) => set((s) => ({ layers: { ...s.layers, [key]: value } })),
   look: readLook(),
@@ -101,4 +115,9 @@ export const useViewportStore = create<ViewportState>()((set) => ({
   // `?cut=2` opens the view cut at R+2 (screenshots, links)
   cutLevel: readCut(),
   setCutLevel: (cutLevel) => set({ cutLevel }),
+  // `?level=1` opens the plan view on R+1
+  planLevel: readCut('level'),
+  setPlanLevel: (planLevel) => set({ planLevel }),
+  pxPerMetre: 0,
+  setPxPerMetre: (pxPerMetre) => set({ pxPerMetre }),
 }));

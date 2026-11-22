@@ -16,6 +16,7 @@ import {
   type Vec2,
 } from '@kubatur/core';
 import { Billboard, Html, Line } from '@react-three/drei';
+import { labelLayerRef } from '../scene/controlsRef';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -246,7 +247,13 @@ function SnapGlyph({ snap }: { snap: SnapResult }) {
 
 function Label({ at, text }: { at: [number, number, number]; text: string }) {
   return (
-    <Html position={at} center style={{ pointerEvents: 'none' }} zIndexRange={[20, 10]}>
+    <Html
+      portal={labelLayerRef as React.RefObject<HTMLElement>}
+      position={at}
+      center
+      style={{ pointerEvents: 'none' }}
+      zIndexRange={[20, 10]}
+    >
       <div
         style={{
           background: 'rgba(255,255,255,0.92)',
@@ -864,6 +871,8 @@ type GripDrag =
 
 function Grips({ mass }: { mass: Mass }) {
   const { camera, gl } = useThree();
+  // plan view: the height grip would point at the camera (storeys: inspector or 3D)
+  const plan = useUiStore((st) => st.activeView === 'plan');
   const rc = useMemo(() => new Raycaster(), []);
   const { project, masses } = useProjectMasses();
   const [preview, setPreview] = useState<Mass | null>(null);
@@ -1022,18 +1031,20 @@ function Grips({ mass }: { mass: Mass }) {
           </ScreenScaled>
         );
       })}
-      <ScreenScaled position={[centre[0], centre[1], top]} px={14}>
-        <mesh
-          position={[0, 0, 1.2]}
-          rotation={[Math.PI / 2, 0, 0]}
-          renderOrder={20}
-          onPointerDown={(e) => begin(e, { type: 'height' })}
-          {...handle}
-        >
-          <coneGeometry args={[0.6, 1.4, 12]} />
-          <meshBasicMaterial color={ACCENT} depthTest={false} />
-        </mesh>
-      </ScreenScaled>
+      {!plan && (
+        <ScreenScaled position={[centre[0], centre[1], top]} px={14}>
+          <mesh
+            position={[0, 0, 1.2]}
+            rotation={[Math.PI / 2, 0, 0]}
+            renderOrder={20}
+            onPointerDown={(e) => begin(e, { type: 'height' })}
+            {...handle}
+          >
+            <coneGeometry args={[0.6, 1.4, 12]} />
+            <meshBasicMaterial color={ACCENT} depthTest={false} />
+          </mesh>
+        </ScreenScaled>
+      )}
       {preview && preview.storeys.upper.count !== mass.storeys.upper.count && (
         <Label
           at={[centre[0], centre[1], top + 2]}

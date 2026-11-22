@@ -1,4 +1,4 @@
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { DirectionalLight, Object3D } from 'three';
 import { EffectComposer, N8AO } from '@react-three/postprocessing';
 import { useProjectStore } from '../store/projectStore';
@@ -7,6 +7,7 @@ import { useUiStore } from '../store/uiStore';
 import { GranulometryLegend, UsageLegend } from './Legend';
 import { NavCube } from './NavCube';
 import { CameraRig, FOV, modelBox } from './scene/CameraRig';
+import { labelLayerRef } from './scene/controlsRef';
 import { SceneContent } from './scene/SceneContent';
 import { ToolLayer } from './tools/ToolLayer';
 import { ViewControlBar } from './ViewControlBar';
@@ -16,6 +17,7 @@ import { LIT_STYLES, type LookSpec } from './scene/looks';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { massLayouts, storeyLabel, type Project, type SolidResult } from '@kubatur/core';
 import { CutSlider } from './CutSlider';
+import { PlanOverlay } from './PlanOverlay';
 import { cutLevels } from './scene/storeyCut';
 import type { VisualStyle } from '../store/tools';
 import './viewport.css';
@@ -99,13 +101,29 @@ function Effects({ look, style }: { look: LookSpec; style: VisualStyle }) {
   );
 }
 
-/** The 3D view (SPEC §10): scene, navigation, nav cube, view control bar. */
-export function Viewport3D() {
+/** Reports the plan zoom (pixels per metre) for the scale bar. */
+function PlanScaleProbe() {
+  const camera = useThree((s) => s.camera);
+  useFrame(() => {
+    const z = camera.zoom;
+    const cur = useViewportStore.getState().pxPerMetre;
+    if (Math.abs(z - cur) > cur * 0.005) useViewportStore.getState().setPxPerMetre(z);
+  });
+  return null;
+}
+
+/**
+ * The 3D view (SPEC §10): scene, navigation, nav cube, view control bar. With `plan` the same
+ * editable scene is seen straight from above in parallel projection (2D working view): every
+ * tool, grip, snap and the inspector keep working; a storey selector shows the dwellings and
+ * rooms of one storey, or the whole model from above (roofs).
+ */
+export function Viewport3D({ plan = false }: { plan?: boolean }) {
   const project = useProjectStore((s) => s.project);
   const analysis = useAnalysis();
   const style = useUiStore((s) => s.visualStyle);
   const projection = useUiStore((s) => s.projection);
-  const sun = useViewportStore((s) => s.sunEnabled);
+  const sun = useViewportStore((s) => (plan ? s.planSun : s.sunEnabled));
   const look = useLook();
   const solids = analysis?.result.solids ?? EMPTY;
   const shadows = LIT_STYLES.has(style) && sun;
@@ -120,8 +138,8 @@ export function Viewport3D() {
     }
   }, [project, analysis]);
   // storey cut: the chosen storey, kept within the storeys of the model
-  const cutLevel = useViewportStore((s) => s.cutLevel);
-  const setCutLevel = useViewportStore((s) => s.setCutLevel);
+  const cutLevel = useViewportStore((s) => (plan ? s.planLevel : s.cutLevel));
+  const setCutLevel = useViewportStore((s) => (plan ? s.setPlanLevel : s.setCutLevel));
   const levels = useMemo(() => cutLevels(solids.map((r) => r.solid)), [solids]);
   const cut =
     cutLevel === null || !levels.length
@@ -130,11 +148,11 @@ export function Viewport3D() {
   if (!project) return null;
   const basements = Math.max(0, -Math.min(0, ...levels));
   const labelOf = (l: number) => storeyLabel(l, project.settings.notation, false, basements);
-  const ortho = projection === 'orthographic';
+  const ortho = plan || projection === 'orthographic';
   return (
-    <div className="vp-root">
+    <div className={`vp-root${plan ? ' is-plan' : ''}`}>
       <Canvas
-        key={projection}
+        key={plan ? 'plan' : projection}
         className="vp-canvas"
         orthographic={ortho}
         shadows={shadows ? 'percentage' : false}
@@ -163,21 +181,44 @@ export function Viewport3D() {
           layouts={layouts}
           cutLevel={cut}
         />
-        <CameraRig project={project} solids={solids} projection={projection} />
+        <CameraRig project={project} solids={solids} projection={projection} plan={plan} />
+        {plan && <PlanScaleProbe />}
         <ToolLayer />
         <Effects look={look} style={style} />
       </Canvas>
-      <NavCube />
-      <ViewControlBar />
+      <div
+        className="vp-labels"
+        ref={(el) => {
+          labelLayerRef.current = el;
+        }}
+      />
+      {plan ? <PlanOverlay /> : <NavCube />}
+      <ViewControlBar plan={plan} />
       {style === 'consistentColors' && <UsageLegend />}
-      {cut !== null && (
+      {plan && levels.length > 0 ? (
         <CutSlider
           levels={levels}
           labelOf={labelOf}
-          value={levels.includes(cut) ? cut : (levels.find((l) => l <= cut) ?? levels[0]!)}
+          value={
+            cut === null
+              ? null
+              : levels.includes(cut)
+                ? cut
+                : (levels.find((l) => l <= cut) ?? levels[0]!)
+          }
           onChange={setCutLevel}
-          onClose={() => setCutLevel(null)}
+          withRoof
         />
+      ) : (
+        cut !== null && (
+          <CutSlider
+            levels={levels}
+            labelOf={labelOf}
+            value={levels.includes(cut) ? cut : (levels.find((l) => l <= cut) ?? levels[0]!)}
+            onChange={setCutLevel}
+            onClose={() => setCutLevel(null)}
+          />
+        )
       )}
       {(style === 'granulometry' || cut !== null) && (
         <GranulometryLegend

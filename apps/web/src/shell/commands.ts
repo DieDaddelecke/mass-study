@@ -119,6 +119,12 @@ export function escape(): void {
 
 export { undo, redo };
 
+/** Switch between the two editable working views: 3D and the 2D plan (PL). */
+export function togglePlan(): void {
+  const ui = useUiStore.getState();
+  ui.openView(ui.activeView === 'plan' ? '3d' : 'plan');
+}
+
 /** Two-letter command table (SPEC §9). */
 export const TWO_LETTER: Record<string, () => void> = {
   MV: () => activateTool({ kind: 'move' }),
@@ -129,4 +135,5 @@ export const TWO_LETTER: Record<string, () => void> = {
   AL: () => activateTool({ kind: 'align' }),
   DE: deleteSelection,
   ZF: zoomExtents,
+  PL: togglePlan,
 };

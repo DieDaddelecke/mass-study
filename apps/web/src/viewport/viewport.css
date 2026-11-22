@@ -8,6 +8,13 @@
   position: absolute !important;
   inset: 0;
 }
+/* drei <Html> labels (stable across canvas remounts), over the canvas, under the panels */
+.vp-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
 
 /* nav cube: top-right, below the top bar, left of the inspector */
 .vp-navcube {
@@ -291,4 +298,88 @@
 }
 .vp-cut-label.is-warn b {
   color: #d0342c;
+}
+
+/* plan view (2D working view): north arrow + scale where the nav cube sits in 3D */
+.vp-plan-ov {
+  position: absolute;
+  top: calc(var(--inset) * 2 + var(--bar-h));
+  right: var(--inset);
+  z-index: 1;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 112px;
+  height: 112px;
+  padding: 8px 6px;
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+  pointer-events: none;
+}
+.has-right .vp-plan-ov {
+  right: calc(var(--inset) * 2 + var(--right-w));
+}
+.vp-north text {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--text);
+}
+.vp-north-arrow {
+  fill: var(--text);
+}
+.vp-scale {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.vp-scale-bar {
+  height: 5px;
+  border: 1.5px solid var(--text);
+  border-top: none;
+  background: linear-gradient(90deg, var(--text) 50%, transparent 50%);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+}
+.vp-scale-ratio {
+  font-variant-numeric: tabular-nums;
+}
+.vp-cut-stop.is-roof .vp-cut-name {
+  font-style: italic;
+}
+
+/* 3D | Plan switch at the start of the view controls */
+.vp-mode {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-sm);
+  background: var(--field);
+}
+.vp-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border: none;
+  border-radius: calc(var(--r-sm) - 2px);
+  background: transparent;
+  color: var(--text-2);
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+.vp-mode-btn:hover {
+  color: var(--text);
+}
+.vp-mode-btn.is-on {
+  background: var(--bg-solid);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
 }

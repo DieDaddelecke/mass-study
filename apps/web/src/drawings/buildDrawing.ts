@@ -15,7 +15,7 @@ import {
 import i18n, { formatNumber } from '../i18n';
 import type { ViewId } from '../store/tools';
 
-export type DrawingViewId = Exclude<ViewId, '3d' | 'areas'>;
+export type DrawingViewId = Exclude<ViewId, '3d' | 'plan' | 'areas'>;
 
 export interface DrawingSettings {
   scheme: ColorScheme;

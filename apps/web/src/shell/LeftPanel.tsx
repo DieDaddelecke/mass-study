@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Route,
   ScanLine,
+  SquareDashed,
   Table2,
   Trees,
   TreeDeciduous,
@@ -255,49 +256,55 @@ export function LayersPanel() {
 
 function ViewsTab() {
   const { t } = useTranslation('shell');
-  const prep = t('common:inPreparation');
   const activeView = useUiStore((s) => s.activeView);
   const openView = useUiStore((s) => s.openView);
-  const rows: { id: ViewId; label: string; icon: LucideIcon; on?: () => void }[] = (
-    [
-      ['3d', Cuboid],
-      ['site', Frame],
-      ['floorPlan', LayoutGrid],
-      ['elevN', Columns3],
-      ['elevE', Columns3],
-      ['elevS', Columns3],
-      ['elevW', Columns3],
-      ['sectionA', ScanLine],
-      ['sectionB', ScanLine],
-      ['axoSW', Box],
-      ['axoNE', Box],
-      ['areas', Table2],
-    ] as const
-  ).map(([id, icon]) => ({ id, icon, label: t(`views.${id}`), on: () => openView(id) }));
+  const row = ([id, icon]: readonly [ViewId, LucideIcon]) => (
+    <li key={id}>
+      <button
+        type="button"
+        className={`list-row${activeView === id ? ' is-active' : ''}`}
+        onClick={() => openView(id)}
+      >
+        <Icon icon={icon} />
+        <span className="list-text">{t(`views.${id}`)}</span>
+      </button>
+    </li>
+  );
+  // working views: editable (tools, grips, inspector); previews: drawings of the dossier
+  const work = [
+    ['3d', Cuboid],
+    ['plan', SquareDashed],
+  ] as const;
+  const previews = [
+    ['site', Frame],
+    ['floorPlan', LayoutGrid],
+    ['elevN', Columns3],
+    ['elevE', Columns3],
+    ['elevS', Columns3],
+    ['elevW', Columns3],
+    ['sectionA', ScanLine],
+    ['sectionB', ScanLine],
+    ['axoSW', Box],
+    ['axoNE', Box],
+    ['areas', Table2],
+  ] as const;
   return (
     <div className="lp-scroll">
       <section className="section">
-        <ul className="list">
-          {rows.map((r) => (
-            <li key={r.id}>
-              <button
-                type="button"
-                className={`list-row${r.on && activeView === r.id ? ' is-active' : ''}`}
-                disabled={!r.on}
-                title={r.on ? undefined : prep}
-                onClick={r.on}
-              >
-                <r.icon size={15} strokeWidth={1.75} className="muted-icon" />
-                <span className="list-text">{r.label}</span>
-                {!r.on && <span className="badge">{prep}</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <h3 className="label">{t('browser.workViews')}</h3>
+        <ul className="list">{work.map(row)}</ul>
+      </section>
+      <section className="section">
+        <h3 className="label">{t('browser.previews')}</h3>
+        <ul className="list">{previews.map(row)}</ul>
       </section>
     </div>
   );
 }
+
+const Icon = ({ icon: I }: { icon: LucideIcon }) => (
+  <I size={15} strokeWidth={1.75} className="muted-icon" />
+);
 
 /** Collapsible left panel: project content, layers, views. */
 export function LeftPanel() {
