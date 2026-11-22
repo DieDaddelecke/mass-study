@@ -135,3 +135,23 @@ describe('stairs in the cores', () => {
     for (const f of s.flights) expect(inside(f.polygon, core)).toBe(true);
   });
 });
+
+describe('cores stack through a commercial ground floor', () => {
+  it('RDC commerce takes the cores of the dwellings above, so the stair starts at RDC', () => {
+    const m = mass(
+      { kind: 'solitaer', length: 50, depth: 14 },
+      { access: 'dreispaenner', usageByStorey: { 0: 'gewerbe' } },
+    );
+    const l = massLayout(m, massToSolids(m, settings), settings);
+    const rdc = l.storeys.find((s) => s.storeyIndex === 0)!;
+    const r1 = l.storeys.find((s) => s.storeyIndex === 1)!;
+    expect(rdc.units).toHaveLength(0);
+    expect(rdc.cores.length).toBe(r1.cores.length);
+    const stairs = layoutStairs([l], settings);
+    expect(stairs.get(`${m.id}#0`)?.length).toBe(rdc.cores.length);
+    // open area + cores still cover the RDC footprint
+    const covered = [...rdc.cores, ...rdc.open, ...rdc.circulation].reduce((a, x) => a + x.area, 0);
+    const fp = rdc.footprints.reduce((a, p) => a + polygonArea(p), 0);
+    expect(covered).toBeCloseTo(fp, 1);
+  });
+});
