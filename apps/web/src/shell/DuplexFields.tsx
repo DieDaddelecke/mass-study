@@ -82,11 +82,11 @@ export function DuplexFields({
             </select>
           </Row>
           <Row label={t('duplex.types')}>
-            <span className="row-inline">
+            <span className="row-inline duplex-types">
               {mix
                 .filter((u) => unitRooms(u) >= 2)
                 .map((u) => (
-                  <label key={u.id} className="row-inline">
+                  <label key={u.id} className="suit">
                     <input
                       type="checkbox"
                       aria-label={`${t('duplex.types')} ${u.label}`}

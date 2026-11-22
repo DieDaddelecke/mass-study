@@ -1831,3 +1831,8 @@ input[type='range'] {
   opacity: 1;
   background: rgba(127, 127, 127, 0.15);
 }
+
+.duplex-types {
+  flex-wrap: wrap;
+  column-gap: 10px;
+}
