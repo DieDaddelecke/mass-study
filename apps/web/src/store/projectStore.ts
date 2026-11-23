@@ -8,7 +8,7 @@ import type {
   Surroundings,
   Variant,
 } from '@kubatur/core';
-import { produce, type Draft } from 'immer';
+import { freeze, produce, type Draft } from 'immer';
 import { temporal } from 'zundo';
 import { create } from 'zustand';
 
@@ -35,7 +35,8 @@ export const useProjectStore = create<ProjectState>()(
       project: null,
       revision: 0,
       load: (p) => {
-        set((s) => ({ project: p, revision: s.revision + 1 }));
+        // deep-frozen like every later immer state: the analysis memoizes per (frozen) mass
+        set((s) => ({ project: p && freeze(p, true), revision: s.revision + 1 }));
         useProjectStore.temporal.getState().clear();
       },
       update: (recipe) =>

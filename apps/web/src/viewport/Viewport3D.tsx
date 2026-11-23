@@ -5,7 +5,7 @@ import { useProjectStore } from '../store/projectStore';
 import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
 import { GranulometryLegend, UsageLegend } from './Legend';
-import { NavCube } from './NavCube';
+import { NavCube, navCubeInvalidate } from './NavCube';
 import { CameraRig, FOV, modelBox } from './scene/CameraRig';
 import { labelLayerRef } from './scene/controlsRef';
 import { SceneContent } from './scene/SceneContent';
@@ -15,7 +15,7 @@ import { useViewportStore } from './viewportStore';
 import { useLook } from './scene/useLook';
 import { LIT_STYLES, type LookSpec } from './scene/looks';
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { massLayouts, storeyLabel, type Project, type SolidResult } from '@kubatur/core';
+import { storeyLabel, type Project, type SolidResult } from '@kubatur/core';
 import { CutSlider } from './CutSlider';
 import { PlanOverlay } from './PlanOverlay';
 import { cutLevels } from './scene/storeyCut';
@@ -101,6 +101,12 @@ function Effects({ look, style }: { look: LookSpec; style: VisualStyle }) {
   );
 }
 
+/** Keeps the nav cube (own canvas, on demand) in step with the main camera. */
+function NavCubeSync() {
+  useFrame(() => navCubeInvalidate.current?.());
+  return null;
+}
+
 /** Reports the plan zoom (pixels per metre) for the scale bar. */
 function PlanScaleProbe() {
   const camera = useThree((s) => s.camera);
@@ -127,16 +133,8 @@ export function Viewport3D({ plan = false }: { plan?: boolean }) {
   const look = useLook();
   const solids = analysis?.result.solids ?? EMPTY;
   const shadows = LIT_STYLES.has(style) && sun;
-  // dwelling layouts (outdoor spaces, granulometry): recomputed with every change of the project
-  const layouts = useMemo(() => {
-    if (!project || !analysis) return null;
-    try {
-      return massLayouts(analysis.result, project.settings);
-    } catch (e) {
-      console.error('layout failed', e);
-      return null;
-    }
-  }, [project, analysis]);
+  // dwelling layouts (outdoor spaces, granulometry): part of the shared analysis
+  const layouts = analysis?.layouts ?? null;
   // storey cut: the chosen storey, kept within the storeys of the model
   const cutLevel = useViewportStore((s) => (plan ? s.planLevel : s.cutLevel));
   const setCutLevel = useViewportStore((s) => (plan ? s.setPlanLevel : s.setCutLevel));
@@ -153,6 +151,9 @@ export function Viewport3D({ plan = false }: { plan?: boolean }) {
     <div className={`vp-root${plan ? ' is-plan' : ''}`}>
       <Canvas
         key={plan ? 'plan' : projection}
+        // redrawn only when something changes (camera, model, hover, …) instead of 60× per second;
+        // camera-controls, prop changes and invalidate() request frames
+        frameloop="demand"
         className="vp-canvas"
         orthographic={ortho}
         shadows={shadows ? 'percentage' : false}
@@ -185,6 +186,7 @@ export function Viewport3D({ plan = false }: { plan?: boolean }) {
         {plan && <PlanScaleProbe />}
         <ToolLayer />
         <Effects look={look} style={style} />
+        {!plan && <NavCubeSync />}
       </Canvas>
       <div
         className="vp-labels"

@@ -1,4 +1,4 @@
-import { massLayouts, resolveUnitRules } from '@kubatur/core';
+import { resolveUnitRules } from '@kubatur/core';
 import {
   chooseScale,
   renderSvg,
@@ -45,13 +45,7 @@ export function DrawingView({ view }: { view: DrawingViewId }) {
   const [storeySel, setStoreySel] = useState<number | null>(null);
 
   // floor plans: schematic unit layouts of all masses (pure, from the analysis)
-  const layouts = useMemo(
-    () =>
-      view === 'floorPlan' && project && analysis
-        ? massLayouts(analysis.result, project.settings)
-        : null,
-    [view, project, analysis],
-  );
+  const layouts = view === 'floorPlan' && analysis ? analysis.layouts : null;
   const storeyOptions = useMemo(() => {
     const m = new Map<number, string>();
     for (const ml of layouts ?? [])

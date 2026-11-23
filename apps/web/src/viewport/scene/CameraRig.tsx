@@ -74,6 +74,7 @@ interface Props {
 export function CameraRig({ project, solids, projection, plan = false }: Props) {
   const ref = useRef<CameraControlsImpl>(null);
   const size = useThree((s) => s.size);
+  const invalidate = useThree((s) => s.invalidate);
   const controlsEnabled = useViewportStore((s) => s.controlsEnabled);
   const zoomReq = useViewportStore((s) => s.zoomExtentsRequest);
   const homeReq = useViewportStore((s) => s.homeRequest);
@@ -129,6 +130,8 @@ export function CameraRig({ project, solids, projection, plan = false }: Props) 
       const d = Math.hypot(v.pos[0] - v.target[0], v.pos[1] - v.target[1], v.pos[2] - v.target[2]);
       apply({ position: v.pos, target: v.target, distance: d }, false);
     } else home(false);
+    // immediate camera moves emit no event: request a frame (the canvas draws on demand)
+    invalidate();
     return () => {
       const p = c.camera.position;
       const t = c.getTarget(new Vector3());

@@ -107,7 +107,32 @@ function fullStoreyFlags(
   });
 }
 
+/**
+ * Per-mass memo. Only used when mass and settings are frozen (the editor's immer store freezes
+ * every project state deeply), so an unchanged object is guaranteed to have unchanged content:
+ * editing one mass re-analyses only that mass instead of the whole variant.
+ */
+const massMemo = new WeakMap<Mass, { settings: Settings; result: MassResult }>();
+const memoResults = new WeakSet<MassResult>();
+
+/** True for a result that came from (or went into) the per-mass memo – its inputs are frozen. */
+export const isMemoizedMassResult = (r: MassResult): boolean => memoResults.has(r);
+
 export function analyzeMass(mass: Mass, settings: Settings): MassResult {
+  const frozen = Object.isFrozen(mass) && Object.isFrozen(settings);
+  if (frozen) {
+    const hit = massMemo.get(mass);
+    if (hit && hit.settings === settings) return hit.result;
+  }
+  const result = computeMass(mass, settings);
+  if (frozen) {
+    massMemo.set(mass, { settings, result });
+    memoResults.add(result);
+  }
+  return result;
+}
+
+function computeMass(mass: Mass, settings: Settings): MassResult {
   const access = resolveAccess(mass, settings);
   const solids = massToSolids(mass, settings);
   const segs = typologySegments(mass.typology);
