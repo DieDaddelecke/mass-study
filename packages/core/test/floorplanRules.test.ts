@@ -10,8 +10,11 @@ import {
   resolveUnitRules,
   ringCentroid,
   unitRoomLayout,
+  tubeLike,
   unitsPerCoreRange,
+  type AccessType,
   type LayoutRoom,
+  type Typology,
   type Vec2,
 } from '../src/index.js';
 import { mass } from './helpers.js';
@@ -175,5 +178,45 @@ describe('floor-plan guide', () => {
     expect(st.open.filter((o) => o.area > 25)).toHaveLength(0);
     // the corner stair still has its stair box (drawn with flights)
     for (const c of st.cores) expect(c.box).toBeDefined();
+  });
+
+  it('no tube-like dwellings and no tube-like wet rooms (Soheyl 23.11.2026)', () => {
+    const W: Typology = {
+      kind: 'freeLine',
+      points: [
+        [-20, 10],
+        [20, 10],
+        [20, -20],
+      ],
+      closed: false,
+      depth: 13,
+      alignment: 'center',
+    };
+    const cases: [Typology, AccessType][] = [
+      [W, 'laubengang'],
+      [W, 'dreispaenner'],
+      [W, 'zweispaenner'],
+      [W, 'mittelflur'],
+      [{ kind: 'solitaer', length: 50, depth: 13 }, 'dreispaenner'],
+      [{ kind: 'solitaer', length: 60, depth: 17 }, 'mittelflur'],
+      [{ kind: 'solitaer', length: 24, depth: 22 }, 'punkthaus'],
+    ];
+    for (const [t, access] of cases) {
+      const m = mass(t, { access });
+      const ml = massLayout(m, massToSolids(m, settings), settings);
+      const st = ml.storeys.find((s) => s.usage === 'wohnen')!;
+      for (const u of st.units) {
+        expect(tubeLike(u.polygon), `${access} ${u.label} ${u.area.toFixed(0)}`).toBe(false);
+        for (const r of u.rooms.filter((x) => ['sdb', 'sde'].includes(x.kind))) {
+          const [a, b, c] = r.polygon.outer;
+          const e1 = Math.hypot(b![0] - a![0], b![1] - a![1]);
+          const e2 = Math.hypot(c![0] - b![0], c![1] - b![1]);
+          expect(
+            Math.max(e1, e2) / Math.min(e1, e2),
+            `${access} ${u.label} ${r.kind}`,
+          ).toBeLessThan(3);
+        }
+      }
+    }
   });
 });
