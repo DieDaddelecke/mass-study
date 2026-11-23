@@ -567,7 +567,14 @@ export function unitRoomLayout(
     // rooms are single rectangles: shrink until nothing of other rooms or outside is in it
     const r = fitRect(run, w0, w1, 0, d0, a.taken, false);
     if (!r) return undefined;
-    const [s0, s1, , d] = r;
+    const d = r[3];
+    let [s0, s1] = r;
+    // nor wide and shallow (a shallow dwelling): width at most RATIO × depth
+    if (room.kind !== 'sejour' && s1 - s0 > RATIO[room.kind] * d) {
+      const wMax = RATIO[room.kind] * d;
+      if (a.dir > 0) s1 = s0 + wMax;
+      else s0 = s1 - wMax;
+    }
     const polygon = box(run, s0, s1, 0, d);
     const p: Placed = {
       i,

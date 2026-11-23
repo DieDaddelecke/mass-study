@@ -22,6 +22,9 @@ import {
   intersection,
   normalizePolygon,
   offsetPolygons,
+  polygonDistance,
+  offsetPolyline,
+  pointInPolygon,
   overlapArea,
   orientedExtents,
   rect,
@@ -117,6 +120,8 @@ export interface LayoutUnit {
   rooms: LayoutRoom[];
   /** Façade at least `facadeAreaRatio` (12 %) of the area, in m per m² (office rule A). */
   facadeRatioOk?: boolean;
+  /** False when the unit has no door (≥ 0.90 m) to a landing, corridor or gallery. */
+  accessOk?: boolean;
   /** Orientations of the façade of the unit (pieces ≥ 0.8 m). */
   orientations?: FacadeSide[];
   /**
@@ -1227,7 +1232,6 @@ function layoutStorey(
       t.duplex && pass.duplex ? duplexProgram(unitRooms(t), pass.duplex, rules) : unitRooms(t);
     const wetOf = (t: UnitType) =>
       t.duplex && pass.duplex ? duplexWet(unitRooms(t), pass.duplex) : wetProgram(unitRooms(t));
-    const accessPolys = [...cores, ...circulation].map((c) => c.polygon);
     const polys = raw.map((u) => simplify(u.polys[0]!));
     const fac = polys.map((p) => facadeOf(p, facadeSegs).length);
     const alive = raw.map(() => true);
@@ -1252,6 +1256,239 @@ function layoutStorey(
         break;
       }
     }
+    // --- every dwelling reachable, no dwelling larger than its type allows ------------------
+    // (office rules 23.11.2026: a unit without a door to a landing/corridor is not a unit; the
+    // surplus of a corner or deep piece is no living area, a T2 never exceeds its areaMax)
+    if (effAccess !== 'reihenhaus' && !pass.duplex) {
+      const DOOR = 0.9;
+      const access = () => [...cores, ...circulation].map((c) => c.polygon);
+      let accessEdges = polygonEdges(access());
+      const door = (p: Polygon) => facadeOf(p, accessEdges).length;
+      const facOf = (p: Polygon) => facadeOf(p, facadeSegs);
+      /** Largest area a unit with this façade may have (largest allowed type's areaMax). */
+      const allowedFor = (p: Polygon) => {
+        const f = facOf(p);
+        const pieces = f.segments.map(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]));
+        return mix.filter((t) => fc.req(t) <= f.length + 1e-6 && roomsFit(t, pieces, rules));
+      };
+      const maxArea = (p: Polygon) => {
+        const ok = allowedFor(p);
+        const pool = ok.length ? ok : [...mix].sort((a, b) => a.areaMax - b.areaMax).slice(0, 1);
+        return Math.max(...pool.map((t) => t.areaMax));
+      };
+      const shared = (a: Polygon, b: Polygon) => facadeOf(a, polygonEdges([b])).length;
+      // no dwelling half in the dark middle of the building (Soheyl 23.11.2026): at most
+      // max(4 m², 10 %) of it outside the zone in front of its façade
+      const dark = (p: Polygon) =>
+        darkArea(p, facOf(p).segments) > Math.max(4, 0.1 * polygonArea(p));
+      // one compact piece: no hole, no neck narrower than 1 m
+      const single = (ps: Polygon[]) => {
+        const xs = ps.filter((q) => polygonArea(q) > 0.05);
+        if (xs.length !== 1 || xs[0]!.holes?.length) return undefined;
+        return offsetPolygons([xs[0]!], -0.5).filter((q) => polygonArea(q) > 0.05).length === 1
+          ? xs[0]
+          : undefined;
+      };
+      const live = () => raw.map((_, k) => k).filter((k) => alive[k]);
+
+      // 1. unreachable dwellings: a corridor (1.20 m) through a reachable neighbour, else a merge
+      for (const i of live()) {
+        if (door(polys[i]!) >= DOOR) continue;
+        let best: { j: number; band: Polygon; rest: Polygon } | undefined;
+        for (const j of live()) {
+          if (j === i || door(polys[j]!) < DOOR || shared(polys[j]!, polys[i]!) < 1.2) continue;
+          const band = corridorIn(polys[j]!, access(), polys[i]!, 1.2);
+          if (!band) continue;
+          const rest = single(difference([polys[j]!], [band]));
+          if (!rest || facOf(rest).length < facOf(polys[j]!).length - 0.3) continue;
+          if (facadeOf(rest, polygonEdges([...access(), band])).length < DOOR) continue;
+          if (!best || polygonArea(band) < polygonArea(best.band)) best = { j, band, rest };
+        }
+        if (best) {
+          polys[best.j] = simplify(best.rest);
+          circulation.push({ kind: 'corridor', polygon: best.band, area: polygonArea(best.band) });
+          accessEdges = polygonEdges(access());
+          delete raw[best.j]!.type;
+          continue;
+        }
+        // no corridor: merge into the reachable neighbour where the result stays in range
+        const cands = live()
+          .filter((j) => j !== i && door(polys[j]!) >= DOOR && shared(polys[j]!, polys[i]!) > 1)
+          .map((j) => ({ j, m: single(union([polys[j]!, polys[i]!])) }))
+          .filter((c): c is { j: number; m: Polygon } => !!c.m)
+          .sort((x, y) => polygonArea(x.m) - maxArea(x.m) - (polygonArea(y.m) - maxArea(y.m)));
+        const c = cands[0];
+        if (c) {
+          polys[c.j] = simplify(c.m);
+          alive[i] = false;
+          delete raw[c.j]!.type;
+        }
+      }
+
+      // 2. surplus: keep the part near the façade (and the way to the door), the rest goes to a
+      // neighbour that becomes a larger type, or stays as unused secondary area
+      for (const i of live()) {
+        const p = polys[i]!;
+        const area = polygonArea(p);
+        const cap = maxArea(p);
+        if (area <= cap + 1e-6 && !dark(p)) continue;
+        // the way from the door to the kept part is a shared corridor, never a long hall of
+        // the dwelling in the dark middle of the building (Soheyl 23.11.2026)
+        const hall = new WeakMap<Polygon, Polygon>();
+        const cands = trimToArea(p, facOf(p).segments, cap - 0.05, (q) => {
+          if (polygonArea(q) > maxArea(q) + 1e-6 || dark(q)) return undefined;
+          if (facadeOf(q, accessEdges).length >= DOOR) return q;
+          const band = corridorIn(p, access(), q, 1.2, true);
+          if (!band) return undefined;
+          hall.set(q, band);
+          return q;
+        });
+        // the rest: to a neighbour that stays in range (a larger type), or unused secondary
+        // area – but never façade left unused
+        const apply = (facadeOpen: boolean): boolean => {
+          for (const kept of cands) {
+            const plan: { piece: Polygon; to?: number; m?: Polygon }[] = [];
+            const grown = new Map<number, Polygon>();
+            let ok = true;
+            const band = hall.get(kept);
+            const taken = band ? [kept, band] : [kept];
+            for (const piece of difference([p], taken).filter((q) => polygonArea(q) > 0.05)) {
+              const take = live()
+                .filter((j) => j !== i && shared(grown.get(j) ?? polys[j]!, piece) > 2.4)
+                .map((j) => ({ j, m: single(union([grown.get(j) ?? polys[j]!, piece])) }))
+                .filter(
+                  (c): c is { j: number; m: Polygon } =>
+                    !!c.m && polygonArea(c.m) <= maxArea(c.m) + 1e-6,
+                )
+                .sort((x, y) => polygonArea(y.m) - polygonArea(x.m))[0];
+              if (take) {
+                grown.set(take.j, take.m);
+                plan.push({ piece, to: take.j, m: take.m });
+              } else if (facadeOpen || facOf(piece).length < 1) plan.push({ piece });
+              else {
+                ok = false;
+                break;
+              }
+            }
+            if (!ok) continue;
+            polys[i] = simplify(kept);
+            delete raw[i]!.type;
+            if (band) {
+              circulation.push({ kind: 'corridor', polygon: band, area: polygonArea(band) });
+              accessEdges = polygonEdges(access());
+            }
+            for (const [j, m] of grown) {
+              polys[j] = simplify(m);
+              delete raw[j]!.type;
+            }
+            for (const x of plan)
+              if (x.to === undefined)
+                open.push({ kind: 'open', polygon: x.piece, area: polygonArea(x.piece) });
+            return true;
+          }
+          return false;
+        };
+        if (apply(false)) continue;
+        // still too large: share the pair (this unit + a neighbour) out again with one straight
+        // party wall, so that both parts are in range of a type their façade allows
+        let bestSplit: { j: number; a: Polygon; b: Polygon; score: number } | undefined;
+        for (const j of live()) {
+          if (j === i || shared(polys[j]!, p) < 2.4) continue;
+          const m = single(union([p, polys[j]!]));
+          if (!m) continue;
+          for (const [a, b] of slabSplits(m)) {
+            const inRange = (q: Polygon) => {
+              const ar = polygonArea(q);
+              return (
+                door(q) >= DOOR &&
+                !dark(q) &&
+                allowedFor(q).some((t) => ar >= t.areaMin - 1e-6 && ar <= t.areaMax + 1e-6)
+              );
+            };
+            if (!single([a]) || !single([b]) || !inRange(a) || !inRange(b)) continue;
+            // keep close to the current split (least change)
+            const score = Math.abs(polygonArea(a) - area);
+            if (!bestSplit || score < bestSplit.score) bestSplit = { j, a, b, score };
+          }
+        }
+        if (bestSplit) {
+          polys[i] = simplify(bestSplit.a);
+          polys[bestSplit.j] = simplify(bestSplit.b);
+          delete raw[i]!.type;
+          delete raw[bestSplit.j]!.type;
+        } else apply(true); // last resort: the surplus stays unused, even on the façade
+      }
+
+      // 3. a dark leftover big enough for the stair (inner corner of an L, Soheyl 23.11.2026):
+      // the nearest stair and its lift move there, their old place goes to the dwellings
+      const sw = dim.stairCoreWidth;
+      const cd = dim.coreDepth;
+      for (const o of [...open]) {
+        if (o.kind !== 'open' || o.area < sw * cd) continue;
+        const hall = circulation.filter(
+          (c) => c.kind !== 'lift' && shared(o.polygon, c.polygon) >= 2,
+        );
+        if (!hall.length) continue;
+        const hallEdges = polygonEdges(hall.map((c) => c.polygon));
+        const ci = cores
+          .map((c, k) => ({ k, d: polygonDistance(c.polygon, o.polygon) }))
+          .filter(({ k }) => hall.some((h) => shared(cores[k]!.polygon, h.polygon) >= 1))
+          .sort((x, y) => x.d - y.d)[0]?.k;
+        if (ci === undefined) continue;
+        const placed = placeInPiece(o.polygon, [sw, cd], hallEdges);
+        if (!placed) continue;
+        const old = cores[ci]!;
+        const oldLift = circulation.find(
+          (c) => c.kind === 'lift' && polygonDistance(c.polygon, old.polygon) < 4,
+        );
+        let rest = difference([o.polygon], [placed.polygon]);
+        let lift: Polygon | undefined;
+        if (oldLift) {
+          const [lw, lt] = dim.liftBox;
+          const lp = rest
+            .map((r) => placeInPiece(r, [lw, lt], hallEdges))
+            .find((x): x is NonNullable<typeof x> => !!x);
+          if (lp) {
+            lift = lp.polygon;
+            rest = difference(rest, [lift]);
+          }
+        }
+        cores[ci] = {
+          kind: 'core',
+          polygon: placed.polygon,
+          area: polygonArea(placed.polygon),
+          index: old.index ?? ci,
+          box: placed.box,
+        };
+        open.splice(open.indexOf(o), 1);
+        for (const r of rest.filter((q) => polygonArea(q) > 0.05))
+          circulation.push({ kind: 'landing', polygon: r, area: polygonArea(r) });
+        const freed = [old.polygon];
+        if (lift && oldLift) {
+          circulation.splice(circulation.indexOf(oldLift), 1);
+          circulation.push({ kind: 'lift', polygon: lift, area: polygonArea(lift) });
+          freed.push(oldLift.polygon);
+        }
+        // the old stair (and lift) to the neighbouring dwelling, else to the landing
+        for (const f of freed) {
+          const take = live()
+            .filter((j) => shared(polys[j]!, f) > 2)
+            .map((j) => ({ j, m: single(union([polys[j]!, f])) }))
+            .filter(
+              (c): c is { j: number; m: Polygon } =>
+                !!c.m && polygonArea(c.m) <= maxArea(c.m) + 1e-6 && !dark(c.m),
+            )
+            .sort((x, y) => polygonArea(y.m) - polygonArea(x.m))[0];
+          if (take) {
+            polys[take.j] = simplify(take.m);
+            delete raw[take.j]!.type;
+          } else circulation.push({ kind: 'landing', polygon: f, area: polygonArea(f) });
+        }
+        accessEdges = polygonEdges(access());
+      }
+    }
+    const accessNow = [...cores, ...circulation].map((c) => c.polygon);
+    const accessNowEdges = polygonEdges(accessNow);
     raw.forEach((u, i) => {
       if (!alive[i]) return;
       const polygon = polys[i]!;
@@ -1301,7 +1538,7 @@ function layoutStorey(
             return sideConfig(outdoorCfg, facadeSide(seg, polygon)).kind === 'none' ? 1 : 2;
           },
           exterior: outlineSegs,
-          access: accessPolys,
+          access: accessNow,
           ...(pass.below ? { below: pass.below } : {}),
           neighbours: units.flatMap((x) => x.rooms),
           wet: wetOf(choice.type),
@@ -1309,6 +1546,10 @@ function layoutStorey(
         }),
         ...orientationCheck(facade.segments, polygon, unitRooms(choice.type)),
         facadeRatioOk: facade.length >= rules.facadeAreaRatio * area - 1e-6,
+        accessOk:
+          effAccess === 'reihenhaus' ||
+          !!pass.duplex ||
+          facadeOf(polygon, accessNowEdges).length >= 0.9 - 1e-6,
       });
     });
     // outdoor spaces: one per dwelling, in front of (or next to) the séjour
@@ -1396,6 +1637,259 @@ function layoutStorey(
   if (cores.length && summary.units)
     out.unitsPerCore = Math.round((summary.units / cores.length) * 10) / 10;
   return { layout: out, pins };
+}
+
+/** Point on segment [a, b] at parameter t. */
+const lerp = (a: Vec2, b: Vec2, t: number): Vec2 => [
+  a[0] + (b[0] - a[0]) * t,
+  a[1] + (b[1] - a[1]) * t,
+];
+
+/**
+ * A corridor of `width` inside `host` from the access areas `from` to the polygon `to`: one
+ * straight run or an L along the main direction of `host`, perpendicular to both walls it
+ * opens onto. `touchOnly`: `to` lies inside `host` (the corridor only has to reach it).
+ * Smallest such band, or undefined.
+ */
+function corridorIn(
+  host: Polygon,
+  from: readonly Polygon[],
+  to: Polygon,
+  width: number,
+  touchOnly = false,
+): Polygon | undefined {
+  const sa = facadeOf(host, polygonEdges(from)).segments;
+  const su = touchOnly
+    ? polygonEdges([to]).filter(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]) >= width - 0.1)
+    : facadeOf(host, polygonEdges([to])).segments;
+  if (!sa.length || !su.length) return undefined;
+  const u = dirOf([host]);
+  const n: Vec2 = [-u[1], u[0]];
+  const pts = (s: [Vec2, Vec2]): Vec2[] => {
+    const len = Math.hypot(s[1][0] - s[0][0], s[1][1] - s[0][1]);
+    if (len < width - 0.1) return [];
+    const e = Math.min(0.5, width / 2 / len);
+    return [lerp(s[0], s[1], e), lerp(s[0], s[1], 0.5), lerp(s[0], s[1], 1 - e)];
+  };
+  const along = (s: [Vec2, Vec2], d: Vec2) => {
+    const l = Math.hypot(s[1][0] - s[0][0], s[1][1] - s[0][1]) || 1;
+    return Math.abs(((s[1][0] - s[0][0]) * d[0] + (s[1][1] - s[0][1]) * d[1]) / l);
+  };
+  const dot = (v: Vec2, d: Vec2) => v[0] * d[0] + v[1] * d[1];
+  /** Sample point pairs: the sample points, plus each point projected straight across. */
+  const proj = (p: Vec2, s: [Vec2, Vec2]): Vec2 | undefined => {
+    const dx = s[1][0] - s[0][0];
+    const dy = s[1][1] - s[0][1];
+    const l2 = dx * dx + dy * dy || 1;
+    const t = ((p[0] - s[0][0]) * dx + (p[1] - s[0][1]) * dy) / l2;
+    const e = width / 2 / Math.sqrt(l2);
+    return t >= e - 1e-9 && t <= 1 - e + 1e-9 ? lerp(s[0], s[1], t) : undefined;
+  };
+  const pairs = (a: [Vec2, Vec2], b: [Vec2, Vec2]): [Vec2, Vec2][] => {
+    const out: [Vec2, Vec2][] = [];
+    for (const pa of pts(a)) {
+      for (const pb of pts(b)) out.push([pa, pb]);
+      const q = proj(pa, b);
+      if (q) out.push([pa, q]);
+    }
+    for (const pb of pts(b)) {
+      const q = proj(pb, a);
+      if (q) out.push([q, pb]);
+    }
+    return out;
+  };
+  const fromEdges = polygonEdges(from);
+  const toEdges = polygonEdges([to]);
+  let best: Polygon | undefined;
+  for (const a of sa)
+    for (const b of su)
+      for (const [pa, pb] of pairs(a, b)) {
+        const v: Vec2 = [pb[0] - pa[0], pb[1] - pa[1]];
+        const paths: Vec2[][] = [];
+        for (const [d1, d2] of [
+          [u, n],
+          [n, u],
+        ] as const) {
+          const c: Vec2 = [pa[0] + d1[0] * dot(v, d1), pa[1] + d1[1] * dot(v, d1)];
+          const l1 = Math.abs(dot(v, d1));
+          const l2 = Math.abs(dot(v, d2));
+          if (l2 < 0.05) {
+            // straight run: must leave both walls at a right angle
+            if (along(a, d1) < 0.2 && along(b, d1) < 0.2) paths.push([pa, pb]);
+          } else if (l1 < 0.05) {
+            if (along(a, d2) < 0.2 && along(b, d2) < 0.2) paths.push([pa, pb]);
+          } else if (along(a, d1) < 0.2 && along(b, d2) < 0.2) paths.push([pa, c, pb]);
+        }
+        for (const path of paths) {
+          // run the band a little past both ends so it opens onto the walls
+          const ext = (p: Vec2, q: Vec2): Vec2 => {
+            const l = Math.hypot(p[0] - q[0], p[1] - q[1]) || 1;
+            return [p[0] + ((p[0] - q[0]) / l) * 0.3, p[1] + ((p[1] - q[1]) / l) * 0.3];
+          };
+          const line = [
+            ext(path[0]!, path[1]!),
+            ...path.slice(1, -1),
+            ext(path.at(-1)!, path.at(-2)!),
+          ];
+          let band = intersection([host], offsetPolyline(line, false, width, 'center', 2));
+          if (touchOnly) band = difference(band, [to]);
+          band = band.filter((q) => polygonArea(q) > 0.05);
+          if (band.length !== 1) continue;
+          const q = band[0]!;
+          if (facadeOf(q, fromEdges).length < 0.9 || facadeOf(q, toEdges).length < 0.9) continue;
+          if (!best || polygonArea(q) < polygonArea(best)) best = q;
+        }
+      }
+  return best;
+}
+
+/**
+ * The part of `p` within depth d of its façade pieces, with d chosen so that the result (after
+ * `fix`, which may add the way to the door or reject) has about `target` m². Undefined when no
+ * depth works.
+ */
+function trimToArea(
+  p: Polygon,
+  facade: readonly [Vec2, Vec2][],
+  target: number,
+  fix: (q: Polygon) => Polygon | undefined,
+): Polygon[] {
+  if (!facade.length) return [];
+  const out: Polygon[] = [];
+  const bands = (d: number) => facadeBands(p, facade, d);
+  const at = (d: number) => {
+    const k = intersection([p], union(bands(d))).filter((q) => polygonArea(q) > 0.05);
+    if (k.length !== 1) return undefined;
+    return fix(k[0]!);
+  };
+  let lo = 2;
+  let hi = 30;
+  let best: Polygon | undefined;
+  for (let it = 0; it < 14; it++) {
+    const d = (lo + hi) / 2;
+    const k = at(d);
+    if (k && polygonArea(k) <= target + 1e-6) {
+      best = k;
+      lo = d;
+    } else hi = d;
+  }
+  if (best && polygonArea(best) >= target * 0.8) out.push(best);
+  // façade on several sides (traversant): cut a slab off one end instead, keeping most façade
+  const u = dirOf([p]);
+  const slabs: { q: Polygon; f: number }[] = [];
+  for (const d of [u, [-u[1], u[0]] as Vec2])
+    for (const sg of [1, -1]) {
+      const dd: Vec2 = [d[0] * sg, d[1] * sg];
+      const n: Vec2 = [-dd[1], dd[0]];
+      const ts = p.outer.map((q) => q[0] * dd[0] + q[1] * dd[1]);
+      const ns = p.outer.map((q) => q[0] * n[0] + q[1] * n[1]);
+      const t0 = Math.min(...ts);
+      const t1 = Math.max(...ts);
+      const n0 = Math.min(...ns) - 1;
+      const n1 = Math.max(...ns) + 1;
+      const half = (t: number) =>
+        normalizePolygon({
+          outer: [
+            [dd[0] * t0 + n[0] * n0 - dd[0], dd[1] * t0 + n[1] * n0 - dd[1]],
+            [dd[0] * t + n[0] * n0, dd[1] * t + n[1] * n0],
+            [dd[0] * t + n[0] * n1, dd[1] * t + n[1] * n1],
+            [dd[0] * t0 + n[0] * n1 - dd[0], dd[1] * t0 + n[1] * n1 - dd[1]],
+          ],
+        });
+      // from the full piece down, 0.25 m steps: the first cut that fits (not monotonic: the
+      // door may be cut off on the way)
+      let got: Polygon | undefined;
+      for (let t = t1 - 0.25; t > t0 + 2; t -= 0.25) {
+        const k = intersection([p], [half(t)]).filter((q) => polygonArea(q) > 0.05);
+        if (k.length !== 1 || polygonArea(k[0]!) > target + 1e-6) continue;
+        got = fix(k[0]!);
+        if (got && polygonArea(got) <= target + 1e-6) break;
+        got = undefined;
+        if (polygonArea(k[0]!) < target * 0.8) break;
+      }
+      if (got && polygonArea(got) >= target * 0.8)
+        slabs.push({ q: got, f: facadeOf(got, facade).length });
+    }
+  slabs.sort((a, b) => b.f - a.f);
+  out.push(...slabs.map((x) => x.q));
+  return out;
+}
+
+/** Straight cuts of `p` across its main directions (every 0.25 m): [one side, other side]. */
+function slabSplits(p: Polygon): [Polygon, Polygon][] {
+  const out: [Polygon, Polygon][] = [];
+  const u = dirOf([p]);
+  for (const d of [u, [-u[1], u[0]] as Vec2]) {
+    const n: Vec2 = [-d[1], d[0]];
+    const ts = p.outer.map((q) => q[0] * d[0] + q[1] * d[1]);
+    const ns = p.outer.map((q) => q[0] * n[0] + q[1] * n[1]);
+    const t0 = Math.min(...ts);
+    const t1 = Math.max(...ts);
+    const n0 = Math.min(...ns) - 1;
+    const n1 = Math.max(...ns) + 1;
+    const pt = (t: number, m: number): Vec2 => [d[0] * t + n[0] * m, d[1] * t + n[1] * m];
+    for (let t = t0 + 2.5; t <= t1 - 2.5; t += 0.25) {
+      const lo = normalizePolygon({
+        outer: [pt(t0 - 1, n0), pt(t, n0), pt(t, n1), pt(t0 - 1, n1)],
+      });
+      const a = intersection([p], [lo]).filter((q) => polygonArea(q) > 0.05);
+      const b = difference([p], [lo]).filter((q) => polygonArea(q) > 0.05);
+      if (a.length === 1 && b.length === 1) out.push([a[0]!, b[0]!]);
+    }
+  }
+  return out;
+}
+
+/** Rectangles reaching `d` m into `p` from each of its façade pieces (perpendicular). */
+function facadeBands(p: Polygon, facade: readonly [Vec2, Vec2][], d: number): Polygon[] {
+  return facade.map(([a, b]) => {
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    let n: Vec2 = [-(b[1] - a[1]) / l, (b[0] - a[0]) / l];
+    const m: Vec2 = [(a[0] + b[0]) / 2 + n[0] * 0.05, (a[1] + b[1]) / 2 + n[1] * 0.05];
+    if (!pointInPolygon(m, p)) n = [-n[0], -n[1]];
+    return normalizePolygon({
+      outer: [a, b, [b[0] + n[0] * d, b[1] + n[1] * d], [a[0] + n[0] * d, a[1] + n[1] * d]],
+    });
+  });
+}
+
+/** Area of `p` not in front of any of its façade pieces (within `d` m): the dark part. */
+function darkArea(p: Polygon, facade: readonly [Vec2, Vec2][], d = 12): number {
+  if (!facade.length) return polygonArea(p);
+  const lit = intersection([p], union(facadeBands(p, facade, d)));
+  return polygonArea(p) - lit.reduce((s, q) => s + polygonArea(q), 0);
+}
+
+/**
+ * A rectangle of `size` (either way round) inside `piece`, in one of its corners along its main
+ * directions, with one side on `onto` (≥ 1.2 m): polygon and oriented box. Undefined if none.
+ */
+function placeInPiece(
+  piece: Polygon,
+  size: [number, number],
+  onto: readonly [Vec2, Vec2][],
+): { polygon: Polygon; box: CoreBox } | undefined {
+  const u = dirOf([piece]);
+  const f0: Frame = { o: [0, 0], u, n: [-u[1], u[0]] };
+  const [a0, b0, a1, b1] = frameExtents(f0, [piece]);
+  let best: { polygon: Polygon; box: CoreBox; s: number } | undefined;
+  for (const [w, d] of [size, [size[1], size[0]] as [number, number]])
+    for (const a of [a0, a1 - w])
+      for (const b of [b0, b1 - d]) {
+        const r: Rect = [a, b, a + w, b + d];
+        const poly = rectPoly(f0, r);
+        const inside = intersection([piece], [poly]).reduce((x, q) => x + polygonArea(q), 0);
+        if (inside < w * d - 0.05) continue;
+        const door = facadeOf(poly, onto).length;
+        if (door < 1.2) continue;
+        if (!best || door > best.s)
+          best = {
+            polygon: poly,
+            box: { o: toWorld(f0, a, b), u: f0.u, n: f0.n, w, d },
+            s: door,
+          };
+      }
+  return best && { polygon: best.polygon, box: best.box };
 }
 
 /** A dwelling counts on the storey of its entrance (the séjour level of a duplex). */
