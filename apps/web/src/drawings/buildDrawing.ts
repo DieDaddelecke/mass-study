@@ -59,6 +59,14 @@ export function buildDrawing(
           i18n.t('drawing:fp.facadeTip', { facade: formatNumber(f), min: formatNumber(r) }),
         roomText: (k) => i18n.t(`drawing:fp.roomShort.${k}`),
         outdoorText: (k) => i18n.t(`drawing:fp.outdoorShort.${k}`),
+        boundaryText: (k, name) =>
+          k === 'neighbour'
+            ? i18n.t('drawing:fp.partyBoundary')
+            : k === 'road' || k === 'path'
+              ? (name ?? i18n.t(`shell:boundary.kind.${k}`))
+              : k === 'public'
+                ? i18n.t('shell:boundary.kind.public')
+                : undefined,
         duplexText: {
           duplex: i18n.t('drawing:fp.duplexShort.duplex'),
           jour: i18n.t('drawing:fp.duplexShort.jour'),

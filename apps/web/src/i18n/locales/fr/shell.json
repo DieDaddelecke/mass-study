@@ -548,5 +548,31 @@
       "result": "{{desks}} postes · SU {{usable}} m² ({{ratio}} % de la surface brute) · {{perDesk}} m²/poste · {{meetings}} salles de réunion",
       "deep": "{{count}} niveau(x) trop profond(s) pour l'éclairage naturel"
     }
+  },
+  "boundary": {
+    "title": "Limites de la parcelle",
+    "summary": "{{count}} limite(s) séparative(s) sur {{total}} côtés (cadastre + voies, modifiable).",
+    "noNeighbour": "Aucune limite séparative détectée.",
+    "edge": "Côté {{n}}",
+    "auto": "Auto · {{kind}}",
+    "mixed": "mixte",
+    "kind": {
+      "road": "Voie",
+      "path": "Chemin / piste",
+      "public": "Espace public",
+      "neighbour": "Limite séparative",
+      "unknown": "Inconnu"
+    },
+    "noWindows": "Sans vues",
+    "vueMin": "Distance min.",
+    "vueRatio": "Part de H",
+    "note": "Une façade à moins de max({{min}} m ; {{ratio}} × H) d'une limite séparative reste aveugle : pas de fenêtres, pas de balcons, les pièces de vie vont sur rue ou jardin.",
+    "short": {
+      "road": "Voie",
+      "path": "Chemin",
+      "public": "Public",
+      "neighbour": "Voisin",
+      "unknown": "?"
+    }
   }
 }

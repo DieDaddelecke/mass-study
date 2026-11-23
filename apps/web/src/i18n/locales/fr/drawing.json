@@ -121,7 +121,9 @@
         "sanitaires": "Sanitaires",
         "hall": "Hall d'accueil"
       }
-    }
+    },
+    "blindFacade": "Façade aveugle (limite séparative)",
+    "partyBoundary": "Limite séparative"
   },
   "ridge": "faîtage"
 }

@@ -1,4 +1,5 @@
 import { DEFAULT_OUTDOOR_RULES } from './outdoor.js';
+import { DEFAULT_BOUNDARY_RULES } from './boundaries.js';
 import { DEFAULT_UNIT_RULES } from './unitRules.js';
 import type { RuleProfileId, Settings, StoreyStack, UnitType, Usage } from './types.js';
 
@@ -63,6 +64,7 @@ export function defaultSettings(profile: RuleProfileId = 'FR'): Settings {
     unitMix: profile === 'FR' ? DEFAULT_UNIT_MIX_FR : DEFAULT_UNIT_MIX_DE,
     unitRules: { ...DEFAULT_UNIT_RULES, minAreas: { ...DEFAULT_UNIT_RULES.minAreas } },
     outdoorRules: { ...DEFAULT_OUTDOOR_RULES },
+    boundaryRules: { ...DEFAULT_BOUNDARY_RULES },
     workplaceArea: 12,
     parking: {
       perDwelling: 1,

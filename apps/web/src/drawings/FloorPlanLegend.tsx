@@ -75,6 +75,11 @@ export function FloorPlanLegend({
   const outdoorArea = outdoor.reduce((a, u) => a + u.outdoor!.area, 0);
   const neutral = unitColor(mix[0]?.id ?? '', mix);
   const hasOpen = here.some(({ s }) => s.open.length > 0);
+  const blind = here.reduce(
+    (a, { s }) =>
+      a + (s.blindFacades ?? []).reduce((x, [p, q]) => x + Math.hypot(q[0] - p[0], q[1] - p[1]), 0),
+    0,
+  );
   const differs = layouts.filter(
     (m) => m.areaBasedDwellings > 0 && m.totals.units !== m.areaBasedDwellings,
   );
@@ -187,6 +192,15 @@ export function FloorPlanLegend({
           />
           {t('fp.facadeMark')}
         </li>
+        {blind > 0 && (
+          <li>
+            <span
+              className="dv-legend-sw dv-legend-line"
+              style={{ background: FLOOR_PLAN_COLORS.blind }}
+            />
+            {t('fp.blindFacade')} · {formatNumber(blind, 1)} m
+          </li>
+        )}
         {outdoor.length > 0 && (
           <li>
             <span

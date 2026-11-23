@@ -1,6 +1,5 @@
 import {
   duplexTypeIds,
-  massLayouts,
   resolveDuplex,
   storeyLabel,
   type Mass,
@@ -33,9 +32,9 @@ export function DuplexFields({
   const analysis = useAnalysis();
   const count = useMemo(() => {
     if (!cfg.enabled || !analysis) return null;
-    const ml = massLayouts(analysis.result, settings).find((m) => m.massId === mass.id);
+    const ml = analysis.layouts.find((m) => m.massId === mass.id);
     return ml ? ml.totals.byType.reduce((s, b) => s + (b.duplex ?? 0), 0) : null;
-  }, [analysis, settings, mass.id, cfg.enabled]);
+  }, [analysis, mass.id, cfg.enabled]);
   const edit = (recipe: (d: NonNullable<Mass['duplex']>) => void) =>
     update((m) => {
       const d = { ...resolveDuplex(m as Mass, settings) };

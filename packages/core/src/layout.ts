@@ -11,6 +11,13 @@
  * always disjoint, inside the footprint and – together – cover it exactly.
  */
 import {
+  blindFacades,
+  resolveBoundaryRules,
+  subtractSegments,
+  vueDistance,
+  type SiteEdges,
+} from './boundaries.js';
+import {
   analyzeMasses,
   isMemoizedMassResult,
   type MassResult,
@@ -202,6 +209,11 @@ export interface StoreyLayout {
   spaces?: LayoutSpace[];
   residence?: ResidenceSummary;
   office?: OfficeSummary;
+  /**
+   * Façade pieces facing a neighbour boundary closer than the vue distance: no windows, no
+   * balconies (mur aveugle).
+   */
+  blindFacades?: [Vec2, Vec2][];
 }
 
 export interface MassLayout {
@@ -322,6 +334,32 @@ function barFrom(u: Vec2, region: Polygon[]): Bar | undefined {
   const frame: Frame = { o, u, n };
   const ext = frameExtents(frame, region);
   return { frame, region, length: ext[2], depth: ext[3] };
+}
+
+/**
+ * Bars whose far side (b = depth) faces a neighbour boundary more than their access side
+ * (b = 0) are turned round: dwellings then get their windows on the open side.
+ */
+function accessTowardsBlind(bars: Bar[], party: LayoutPass['party'], outline: Polygon[]): Bar[] {
+  if (!party) return bars;
+  const blind = blindFacades(polygonEdges(outline), outline, party.segs, party.distance);
+  if (!blind.length) return bars;
+  return bars.map((bar) => {
+    let near = 0;
+    let far = 0;
+    for (const [p, q] of blind) {
+      const [a0, b0] = toFrame(bar.frame, p);
+      const [a1, b1] = toFrame(bar.frame, q);
+      if (Math.abs(b1 - b0) > 0.1 || a1 < -0.1 || a0 > bar.length + 0.1) continue;
+      const l = Math.abs(a1 - a0);
+      if (Math.abs(b0) < 0.3) near += l;
+      else if (Math.abs(b0 - bar.depth) < 0.3) far += l;
+    }
+    if (far <= near + 1e-6) return bar;
+    const u: Vec2 = [-bar.frame.u[0], -bar.frame.u[1]];
+    const n: Vec2 = [-bar.frame.n[0], -bar.frame.n[1]];
+    return { ...bar, frame: { o: toWorld(bar.frame, bar.length, bar.depth), u, n } };
+  });
 }
 
 const unit = (dx: number, dy: number): Vec2 => {
@@ -931,8 +969,24 @@ export function storeyLayout(
   solids: readonly StoreySolid[],
   settings: Settings,
   access: AccessType = resolveAccess(mass, settings),
+  site?: SiteEdges,
 ): StoreyLayout {
-  return layoutStorey(mass, solids, settings, access).layout;
+  const party = partyOf(mass, solids, settings, site);
+  return layoutStorey(mass, solids, settings, access, party ? { party } : {}).layout;
+}
+
+/** Neighbour boundaries and the vue distance for the height of a mass (undefined: none). */
+function partyOf(
+  mass: Mass,
+  solids: readonly StoreySolid[],
+  settings: Settings,
+  site?: SiteEdges,
+): LayoutPass['party'] {
+  const rules = resolveBoundaryRules(settings);
+  if (!site?.party.length || !rules.enabled) return undefined;
+  let h = 0;
+  for (const s of solids) if (s.aboveGround && s.massId === mass.id) h = Math.max(h, s.z1);
+  return { segs: site.party, distance: vueDistance(rules, h) };
 }
 
 interface LayoutPass {
@@ -942,6 +996,8 @@ interface LayoutPass {
   duplex?: 'jour' | 'nuit';
   /** Séjours of the storey below (séjours and loggias stack). */
   below?: Polygon[];
+  /** Neighbour boundaries: façades facing them within `distance` get no windows. */
+  party?: { segs: [Vec2, Vec2][]; distance: number };
 }
 
 function layoutStorey(
@@ -998,7 +1054,13 @@ function layoutStorey(
     mass.typology.kind === 'zeile' && solids.length > 1
       ? union(solids.map((s) => s.footprint))
       : solids.map((s) => s.footprint);
-  const bars = outlines.flatMap((p) => solidBars(mass, p));
+  // access side (landing, gallery, corridor) towards a neighbour boundary when one long side
+  // must stay blind (no windows there), else north
+  const bars = accessTowardsBlind(
+    outlines.flatMap((p) => solidBars(mass, p)),
+    pass.party,
+    union(solids.map((x) => normalizePolygon(x.footprint))),
+  );
   // pool of preferred types for the storey (mix shares for the expected number of units)
   const storeyArea = bars.reduce(
     (a, b) => a + b.region.reduce((s2, r) => s2 + polygonArea(r), 0),
@@ -1081,6 +1143,7 @@ function layoutStorey(
 
   // --- unit types -----------------------------------------------------------
   const units: LayoutUnit[] = [];
+  const blind: [Vec2, Vec2][] = [];
   if (residential) {
     // free rows: number of units close to the target mix, widths scaled to fill each row
     const rowAreas = rows.map((r) => (r.rect[2] - r.rect[0]) * (r.rect[3] - r.rect[1]));
@@ -1218,7 +1281,12 @@ function layoutStorey(
     }
     // --- façade rules: measure, merge units without enough façade, downgrade types ----
     const outline = union(solids.map((x) => normalizePolygon(x.footprint)));
-    const facadeSegs = polygonEdges(outline);
+    // façades facing a neighbour boundary too closely have no windows (vues droites)
+    const allSegs = polygonEdges(outline);
+    blind.push(
+      ...(pass.party ? blindFacades(allSegs, outline, pass.party.segs, pass.party.distance) : []),
+    );
+    const facadeSegs = subtractSegments(allSegs, blind);
     const outlineSegs = [...facadeSegs];
     const outdoorCfg = resolveOutdoor(mass, settings);
     const outdoorRules = resolveOutdoorRules(settings);
@@ -1658,6 +1726,7 @@ function layoutStorey(
     usage,
     ...footprints.map((p) => p.outer.map(([x, y]) => `${r1(x)},${r1(y)}`).join(';')),
     ...units.map((u) => `${u.typeId}${u.duplex ? `/${u.duplex.level}` : ''}:${r1(u.area)}`),
+    ...(blind.length ? [`b${r1(blind.reduce((x, [a, b]) => x + dist(a, b), 0))}`] : []),
   ].join('|');
   const out: StoreyLayout = {
     massId: mass.id,
@@ -1678,6 +1747,7 @@ function layoutStorey(
   };
   if (cores.length && summary.units)
     out.unitsPerCore = Math.round((summary.units / cores.length) * 10) / 10;
+  if (blind.length) out.blindFacades = blind;
   return { layout: out, pins };
 }
 
@@ -2183,6 +2253,7 @@ function applyDuplex(
   access: AccessType,
   storeys: StoreyLayout[],
   pins: Map<number, number[][]>,
+  party?: LayoutPass['party'],
 ): StoreyLayout[] {
   const cfg = resolveDuplex(mass, settings);
   if (!cfg.enabled || access === 'reihenhaus') return storeys;
@@ -2206,7 +2277,11 @@ function applyDuplex(
     )
       continue;
     const p = pins.get(lo.storeyIndex);
-    const pass = (level: 'jour' | 'nuit') => (p ? { pins: p, duplex: level } : { duplex: level });
+    const pass = (level: 'jour' | 'nuit'): LayoutPass => ({
+      ...(p ? { pins: p } : {}),
+      ...(party ? { party } : {}),
+      duplex: level,
+    });
     const L = layoutStorey(
       mass,
       byStorey.get(lo.storeyIndex)!,
@@ -2340,6 +2415,7 @@ function specialUseLayouts(
   mass: Mass,
   byStorey: Map<number, StoreySolid[]>,
   settings: Settings,
+  party?: LayoutPass['party'],
 ): Map<number, StoreyLayout> {
   const out = new Map<number, StoreyLayout>();
   const res: number[] = [];
@@ -2353,13 +2429,14 @@ function specialUseLayouts(
   const lowest = res[0]!;
   let units = 0;
   for (const i of res) {
-    const st = residenceStoreyLayout(mass, byStorey.get(i)!, settings);
+    const st = residenceStoreyLayout(mass, byStorey.get(i)!, settings, party ? { party } : {});
     out.set(i, st);
     units += st.summary.units;
   }
   // common rooms on the lowest residence storey (ground floor), for all units
   const ground = residenceStoreyLayout(mass, byStorey.get(lowest)!, settings, {
     totalUnits: units,
+    ...(party ? { party } : {}),
   });
   out.set(lowest, ground);
   return out;
@@ -2371,8 +2448,10 @@ export function massLayout(
   solids: readonly StoreySolid[],
   settings: Settings,
   areaBasedDwellings?: number,
+  site?: SiteEdges,
 ): MassLayout {
   const access = resolveAccess(mass, settings);
+  const party = partyOf(mass, solids, settings, site);
   const byStorey = new Map<number, StoreySolid[]>();
   for (const s of solids) {
     if (!s.aboveGround || s.massId !== mass.id) continue;
@@ -2381,7 +2460,7 @@ export function massLayout(
     byStorey.set(s.storeyIndex, list);
   }
   const pins = new Map<number, number[][]>();
-  const special = specialUseLayouts(mass, byStorey, settings);
+  const special = specialUseLayouts(mass, byStorey, settings, party);
   // séjours stack: each storey sees the séjours of the storey below
   let below: Polygon[] | undefined;
   const simplex = [...byStorey.keys()]
@@ -2389,7 +2468,10 @@ export function massLayout(
     .map((i) => {
       const own = special.get(i);
       if (own) return own;
-      const r = layoutStorey(mass, byStorey.get(i)!, settings, access, below ? { below } : {});
+      const r = layoutStorey(mass, byStorey.get(i)!, settings, access, {
+        ...(below ? { below } : {}),
+        ...(party ? { party } : {}),
+      });
       pins.set(i, r.pins);
       const sej = r.layout.units.flatMap((u) =>
         u.rooms.filter((x) => x.kind === 'sejour').map((x) => x.polygon),
@@ -2397,7 +2479,7 @@ export function massLayout(
       below = sej.length ? sej : below;
       return r.layout;
     });
-  const storeys = stackCores(applyDuplex(mass, byStorey, settings, access, simplex, pins));
+  const storeys = stackCores(applyDuplex(mass, byStorey, settings, access, simplex, pins, party));
   const counts = new Map<string, LayoutTypeCount>();
   let units = 0;
   let unitArea = 0;
@@ -2432,7 +2514,11 @@ export function massLayout(
  * Layouts of all masses of a variant: pass a project (active variant) or an existing
  * VariantResult with the settings.
  */
-export function massLayouts(input: Project | VariantResult, settings?: Settings): MassLayout[] {
+export function massLayouts(
+  input: Project | VariantResult,
+  settings?: Settings,
+  site?: SiteEdges,
+): MassLayout[] {
   let result: VariantResult;
   let s: Settings;
   if ('variants' in input) {
@@ -2449,19 +2535,31 @@ export function massLayouts(input: Project | VariantResult, settings?: Settings)
     // settings are the same (moving one mass then only lays out that mass again)
     const memo = isMemoizedMassResult(m);
     const hit = memo ? layoutMemo.get(m) : undefined;
-    if (hit && hit.settings === s) return hit.layout;
+    if (hit && hit.settings === s && sameEdges(hit.site, site)) return hit.layout;
     const layout = massLayout(
       m.mass,
       m.solids.map((r) => r.solid),
       s,
       m.dwellings.total,
+      site,
     );
-    if (memo) layoutMemo.set(m, { settings: s, layout });
+    if (memo) layoutMemo.set(m, { settings: s, layout, ...(site ? { site } : {}) });
     return layout;
   });
 }
 
-const layoutMemo = new WeakMap<MassResult, { settings: Settings; layout: MassLayout }>();
+const layoutMemo = new WeakMap<
+  MassResult,
+  { settings: Settings; layout: MassLayout; site?: SiteEdges }
+>();
+
+function sameEdges(a?: SiteEdges, b?: SiteEdges): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.party.length !== b.party.length) return false;
+  return a.party.every(
+    ([p, q], i) => dist(p, b.party[i]![0]) < 1e-9 && dist(q, b.party[i]![1]) < 1e-9,
+  );
+}
 
 /** Area-based dwelling count for a living area (re-exported for the UI comparison note). */
 export const areaBasedUnitCount = (livingArea: number, settings: Settings): number =>

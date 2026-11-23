@@ -1836,3 +1836,57 @@ input[type='range'] {
   flex-wrap: wrap;
   column-gap: 10px;
 }
+
+/* site boundaries (inspector) */
+.boundary-list {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.boundary-list li {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+.boundary-list li:hover {
+  background: var(--hover, rgba(127, 127, 127, 0.12));
+}
+.boundary-list select {
+  max-width: 120px;
+}
+.boundary-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.boundary-sw {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.boundary-road {
+  background: #7a8594;
+}
+.boundary-path {
+  background: #a3b18a;
+}
+.boundary-public {
+  background: #9fb7c9;
+}
+.boundary-neighbour {
+  background: #d9480f;
+}
+.boundary-unknown {
+  background: transparent;
+  outline: 1px dashed #888;
+}
+.boundary-mixed {
+  background: linear-gradient(135deg, #d9480f 50%, #7a8594 50%);
+}

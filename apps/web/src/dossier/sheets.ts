@@ -10,6 +10,7 @@ import {
   type Schedule,
   type ScheduleColumn,
   type ScheduleRow,
+  siteEdges,
 } from '@kubatur/core';
 import {
   chooseScale,
@@ -622,7 +623,11 @@ function floorPlanLegend(
 /** One sheet per distinct residential storey layout ("R+1 à R+3"), with legend. */
 function floorPlanDrafts(input: DossierInput, f: Frame, counter: { n: number }): Draft[] {
   const { project, analysis, t } = input;
-  const layouts = massLayouts(analysis.result, project.settings);
+  const layouts = massLayouts(
+    analysis.result,
+    project.settings,
+    siteEdges(project.site, project.surroundings),
+  );
   const groups = distinctStoreyGroups(layouts, (s) => s.units.length > 0);
   const { solids } = drawingInput(analysis.result);
   const boxW = f.cw - FP_LEGEND_W - 12;

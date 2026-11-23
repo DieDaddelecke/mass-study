@@ -17,6 +17,7 @@ import {
   type Usage,
   type Vec2,
   massToSolids,
+  siteEdges,
 } from '@kubatur/core';
 import type {
   Coordinate2D,
@@ -492,7 +493,13 @@ export function buildPlan(input: PlanInput): TransferPlan {
     const tag = mass.name.replace(/\s+/g, '');
     const layout =
       o.zones || o.walls || o.stairs || o.slabs
-        ? massLayout(mass, solids, input.project.settings)
+        ? massLayout(
+            mass,
+            solids,
+            input.project.settings,
+            undefined,
+            siteEdges(input.project.site, input.project.surroundings),
+          )
         : null;
     const stairs: CoreStair[] = layout
       ? [...layoutStairs([layout], input.project.settings).values()].flat()
