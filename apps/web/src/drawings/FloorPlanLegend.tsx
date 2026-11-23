@@ -44,16 +44,24 @@ export function FloorPlanLegend({
   const failing = here.reduce((a, { s }) => a + s.summary.facadeViolations, 0);
   const rooms = here.flatMap(({ s }) => s.units.flatMap((u) => u.rooms ?? []));
   const roomFail = rooms.filter((r) => !r.facadeOk).length;
-  const roomKinds = (['sejour', 'chambrePmr', 'chambre'] as const).filter((k) =>
+  const areaFail = rooms.filter((r) => r.areaOk === false).length;
+  const galleryRooms = rooms.filter((r) => r.onGallery).length;
+  const roomKinds = (['sejour', 'cuisine', 'chambrePmr', 'chambre'] as const).filter((k) =>
     rooms.some((r) => r.kind === k),
   );
   const roomMin = {
     sejour: rules.livingMinFacade,
+    cuisine: rules.kitchenMinFacade ?? 2.15,
     chambrePmr: rules.pmrBedroomMinFacade,
     chambre: rules.bedroomMinFacade,
   };
+  const hasWet = rooms.some((r) => r.kind === 'sdb' || r.kind === 'gaine');
+  const hasHall = rooms.some((r) => r.kind === 'degagement');
   const units = here.flatMap(({ s }) => s.units);
   const outdoor = units.filter((u) => u.outdoor);
+  const orientFail = units.filter(
+    (u) => u.orientationOk === false && u.duplex?.level !== 'nuit',
+  ).length;
   const outdoorFail = outdoor.filter((u) => !u.outdoor!.ok).length;
   const nuit = units.filter((u) => u.duplex?.level === 'nuit').length;
   const outdoorNone = units.length - nuit - outdoor.length;
@@ -132,6 +140,27 @@ export function FloorPlanLegend({
               {t(`fp.room.${k}`, { min: formatNumber(roomMin[k]) })}
             </li>
           ))}
+          {hasWet && (
+            <li>
+              <span
+                className="dv-legend-sw"
+                style={{ background: roomColor(neutral, 'sdb'), outline: '1px solid #55534e' }}
+              />
+              {t('fp.room.wet')}
+            </li>
+          )}
+          {hasHall && (
+            <li>
+              <span
+                className="dv-legend-sw"
+                style={{
+                  background: roomColor(neutral, 'degagement'),
+                  outline: '1px solid #55534e',
+                }}
+              />
+              {t('fp.room.degagement')}
+            </li>
+          )}
         </ul>
       )}
       <ul className="dv-legend-keys">
@@ -185,6 +214,15 @@ export function FloorPlanLegend({
       {failing > 0 && (
         <p className="dv-legend-note dv-legend-warn">{t('fp.facadeFail', { count: failing })}</p>
       )}
+      {orientFail > 0 && (
+        <p className="dv-legend-note dv-legend-warn">{t('fp.orientFail', { count: orientFail })}</p>
+      )}
+      {galleryRooms > 0 && (
+        <p className="dv-legend-note dv-legend-warn">
+          {t('fp.galleryRoom', { count: galleryRooms })}
+        </p>
+      )}
+      {areaFail > 0 && <p className="dv-legend-note">{t('fp.areaFail', { count: areaFail })}</p>}
       {roomFail > 0 && (
         <p className="dv-legend-note dv-legend-warn">{t('fp.roomFail', { count: roomFail })}</p>
       )}

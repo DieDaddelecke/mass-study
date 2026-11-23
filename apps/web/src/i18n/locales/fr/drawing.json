@@ -57,12 +57,21 @@
     "roomShort": {
       "sejour": "séj.",
       "chambrePmr": "PMR",
-      "chambre": "ch."
+      "chambre": "ch.",
+      "cuisine": "cuis.",
+      "sdb": "sdb",
+      "sde": "sde",
+      "wc": "wc",
+      "gaine": "g.",
+      "degagement": "dgt"
     },
     "room": {
       "sejour": "Séjour (façade ≥ {{min}} m)",
       "chambrePmr": "Chambre PMR (≥ {{min}} m)",
-      "chambre": "Chambre (≥ {{min}} m)"
+      "chambre": "Chambre (≥ {{min}} m)",
+      "cuisine": "Cuisine séparée (≥ {{min}} m)",
+      "wet": "Pièces d'eau (sdb, sde, wc) et gaine",
+      "degagement": "Entrée / dégagement"
     },
     "rooms": "Pièces principales",
     "roomFail": "{{count}} pièce(s) sous la façade minimale (contour rouge)",
@@ -81,7 +90,10 @@
     },
     "duplexCount": "dont {{count}} en duplex",
     "duplexNuit": "{{count}} niveau(x) nuit de duplex (comptés au niveau d'entrée)",
-    "duplexStair": "Escalier intérieur de duplex"
+    "duplexStair": "Escalier intérieur de duplex",
+    "areaFail": "{{count}} pièce(s) sous la surface minimale",
+    "galleryRoom": "{{count}} chambre(s) côté coursive (hachurées)",
+    "orientFail": "{{count}} logement(s) sans double orientation (dès T3) ou orientés nord seulement"
   },
   "ridge": "faîtage"
 }

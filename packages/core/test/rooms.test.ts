@@ -11,6 +11,7 @@ import {
   union,
   unitRoomLayout,
   unitRooms,
+  isFacadeRoom,
   type AccessType,
   type StoreyLayout,
   type Typology,
@@ -53,12 +54,17 @@ describe('rooms of a dwelling', () => {
       4,
       rules,
     );
-    expect(rooms.map((r) => r.kind)).toEqual(['sejour', 'chambrePmr', 'chambre', 'chambre']);
+    expect(rooms.filter(isFacadeRoom).map((r) => r.kind)).toEqual([
+      'sejour',
+      'chambrePmr',
+      'chambre',
+      'chambre',
+    ]);
     expect(rooms.every((r) => r.facadeOk)).toBe(true);
     // disjoint, at least one partition apart
     const total = area(rooms);
     const merged = union(rooms.map((r) => r.polygon));
-    expect(merged.length).toBe(4);
+    expect(merged.length).toBe(rooms.length);
     expect(merged.reduce((s, p) => s + polygonArea(p), 0)).toBeCloseTo(total, 3);
   });
 
@@ -75,7 +81,8 @@ describe('rooms of a dwelling', () => {
       rules,
     );
     // the third room has no façade left: missing or flagged
-    expect(rooms.length < 3 || rooms.some((r) => !r.facadeOk)).toBe(true);
+    const main = rooms.filter(isFacadeRoom);
+    expect(main.length < 3 || main.some((r) => !r.facadeOk)).toBe(true);
   });
 
   for (const [t, access] of [
@@ -95,7 +102,8 @@ describe('rooms of a dwelling', () => {
         const n = unitRooms(type);
         expect(u.rooms.filter((r) => r.kind === 'sejour').length).toBe(1);
         if (n >= 2) expect(u.rooms.filter((r) => r.kind === 'chambrePmr').length).toBe(1);
-        expect(u.rooms.length).toBe(n);
+        expect(u.rooms.filter(isFacadeRoom).length).toBe(n);
+        expect(u.rooms.filter((r) => r.kind === 'gaine').length).toBe(1);
         // inside the dwelling and disjoint
         const inside = intersection(
           u.rooms.map((r) => r.polygon),

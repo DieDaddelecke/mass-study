@@ -61,7 +61,7 @@ export function defaultSettings(profile: RuleProfileId = 'FR'): Settings {
       landingDepth: 1.5,
     },
     unitMix: profile === 'FR' ? DEFAULT_UNIT_MIX_FR : DEFAULT_UNIT_MIX_DE,
-    unitRules: { ...DEFAULT_UNIT_RULES },
+    unitRules: { ...DEFAULT_UNIT_RULES, minAreas: { ...DEFAULT_UNIT_RULES.minAreas } },
     outdoorRules: { ...DEFAULT_OUTDOOR_RULES },
     workplaceArea: 12,
     parking: {

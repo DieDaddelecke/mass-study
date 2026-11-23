@@ -425,6 +425,30 @@ export interface UnitRules {
   interiorWall: number;
   /** Whether the gallery side of a Laubengang dwelling counts as façade. */
   galleryCountsAsFacade: boolean;
+  /** Separate kitchen (cuisine fermée), when there is façade for it, m (2.15). */
+  kitchenMinFacade?: number;
+  /** From T3: separate kitchen on the façade when the façade allows it (else open). */
+  separateKitchen?: boolean;
+  /** Shaft (gaine technique) of a dwelling, side length, m (0.60). One per dwelling. */
+  shaftSize?: number;
+  /** Minimum room areas, m². */
+  minAreas?: Partial<RoomMinAreas>;
+  /** Dwellings per stair core and storey (gallery, corridor, point block), min / max. */
+  unitsPerCoreMin?: number;
+  unitsPerCoreMax?: number;
+}
+
+/** Minimum room areas of the office rules, m². */
+export interface RoomMinAreas {
+  sejour: number;
+  /** Séjour with open kitchen. */
+  sejourCuisine: number;
+  cuisine: number;
+  chambre: number;
+  chambrePmr: number;
+  sdb: number;
+  sde: number;
+  wc: number;
 }
 
 export interface Settings {

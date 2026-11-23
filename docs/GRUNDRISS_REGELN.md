@@ -92,8 +92,11 @@ Die Laubengang-Seite zählt als Fassade (umschaltbar).
 
 ## 10. Laubengang
 
-- Zum Laubengang liegen Entrée, Küche und Bad, keine Schlafzimmer.
-- Keine weitere Regel für einen Séjour am Laubengang.
+- Zum Laubengang liegen Entrée, Küche und Bad. Der Séjour (mit Balkon) liegt immer außen.
+- Schlafzimmer liegen außen. Nur wenn die Fassade nicht reicht, darf ein Zimmer zum
+  Laubengang liegen; es wird im Plan schraffiert und in der Legende gemeldet
+  (Entscheidung 23.11.2026).
+- Keine weitere Regel für Abstände zum Laubengang.
 
 ## 11. Erschließung und Verteilung
 
@@ -112,9 +115,20 @@ Die Laubengang-Seite zählt als Fassade (umschaltbar).
 - Ein Außenraum pro Wohnung, am Séjour, mindestens 4 m² (Loggia ≥ 1,80 m tief,
   Balkon ≥ 1,40 m). Keine Staffelung nach Typ, kein zweiter Außenraum.
 
+## Umsetzung im Generator (Stand 23.11.2026)
+
+- Raumkette entlang der Fassade, Séjour am Kettenanfang; Bewertung der Varianten: alle
+  Mindestfassaden > Mindestflächen > Ecke bzw. zwei Ausrichtungen > Stapelung über dem
+  Séjour darunter > Himmelsrichtung > Spiegelung zur Nachbarwohnung > Nähe zum Eingang.
+- Nasskern: Schacht 60 × 60 cm an der Grenze zwischen Tag- und Nachtzone, daneben SDB
+  (neben der Chambre PMR), WC, SDE. Zwischen Räumen auf gegenüberliegenden Fassaden bleibt
+  eine Innenzone von 2,20 m.
+- Separate Küche ab T3 als Einstellung (Standard: offen).
+- Wohnungen pro Treppenhaus 3 bis 8 (Laubengang, Mittelflur, Punkthaus); Zwei- und
+  Dreispänner bleiben bei 2 bzw. 3.
+- Wohnungen ab T3 mit nur einer Ausrichtung und reine Nordwohnungen werden gemeldet.
+
 ## Offene Punkte
 
 - Maximale Länge eines Innenflurs (couloir) ist noch nicht festgelegt.
-- Zweispänner haben heute fest 2 Wohnungen pro Treppenhaus. Gilt die Spanne 3 bis 8 für
-  alle Erschließungsarten oder nur für Mittelflur und Punkthaus?
 - Auswertung der Beispielpläne des Büros steht noch aus.

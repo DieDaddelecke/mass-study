@@ -17,6 +17,7 @@ import {
   intersection,
   normalizePolygon,
   offsetPolygons,
+  overlapArea,
   orientedExtents,
   rect,
   polygonArea,
@@ -26,6 +27,7 @@ import {
 } from './geometry.js';
 import { requiredCores, resolveAccess } from './typologies.js';
 import {
+  coreRange,
   facadeOf,
   minUnitWidth,
   polygonEdges,
@@ -34,8 +36,9 @@ import {
   resolveUnitRules,
   unitRooms,
 } from './unitRules.js';
-import { duplexProgram, unitRoomLayout, type LayoutRoom } from './rooms.js';
+import { duplexProgram, duplexWet, unitRoomLayout, wetProgram, type LayoutRoom } from './rooms.js';
 import {
+  FACADE_SIDES,
   facadeSide,
   placeOutdoor,
   resolveOutdoor,
@@ -46,6 +49,7 @@ import {
 import type {
   AccessType,
   DuplexConfig,
+  FacadeSide,
   Mass,
   Polygon,
   Project,
@@ -97,8 +101,18 @@ export interface LayoutUnit {
   facadeOk: boolean;
   /** Façade pieces of the unit (world coordinates), for drawing. */
   facadeSegments: [Vec2, Vec2][];
-  /** Main rooms (séjour, chambre PMR, chambres) as rectangles along the façade. */
+  /**
+   * Rooms: séjour, chambre PMR, chambres (and a separate kitchen) along the façade, the wet
+   * core (gaine, SDB, WC, SDE) behind them and the passage (dégagement).
+   */
   rooms: LayoutRoom[];
+  /** Orientations of the façade of the unit (pieces ≥ 0.8 m). */
+  orientations?: FacadeSide[];
+  /**
+   * False when the unit breaks the orientation rules: from T3 at least two orientations,
+   * never only north.
+   */
+  orientationOk?: boolean;
   /** Outdoor space (balcon, loggia, terrasse), if the building has one on this façade. */
   outdoor?: LayoutOutdoor;
   /** One level of a duplex dwelling (the same polygon on both storeys). */
@@ -388,7 +402,7 @@ function distributeCores(
   if (access === 'reihenhaus' || !bars.length) return bars.map(() => 0);
   const total = Math.max(
     requiredCores(mass, access, settings),
-    mixCores(bars, access, dim, avgTarget),
+    mixCores(bars, access, dim, avgTarget, coreRange(settings)[1]),
   );
   const fits = bars.map((b) => b.length >= dim.coreWidth + 4);
   const weights = bars.map((b, i) => (fits[i] ? b.length : 0));
@@ -417,8 +431,18 @@ export function mixCores(
   access: AccessType,
   dim: LayoutDimensions,
   avgTarget: number,
+  /** Gallery, corridor, point block: most dwellings per core and storey (office rule, 8). */
+  maxPerCore?: number,
 ): number {
   const perCore = access === 'zweispaenner' ? 2 : access === 'dreispaenner' ? 3 : 0;
+  if (!perCore && maxPerCore && maxPerCore > 0 && avgTarget > 0 && access !== 'reihenhaus') {
+    // enough cores that none serves more than maxPerCore dwellings per storey
+    const units = bars.reduce(
+      (s, b) => s + (b.length * b.depth) / (avgTarget * UNIT_GROSS_FACTOR),
+      0,
+    );
+    return Math.ceil(units / maxPerCore - 1e-9);
+  }
   if (!perCore || !(avgTarget > 0)) return 0;
   let n = 0;
   for (const b of bars) {
@@ -848,6 +872,8 @@ interface LayoutPass {
   pins?: number[][];
   /** Level of the duplex dwellings on this storey (duplex types of the mix). */
   duplex?: 'jour' | 'nuit';
+  /** Séjours of the storey below (séjours and loggias stack). */
+  below?: Polygon[];
 }
 
 function layoutStorey(
@@ -883,7 +909,16 @@ function layoutStorey(
   const circulation: LayoutArea[] = [];
   const open: LayoutArea[] = [];
   const raw: RawUnit[] = [];
-  const rows: { frame: Frame; rect: Rect; core: number; region: Polygon[]; sides: number }[] = [];
+  const rows: {
+    frame: Frame;
+    rect: Rect;
+    core: number;
+    region: Polygon[];
+    sides: number;
+    /** The row starts / ends at an end of its bar (building corner). */
+    atStart: boolean;
+    atEnd: boolean;
+  }[] = [];
   const regions: Polygon[] = [];
 
   const clip = (region: Polygon[], p: Polygon): Polygon[] =>
@@ -970,6 +1005,8 @@ function layoutStorey(
           core: coreOf(r.core),
           region: bar.region,
           sides: r.sides,
+          atStart: r.rect[0] <= 1e-6,
+          atEnd: r.rect[2] >= bar.length - 1e-6,
         });
     }
   }
@@ -1022,6 +1059,8 @@ function layoutStorey(
           ordered.forEach((t, i) => (t.areaTarget < ordered[si]!.areaTarget ? (si = i) : 0));
           ordered.splice(si, 1);
         }
+        // large dwellings (T4, T5) at the building corners, small ones in the middle
+        ordered = cornerOrder(ordered, row.atStart, row.atEnd);
         const widths = allocate(
           len,
           ordered.map((t) => Math.max(t.areaTarget, minWidth(t) * (b1 - b0))),
@@ -1105,6 +1144,9 @@ function layoutStorey(
     const minReq = Math.min(...mix.map(fc.req));
     const roomsOf = (t: UnitType) =>
       t.duplex && pass.duplex ? duplexProgram(unitRooms(t), pass.duplex, rules) : unitRooms(t);
+    const wetOf = (t: UnitType) =>
+      t.duplex && pass.duplex ? duplexWet(unitRooms(t), pass.duplex) : wetProgram(unitRooms(t));
+    const accessPolys = [...cores, ...circulation].map((c) => c.polygon);
     const polys = raw.map((u) => simplify(u.polys[0]!));
     const fac = polys.map((p) => facadeOf(p, facadeSegs).length);
     const alive = raw.map(() => true);
@@ -1170,12 +1212,21 @@ function layoutStorey(
               },
             }
           : {}),
-        rooms: unitRoomLayout(polygon, facade.segments, roomsOf(choice.type), rules, (seg) => {
-          // séjour preferably on the outer façade, where the outdoor space can go
-          const outer = onLine(seg, outlineSegs);
-          if (!outer) return 0;
-          return sideConfig(outdoorCfg, facadeSide(seg, polygon)).kind === 'none' ? 1 : 2;
+        rooms: unitRoomLayout(polygon, facade.segments, roomsOf(choice.type), rules, {
+          preferSejour: (seg) => {
+            // séjour preferably on the outer façade, where the outdoor space can go
+            const outer = onLine(seg, outlineSegs);
+            if (!outer) return 0;
+            return sideConfig(outdoorCfg, facadeSide(seg, polygon)).kind === 'none' ? 1 : 2;
+          },
+          exterior: outlineSegs,
+          access: accessPolys,
+          ...(pass.below ? { below: pass.below } : {}),
+          neighbours: units.flatMap((x) => x.rooms),
+          wet: wetOf(choice.type),
+          mainRooms: unitRooms(choice.type),
         }),
+        ...orientationCheck(facade.segments, polygon, unitRooms(choice.type)),
       });
     });
     // outdoor spaces: one per dwelling, in front of (or next to) the séjour
@@ -1269,6 +1320,42 @@ function layoutStorey(
 const countsHere = (u: LayoutUnit): boolean => u.duplex?.level !== 'nuit';
 
 /** True when the midpoint of `seg` lies on one of `lines` (±2 cm). */
+/**
+ * Order of the dwellings of a row: the largest at the row ends that are building corners
+ * (docs/GRUNDRISS_REGELN.md §11), the smallest in the middle.
+ */
+function cornerOrder(types: UnitType[], atStart: boolean, atEnd: boolean): UnitType[] {
+  const big = [...types].sort((a, b) => unitRooms(b) - unitRooms(a) || b.areaTarget - a.areaTarget);
+  if (!atStart && !atEnd) return big;
+  if (atStart && !atEnd) return big;
+  if (!atStart && atEnd) return big.reverse();
+  // both ends: alternate the largest to the two ends
+  const left: UnitType[] = [];
+  const right: UnitType[] = [];
+  big.forEach((t, i) => (i % 2 === 0 ? left : right).push(t));
+  return [...left, ...right.reverse()];
+}
+
+/**
+ * Orientation rules (docs/GRUNDRISS_REGELN.md §5): from T3 at least two orientations; no
+ * dwelling faces north only.
+ */
+function orientationCheck(
+  segs: readonly [Vec2, Vec2][],
+  unit: Polygon,
+  rooms: number,
+): { orientations: FacadeSide[]; orientationOk: boolean } {
+  const set = new Set<FacadeSide>();
+  for (const s of segs)
+    if (Math.hypot(s[1][0] - s[0][0], s[1][1] - s[0][1]) >= 0.8) set.add(facadeSide(s, unit));
+  const orientations = FACADE_SIDES.filter((x) => set.has(x));
+  const northOnly = orientations.length === 1 && orientations[0] === 'N';
+  return {
+    orientations,
+    orientationOk: !northOnly && (rooms < 3 || orientations.length >= 2),
+  };
+}
+
 function onLine([a, b]: [Vec2, Vec2], lines: readonly [Vec2, Vec2][]): boolean {
   const m: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   return lines.some(([p, q]) => {
@@ -1502,11 +1589,34 @@ function applyDuplex(
       const loggias = [a.outdoor, b.outdoor]
         .filter((o) => o?.kind === 'loggia')
         .map((o) => o!.polygon);
-      const stair = duplexStair(
-        a.polygon,
-        [...rooms.filter((r) => r.kind !== 'sejour').map((r) => r.polygon), ...loggias],
-        rooms.filter((r) => r.kind === 'sejour').map((r) => r.polygon),
+      const bed = rooms.filter((r) => r.kind === 'chambre' || r.kind === 'chambrePmr');
+      const wetRooms = rooms.filter(
+        (r) => r.kind !== 'sejour' && r.kind !== 'degagement' && !bed.includes(r),
       );
+      const hard = [...bed.map((r) => r.polygon), ...loggias];
+      const sej = rooms.filter((r) => r.kind === 'sejour').map((r) => r.polygon);
+      let stair = duplexStair(a.polygon, [...hard, ...wetRooms.map((r) => r.polygon)], sej);
+      if (!stair) {
+        // last resort: through the wet core / passage, which give way to the stair
+        stair = stairIn(a.polygon, difference([a.polygon], hard));
+        if (stair)
+          for (const u of [a, b])
+            u.rooms = u.rooms.flatMap((r) => {
+              if (bed.includes(r) || overlapArea([r.polygon], [stair!]) < 1e-3) return [r];
+              const rest = difference([r.polygon], [stair!]).sort(
+                (x, y) => polygonArea(y) - polygonArea(x),
+              )[0];
+              if (!rest || polygonArea(rest) < 0.2) return [];
+              return [
+                {
+                  ...r,
+                  polygon: rest,
+                  area: polygonArea(rest),
+                  areaOk: r.areaRequired <= 0 || polygonArea(rest) >= r.areaRequired - 0.05,
+                },
+              ];
+            });
+      }
       for (const [u, part] of [
         [a, 'lower'],
         [b, 'upper'],
@@ -1579,11 +1689,17 @@ export function massLayout(
     byStorey.set(s.storeyIndex, list);
   }
   const pins = new Map<number, number[][]>();
+  // séjours stack: each storey sees the séjours of the storey below
+  let below: Polygon[] | undefined;
   const simplex = [...byStorey.keys()]
     .sort((a, b) => a - b)
     .map((i) => {
-      const r = layoutStorey(mass, byStorey.get(i)!, settings, access);
+      const r = layoutStorey(mass, byStorey.get(i)!, settings, access, below ? { below } : {});
       pins.set(i, r.pins);
+      const sej = r.layout.units.flatMap((u) =>
+        u.rooms.filter((x) => x.kind === 'sejour').map((x) => x.polygon),
+      );
+      below = sej.length ? sej : below;
       return r.layout;
     });
   const storeys = stackCores(applyDuplex(mass, byStorey, settings, access, simplex, pins));
@@ -1612,7 +1728,7 @@ export function massLayout(
     totals: { units, byType: [...counts.values()], unitArea },
     areaBasedDwellings: areaBasedDwellings ?? 0,
   };
-  const expected = unitsPerCoreRange(access);
+  const expected = unitsPerCoreRange(access, coreRange(settings));
   if (expected) out.expectedUnitsPerCore = expected;
   return out;
 }

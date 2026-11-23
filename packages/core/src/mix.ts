@@ -43,15 +43,24 @@ export function unitMix(livingArea: number, mix: readonly UnitType[]): UnitMixRe
   return { total, byType, residualArea: livingArea - allocated };
 }
 
-/** Expected dwellings per storey and core for an access type, or undefined if not applicable. */
-export function unitsPerCoreRange(access: AccessType): [number, number] | undefined {
+/**
+ * Expected dwellings per storey and core for an access type, or undefined if not applicable.
+ * Zweispänner / Dreispänner serve 2 / 3; gallery, corridor and point blocks the office range
+ * (`range`, default 3–8, settings: unitRules.unitsPerCoreMin/Max).
+ */
+export function unitsPerCoreRange(
+  access: AccessType,
+  range: [number, number] = [3, 8],
+): [number, number] | undefined {
   switch (access) {
     case 'zweispaenner':
       return [2, 2];
     case 'dreispaenner':
       return [3, 3];
     case 'punkthaus':
-      return [4, 6];
+    case 'laubengang':
+    case 'mittelflur':
+      return range;
     default:
       return undefined;
   }
