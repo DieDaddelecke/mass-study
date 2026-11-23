@@ -252,13 +252,6 @@ const at = (r: Run, s: number, t: number): Vec2 => [
 ];
 const box = (r: Run, s0: number, s1: number, t0: number, t1: number): Polygon =>
   normalizePolygon({ outer: [at(r, s0, t0), at(r, s1, t0), at(r, s1, t1), at(r, s0, t1)] });
-const largest = (ps: Polygon[]): Polygon | undefined =>
-  ps
-    .filter((p) => polygonArea(p) > 0.2)
-    .reduce<Polygon | undefined>(
-      (x, y) => (!x || polygonArea(y) > polygonArea(x) ? y : x),
-      undefined,
-    );
 
 /** True when two rooms on facing façade pieces overlap along the façade direction. */
 function overlapS(r: Run, p: { s0: number; s1: number }, q: Run, x: { s0: number; s1: number }) {
