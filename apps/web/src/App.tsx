@@ -33,7 +33,12 @@ if (
   typeof window !== 'undefined' &&
   new URLSearchParams(window.location.search).get('demo') === 'palaiseau'
 ) {
-  openProject(palaiseauDemo());
+  const demo = palaiseauDemo();
+  // dev/screenshots: `&pos=x,y` moves the demo building (e.g. close to the neighbour boundary)
+  const pos = new URLSearchParams(window.location.search).get('pos')?.split(',').map(Number);
+  if (pos?.length === 2 && pos.every(Number.isFinite) && demo.variants[0]?.masses[0])
+    demo.variants[0].masses[0].position = [pos[0]!, pos[1]!];
+  openProject(demo);
   // dev/screenshots: `&view=site|elevN|sectionA|axoSW…` opens a view directly
   const view = new URLSearchParams(window.location.search).get('view');
   if (view) useUiStore.getState().openView(view as ViewId);

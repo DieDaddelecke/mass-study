@@ -31,6 +31,7 @@ import { resolveResidenceRules, type LayoutSpace, type ResidenceSummary } from '
 import { shareCores } from './office.js';
 import { requiredCores } from './typologies.js';
 import { facadeOf, polygonEdges } from './unitRules.js';
+import { blindFacades, subtractSegments } from './boundaries.js';
 import type { Mass, Polygon, ResidenceRules, Settings, StoreySolid, Vec2 } from './types.js';
 
 export type ResidenceUnitKind = 'studio' | 'pmr' | 'corner';
@@ -61,6 +62,8 @@ const WALL = 0.1;
 export interface ResidenceOptions {
   /** Units of the whole building: the common rooms go on this storey, sized for them. */
   totalUnits?: number;
+  /** Neighbour boundaries: façades facing them within `distance` get no windows. */
+  party?: { segs: [Vec2, Vec2][]; distance: number };
 }
 
 interface Row {
@@ -209,7 +212,11 @@ export function residenceStoreyLayout(
       ? union(solids.map((s) => s.footprint))
       : solids.map((s) => normalizePolygon(s.footprint));
   const outline = union(outlines);
-  const facadeSegs = polygonEdges(outline);
+  const allSegs = polygonEdges(outline);
+  const blind = opts.party
+    ? blindFacades(allSegs, outline, opts.party.segs, opts.party.distance)
+    : [];
+  const facadeSegs = subtractSegments(allSegs, blind);
   const bars: Bar[] = outlines.flatMap((p) => solidBars(mass, p));
   const clip = (region: Polygon[], p: Polygon): Polygon[] =>
     intersection(region, [p]).filter((q) => polygonArea(q) > 1e-3);
@@ -477,12 +484,14 @@ export function residenceStoreyLayout(
       ...footprints.map((p) => p.outer.map(([x, y]) => `${r1(x)},${r1(y)}`).join(';')),
       ...units.map((u) => `${u.typeId}:${r1(u.area)}`),
       `c${r1(commonArea)}`,
+      ...(blind.length ? [`b${blind.length}`] : []),
     ].join('|'),
     spaces,
     residence,
   };
   if (cores.length && units.length)
     out.unitsPerCore = Math.round((units.length / cores.length) * 10) / 10;
+  if (blind.length) out.blindFacades = blind;
   return out;
 }
 

@@ -12,6 +12,7 @@ import {
   type Polygon,
   type Project,
   type SolidResult,
+  siteBoundaries,
 } from '@kubatur/core';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
@@ -168,6 +169,9 @@ function Ground({
   );
 }
 
+const PARTY_COLOR = '#d9480f';
+const HOVER_EDGE_COLOR = '#f59f00';
+
 function SiteBoundary({
   project,
   pal,
@@ -184,6 +188,25 @@ function SiteBoundary({
     for (const r of [b.outer, ...(b.holes ?? [])]) out.push(...dashDotSegments(r, 0.04));
     return out;
   }, [b]);
+  // neighbour boundaries (limites séparatives) in orange; the edge hovered in the inspector lit up
+  const hover = useUiStore((s) => s.hover);
+  const bounds = useMemo(
+    () => siteBoundaries(project.site, project.surroundings),
+    [project.site, project.surroundings],
+  );
+  const party = useMemo(() => {
+    const out: number[] = [];
+    for (const s of bounds)
+      if (s.kind === 'neighbour') out.push(s.a[0], s.a[1], 0.06, s.b[0], s.b[1], 0.06);
+    return out;
+  }, [bounds]);
+  const lit = useMemo(() => {
+    const out: number[] = [];
+    if (hover?.startsWith('boundary:'))
+      for (const s of bounds)
+        if (`boundary:${s.key}` === hover) out.push(s.a[0], s.a[1], 0.08, s.b[0], s.b[1], 0.08);
+    return out;
+  }, [bounds, hover]);
   const buildable = project.constraints.buildable ?? project.site.buildable;
   const buildableLines = useMemo(() => {
     if (!buildable) return null;
@@ -214,6 +237,8 @@ function SiteBoundary({
         </mesh>
       )}
       <FatSegments segments={segs} color={pal.site} width={2.5} />
+      {party.length > 0 && <FatSegments segments={party} color={PARTY_COLOR} width={4} />}
+      {lit.length > 0 && <FatSegments segments={lit} color={HOVER_EDGE_COLOR} width={7} />}
       {buildableLines && <primitive object={buildableLines} />}
     </group>
   );

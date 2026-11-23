@@ -121,7 +121,9 @@
         "sanitaires": "Toilets",
         "hall": "Entrance hall"
       }
-    }
+    },
+    "blindFacade": "Blind façade (neighbour boundary)",
+    "partyBoundary": "Neighbour boundary"
   },
   "ridge": "ridge"
 }

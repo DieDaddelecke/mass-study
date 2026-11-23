@@ -1,4 +1,5 @@
 import {
+  siteBoundaries,
   coreStair,
   difference,
   resolveStairRules,
@@ -23,6 +24,7 @@ import {
   type StoreySolid,
   type UnitType,
   type Vec2,
+  type BoundaryKind,
 } from '@kubatur/core';
 import polylabel from 'polylabel';
 import { COLORS, line, type CommonOptions } from './common.js';
@@ -54,6 +56,10 @@ export const FLOOR_PLAN_COLORS = {
   outdoorLine: '#6b6862',
   /** Dwellings below the minimum façade length. */
   facadeFail: '#d0342c',
+  /** Site boundary towards a neighbouring parcel (limite séparative). */
+  party: '#d9480f',
+  /** Façades without windows towards a neighbouring parcel (mur aveugle). */
+  blind: '#d9480f',
 };
 
 /** Hex colour mixed towards black (k > 0) or white (k < 0). */
@@ -131,8 +137,10 @@ export function unitColor(typeId: string, mix: readonly UnitType[]): string {
 export interface FloorPlanOptions extends CommonOptions {
   /** Unit labels (type + area), default true. */
   labels?: boolean;
-  /** Faint site boundary, default true. */
+  /** Faint site boundary, default true (neighbour boundaries in orange). */
   site?: boolean;
+  /** Text of the boundary labels (default French: "Limite séparative", street names). */
+  boundaryText?: (kind: BoundaryKind, name?: string) => string | undefined;
   /** Unit mix for colours (default: project settings). */
   unitMix?: readonly UnitType[];
   /** Tooltip text of the façade check, default French ("façade 9,40 m (min 9,10 m)"). */
@@ -153,6 +161,44 @@ export interface FloorPlanOptions extends CommonOptions {
   roomText?: (kind: RoomKind) => string;
   /** Duplex texts: mark after the type and the level names (default: French). */
   duplexText?: { duplex: string; jour: string; nuit: string };
+}
+
+const BOUNDARY_LABELS: Partial<Record<BoundaryKind, string>> = {
+  neighbour: 'Limite séparative',
+  road: 'Voie',
+  path: 'Chemin',
+  public: 'Espace public',
+};
+const defaultBoundaryText = (k: BoundaryKind, name?: string) =>
+  k === 'road' || k === 'path' ? (name ?? BOUNDARY_LABELS[k]) : BOUNDARY_LABELS[k];
+
+/** Segment clipped to an axis-aligned box (Liang–Barsky), undefined when outside. */
+function clipSegment(
+  [a, b]: [Vec2, Vec2],
+  e: { minX: number; minY: number; maxX: number; maxY: number },
+): [Vec2, Vec2] | undefined {
+  let t0 = 0;
+  let t1 = 1;
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const ps = [-dx, dx, -dy, dy];
+  const qs = [a[0] - e.minX, e.maxX - a[0], a[1] - e.minY, e.maxY - a[1]];
+  for (let i = 0; i < 4; i++) {
+    const p = ps[i]!;
+    const q = qs[i]!;
+    if (Math.abs(p) < 1e-12) {
+      if (q < 0) return undefined;
+      continue;
+    }
+    const r = q / p;
+    if (p < 0) t0 = Math.max(t0, r);
+    else t1 = Math.min(t1, r);
+    if (t0 > t1) return undefined;
+  }
+  return [
+    [a[0] + t0 * dx, a[1] + t0 * dy],
+    [a[0] + t1 * dx, a[1] + t1 * dy],
+  ];
 }
 
 const fmtM = (v: number) => `${v.toFixed(2).replace('.', ',')} m`;
@@ -182,6 +228,23 @@ function insetSegment([a, b]: [Vec2, Vec2], poly: Polygon, d: number): Vec2[] {
     ];
   }
   return [a, b];
+}
+
+/** Segment moved by `d` to the side away from the polygons. */
+function outsetSegment([a, b]: [Vec2, Vec2], polys: readonly Polygon[], d: number): Vec2[] {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (len < 1e-9) return [a, b];
+  let nx = -(b[1] - a[1]) / len;
+  let ny = (b[0] - a[0]) / len;
+  const mid: Vec2 = [(a[0] + b[0]) / 2 + nx * 0.05, (a[1] + b[1]) / 2 + ny * 0.05];
+  if (polys.some((p) => pointInPolygon(mid, p))) {
+    nx = -nx;
+    ny = -ny;
+  }
+  return [
+    [a[0] + nx * d, a[1] + ny * d],
+    [b[0] + nx * d, b[1] + ny * d],
+  ];
 }
 
 function labelPoint(p: Polygon): Vec2 {
@@ -397,6 +460,7 @@ export function floorPlan(
         for (const r of rings(p)) items.push(line(r, 1, 'solid', '#bdbdbd', true));
       }
     }
+  const siteLabels: DItem[] = [];
   if (opts.site !== false && project.site.boundary.outer.length) {
     // clipped boundary without the edges that lie on the frame of the drawing
     const onFrame = (a: Vec2, b: Vec2) =>
@@ -413,6 +477,37 @@ export function floorPlan(
           const b = r[(i + 1) % r.length]!;
           if (!onFrame(a, b)) items.push(line([a, b], 2, 'dashdot', COLORS.lightGrey));
         });
+    // neighbour boundaries (limites séparatives) in orange, labelled; streets labelled
+    const text = opts.boundaryText ?? defaultBoundaryText;
+    for (const s of siteBoundaries(project.site, project.surroundings)) {
+      const pieces = clipSegment([s.a, s.b], ext);
+      if (!pieces) continue;
+      const [a, b] = pieces;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (s.kind === 'neighbour') items.push(line([a, b], 3, 'dashdot', FLOOR_PLAN_COLORS.party));
+      const label = opts.labels === false || len < 8 ? undefined : text(s.kind, s.name);
+      if (!label) continue;
+      let ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      if (ang > Math.PI / 2) ang -= Math.PI;
+      if (ang < -Math.PI / 2) ang += Math.PI;
+      // outside the site, just beyond the boundary line
+      const mid: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const nx = -(b[1] - a[1]) / len;
+      const ny = (b[0] - a[0]) / len;
+      const out = pointInPolygon([mid[0] + nx * 0.1, mid[1] + ny * 0.1], project.site.boundary)
+        ? -1
+        : 1;
+      siteLabels.push({
+        kind: 'text',
+        at: [mid[0] + out * nx * 1.2, mid[1] + out * ny * 1.2],
+        text: label,
+        sizeMm: 1.5,
+        anchor: 'middle',
+        baseline: 'middle',
+        rotation: ang,
+        color: s.kind === 'neighbour' ? FLOOR_PLAN_COLORS.party : '#7a7a7a',
+      });
+    }
   }
 
   // footprint of the whole building (other storeys) as a thin dashed outline
@@ -638,6 +733,13 @@ export function floorPlan(
         for (const r of rings(u.polygon))
           items.push(line(r, 4, 'solid', FLOOR_PLAN_COLORS.facadeFail, true));
     }
+  // façades without windows towards a neighbour (mur aveugle): an orange band outside the wall
+  for (const st of storeys)
+    for (const seg of st.blindFacades ?? [])
+      items.push(
+        line(outsetSegment(seg, st.footprints, 0.35), 6, 'solid', FLOOR_PLAN_COLORS.blind),
+      );
+  items.push(...siteLabels);
   items.push(...labels);
 
   items.push({ kind: 'symbol', type: 'north', at: [ext.maxX - 3, ext.maxY - 5] });

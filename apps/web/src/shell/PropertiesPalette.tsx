@@ -20,6 +20,7 @@ import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
 import { DuplexFields } from './DuplexFields';
 import { OutdoorFields } from './OutdoorFields';
+import { SiteBoundaryFields } from './SiteBoundaryFields';
 import { PlantingProperties, RoofFields, TerraceFields } from './MassShapeFields';
 import { TypologyInputs } from './TypologyInputs';
 import { UseFields } from './UseFields';
@@ -501,6 +502,7 @@ function ViewProperties() {
           <span className="ro">{t(`settings.profiles.${project.settings.profile}`)}</span>
         </Row>
       </Group>
+      <SiteBoundaryFields />
       <Group title={t('inspector.constraints')}>
         {rules.map(([k, v]) => (
           <Row key={k} label={k}>

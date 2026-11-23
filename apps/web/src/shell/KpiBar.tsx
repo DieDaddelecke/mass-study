@@ -1,4 +1,10 @@
-import { massLayout, usesTotals, type ConstraintRow, type UsesTotals } from '@kubatur/core';
+import {
+  massLayout,
+  usesTotals,
+  type ConstraintRow,
+  type UsesTotals,
+  siteEdges,
+} from '@kubatur/core';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../i18n';
@@ -168,6 +174,8 @@ function useUsesTotals(): UsesTotals {
               m.mass,
               m.solids.map((r) => r.solid),
               project.settings,
+              undefined,
+              siteEdges(project.site, project.surroundings),
             ).storeys,
         ),
       );

@@ -256,6 +256,27 @@ export interface Site {
   boundary: Polygon;
   buildable?: Polygon[];
   buildingLines?: Vec2[][];
+  /**
+   * User overrides of the automatic boundary classification, by edge key
+   * (boundaryEdgeKey of the outer ring's edge).
+   */
+  edgeKinds?: Record<string, BoundaryKind>;
+}
+
+/**
+ * What a site boundary borders: a street, a footpath / cycle path, another public space
+ * (square, park, rail), a neighbouring parcel (limite séparative) or unknown (no cadastre data).
+ */
+export type BoundaryKind = 'road' | 'path' | 'public' | 'neighbour' | 'unknown';
+
+/** Windows towards neighbouring parcels (PLU: vues droites). */
+export interface BoundaryRules {
+  /** No windows / balconies on façades facing a neighbour boundary closer than the vue distance. */
+  enabled: boolean;
+  /** Minimum vue distance, m (default 8). */
+  vueMin: number;
+  /** Vue distance as a share of the building height (H/2 → 0.5). */
+  vueRatio: number;
 }
 
 export interface ContextBuilding {
@@ -514,6 +535,8 @@ export interface Settings {
   /** Outdoor spaces: minimums and the default configuration of new buildings. */
   outdoorRules?: OutdoorRules;
   outdoor?: OutdoorConfig;
+  /** Windows towards neighbouring parcels (defaults when missing). */
+  boundaryRules?: BoundaryRules;
   /** Duplex dwellings: default configuration of new buildings. */
   duplex?: DuplexConfig;
   /** Residences (résidence étudiante / seniors), defaults when missing. */

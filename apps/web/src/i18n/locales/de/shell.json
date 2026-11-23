@@ -548,5 +548,31 @@
       "result": "{{desks}} Arbeitsplätze · NF {{usable}} m² ({{ratio}} % der Bruttofläche) · {{perDesk}} m²/Platz · {{meetings}} Besprechungsräume",
       "deep": "{{count}} Geschoss(e) zu tief für Tageslicht"
     }
+  },
+  "boundary": {
+    "title": "Grundstücksgrenzen",
+    "summary": "{{count}} Nachbargrenze(n) von {{total}} Kanten (Kataster + Straßen, änderbar).",
+    "noNeighbour": "Keine Nachbargrenze erkannt.",
+    "edge": "Kante {{n}}",
+    "auto": "Auto · {{kind}}",
+    "mixed": "gemischt",
+    "kind": {
+      "road": "Straße",
+      "path": "Weg / Radweg",
+      "public": "Öffentliche Fläche",
+      "neighbour": "Nachbargrenze",
+      "unknown": "Unbekannt"
+    },
+    "noWindows": "Ohne Fenster",
+    "vueMin": "Mindestabstand",
+    "vueRatio": "Anteil von H",
+    "note": "Eine Fassade näher als max({{min}} m; {{ratio}} × H) an einer Nachbargrenze bleibt geschlossen: keine Fenster, keine Balkone; Wohnräume gehen zur Straße oder zum Garten.",
+    "short": {
+      "road": "Straße",
+      "path": "Weg",
+      "public": "Öffentlich",
+      "neighbour": "Nachbar",
+      "unknown": "?"
+    }
   }
 }

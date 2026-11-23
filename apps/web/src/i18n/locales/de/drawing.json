@@ -121,7 +121,9 @@
         "sanitaires": "Sanitär",
         "hall": "Eingangshalle"
       }
-    }
+    },
+    "blindFacade": "Geschlossene Fassade (Nachbargrenze)",
+    "partyBoundary": "Nachbargrenze"
   },
   "ridge": "First"
 }

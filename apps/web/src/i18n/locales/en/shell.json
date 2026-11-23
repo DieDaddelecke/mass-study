@@ -548,5 +548,31 @@
       "result": "{{desks}} desks · usable {{usable}} m² ({{ratio}} % of gross floor area) · {{perDesk}} m²/desk · {{meetings}} meeting rooms",
       "deep": "{{count}} storey(s) too deep for daylight"
     }
+  },
+  "boundary": {
+    "title": "Site boundaries",
+    "summary": "{{count}} neighbour boundary(ies) of {{total}} edges (cadastre + streets, editable).",
+    "noNeighbour": "No neighbour boundary detected.",
+    "edge": "Edge {{n}}",
+    "auto": "Auto · {{kind}}",
+    "mixed": "mixed",
+    "kind": {
+      "road": "Street",
+      "path": "Path / cycle path",
+      "public": "Public space",
+      "neighbour": "Neighbour boundary",
+      "unknown": "Unknown"
+    },
+    "noWindows": "No windows",
+    "vueMin": "Min. distance",
+    "vueRatio": "Share of H",
+    "note": "A façade closer than max({{min}} m; {{ratio}} × H) to a neighbour boundary stays blind: no windows, no balconies; living rooms face the street or garden.",
+    "short": {
+      "road": "Street",
+      "path": "Path",
+      "public": "Public",
+      "neighbour": "Neighbour",
+      "unknown": "?"
+    }
   }
 }
