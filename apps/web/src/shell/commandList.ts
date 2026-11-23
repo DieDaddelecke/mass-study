@@ -48,10 +48,11 @@ import {
 import i18n from '../i18n';
 import { useArchicadStore } from '../archicad/archicadStore';
 import { useProjectStore } from '../store/projectStore';
-import { STYLES, type ToolState } from '../store/tools';
+import type { ToolState } from '../store/tools';
+import { DISPLAY_MODES, displayModeOf, setDisplayMode } from '../store/display';
+import { useViewportStore } from '../viewport/viewportStore';
 import { useUiStore } from '../store/uiStore';
 import { useThemeStore } from '../theme/themeStore';
-import { useViewportStore } from '../viewport/viewportStore';
 import {
   activateTool,
   closeProject,
@@ -324,15 +325,16 @@ export function getCommands(): Command[] {
       run: () => ui.setProjection(ui.projection === 'perspective' ? 'orthographic' : 'perspective'),
     }),
   );
-  for (const s of STYLES)
+  const mode = displayModeOf(ui.visualStyle, useViewportStore.getState().look);
+  for (const m of DISPLAY_MODES)
     cmds.push(
       proj({
-        id: `view.style.${s}`,
+        id: `view.display.${m}`,
         group: 'view',
-        label: `${t('view.style')} : ${t(`view.styles.${s}`)}`,
+        label: `${t('view.display')} : ${t(`view.displays.${m}`)}`,
         icon: Palette,
-        active: ui.visualStyle === s,
-        run: () => ui.setVisualStyle(s),
+        active: mode === m,
+        run: () => setDisplayMode(m),
       }),
     );
   cmds.push(

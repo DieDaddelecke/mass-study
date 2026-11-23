@@ -236,21 +236,16 @@
     "floorPlan": "Plans d'étage"
   },
   "view": {
-    "style": "Style visuel",
-    "look": "Ambiance",
+    "display": "Affichage",
     "projection": "Projection",
     "perspective": "Perspective",
     "orthographic": "Orthographique",
-    "styles": {
-      "consistentColors": "Couleurs cohérentes",
-      "granulometry": "Granulométrie",
-      "realistic": "Réaliste"
-    },
-    "looks": {
+    "displays": {
       "maquette": "Maquette blanche",
       "bois": "Maquette bois",
       "diagramme": "Diagramme",
-      "classique": "Classique"
+      "usages": "Couleurs d'usage",
+      "granulometrie": "Granulométrie"
     }
   },
   "status": {

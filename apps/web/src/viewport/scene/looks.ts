@@ -14,9 +14,9 @@ export const LIT_STYLES: ReadonlySet<VisualStyle> = new Set([
  * 3D view. Independent of the visual style (realistic, granulometry, …), which decides *what* is
  * drawn; the look decides how the model is lit and coloured.
  */
-export type SceneLook = 'maquette' | 'bois' | 'diagramme' | 'classique';
+export type SceneLook = 'maquette' | 'bois' | 'diagramme';
 
-export const SCENE_LOOKS: readonly SceneLook[] = ['maquette', 'bois', 'diagramme', 'classique'];
+export const SCENE_LOOKS: readonly SceneLook[] = ['maquette', 'bois', 'diagramme'];
 
 export interface LookSpec {
   pal: ScenePalette;
@@ -52,7 +52,6 @@ export interface LookSpec {
   storeyLine?: string;
 }
 
-const SUN_SW: readonly [number, number, number] = [-0.45, -0.9, 1];
 /** South-south-east sun: shadows fall to the north-west, visible from the default SW view. */
 const SUN_SSE: readonly [number, number, number] = [0.5, -1, 0.95];
 /** Low east-south-east sun: long graphic shadows. */
@@ -263,29 +262,6 @@ const LOOKS: Record<SceneLook, Record<ThemeName, LookSpec>> = {
       ao: { intensity: 1.6, radius: 3, color: '#000000' },
       edgeWidth: 1.2,
       siteFill: 0.02,
-    },
-  },
-  /** The previous look (flat theme colours, hard shadows, no AO). */
-  classique: {
-    light: {
-      pal: base('light'),
-      sky: [base('light').sky, base('light').sky],
-      hemi: { sky: '#ffffff', ground: '#d8d4cc', intensity: 1.1 },
-      ambient: 0.45,
-      sun: { color: '#ffffff', intensity: 1.3, dir: SUN_SW, softness: 1, shadowIntensity: 1 },
-      ao: null,
-      edgeWidth: 2,
-      siteFill: 0.07,
-    },
-    dark: {
-      pal: base('dark'),
-      sky: [base('dark').sky, base('dark').sky],
-      hemi: { sky: '#ffffff', ground: '#d8d4cc', intensity: 1.1 },
-      ambient: 0.45,
-      sun: { color: '#ffffff', intensity: 1.3, dir: SUN_SW, softness: 1, shadowIntensity: 1 },
-      ao: null,
-      edgeWidth: 2,
-      siteFill: 0.07,
     },
   },
 };

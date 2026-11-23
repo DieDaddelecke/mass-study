@@ -30,10 +30,8 @@ export type ToolState =
 
 export type ToolKind = ToolState['kind'];
 
-/** Visual styles of the 3D view (filaire, lignes cachées and ombré were dropped in favour of these). */
+/** What the faces of the 3D view show; chosen through the display modes (store/display.ts). */
 export type VisualStyle = 'realistic' | 'consistentColors' | 'granulometry';
-
-export const STYLES: readonly VisualStyle[] = ['realistic', 'consistentColors', 'granulometry'];
 
 /**
  * Views. `3d` and `plan` are the editable working views (same scene and tools; `plan` looks

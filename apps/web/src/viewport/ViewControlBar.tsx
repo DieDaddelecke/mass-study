@@ -12,10 +12,9 @@ import {
   Sun,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { STYLES } from '../store/tools';
+import { DISPLAY_MODES, setDisplayMode, useDisplayMode } from '../store/display';
 import { useUiStore } from '../store/uiStore';
 import { useViewportStore } from './viewportStore';
-import { LIT_STYLES } from './scene/looks';
 import { useProjectStore } from '../store/projectStore';
 import { useAnalysis } from '../store/useAnalysis';
 import { defaultCutLevel } from './scene/storeyCut';
@@ -52,15 +51,14 @@ function ModeSwitch({ plan }: { plan: boolean }) {
 /** Floating view controls (bottom-left): 3D/plan, visual style, sun, projection, zoom, home. */
 export function ViewControlBar({ plan = false }: { plan?: boolean }) {
   const { t } = useTranslation('viewport');
-  const style = useUiStore((s) => s.visualStyle);
-  const setStyle = useUiStore((s) => s.setVisualStyle);
+  const mode = useDisplayMode();
   const projection = useUiStore((s) => s.projection);
   const setProjection = useUiStore((s) => s.setProjection);
   const sun = useViewportStore((s) => (plan ? s.planSun : s.sunEnabled));
   const setSun = useViewportStore((s) => (plan ? s.setPlanSun : s.setSunEnabled));
   const zoomExtents = useViewportStore((s) => s.requestZoomExtents);
   const home = useViewportStore((s) => s.requestHome);
-  const sunActive = LIT_STYLES.has(style) && sun;
+  const sunActive = sun;
   const magnet = useUiStore((s) => s.snap.enabled && s.snap.magnet);
   const setSnap = useUiStore((s) => s.setSnap);
   const persp = projection === 'perspective';
@@ -84,22 +82,18 @@ export function ViewControlBar({ plan = false }: { plan?: boolean }) {
       <ModeSwitch plan={plan} />
       <span className="vp-bar-sep" />
       <Menu.Root>
-        <Menu.Trigger
-          className="vp-style"
-          aria-label={t('bar.visualStyle')}
-          title={t('bar.visualStyle')}
-        >
+        <Menu.Trigger className="vp-style" aria-label={t('bar.display')} title={t('bar.display')}>
           <Palette size={15} strokeWidth={1.75} />
-          <span>{t(`style.${style}`)}</span>
+          <span>{t(`display.${mode}`)}</span>
           <ChevronDown size={13} strokeWidth={1.75} />
         </Menu.Trigger>
         <Menu.Portal>
           <Menu.Content className="menu glass" side="top" align="start" sideOffset={10}>
-            <Menu.Label className="menu-label">{t('bar.visualStyle')}</Menu.Label>
-            {STYLES.map((s) => (
-              <Menu.Item key={s} className="menu-item" onSelect={() => setStyle(s)}>
-                <span className="menu-check">{s === style && <Check size={14} />}</span>
-                {t(`style.${s}`)}
+            <Menu.Label className="menu-label">{t('bar.display')}</Menu.Label>
+            {DISPLAY_MODES.map((m) => (
+              <Menu.Item key={m} className="menu-item" onSelect={() => setDisplayMode(m)}>
+                <span className="menu-check">{m === mode && <Check size={14} />}</span>
+                {t(`display.${m}`)}
               </Menu.Item>
             ))}
           </Menu.Content>
@@ -112,12 +106,7 @@ export function ViewControlBar({ plan = false }: { plan?: boolean }) {
         title={t('bar.sun')}
         aria-label={t('bar.sun')}
         aria-pressed={sunActive}
-        onClick={() => {
-          if (!LIT_STYLES.has(style)) {
-            setStyle('realistic');
-            setSun(true);
-          } else setSun(!sun);
-        }}
+        onClick={() => setSun(!sun)}
       >
         <Sun size={16} strokeWidth={1.75} />
       </button>
