@@ -43,5 +43,17 @@
       "impossible": "Diese Fassade kann nicht ausgerichtet werden (versetzte Abschnitte) — parallele Referenz oder ganzes Volumen verwenden"
     }
   },
-  "greenPrefix": "Grünfläche"
+  "greenPrefix": "Grünfläche",
+  "edit": {
+    "length": "Länge",
+    "depth": "Tiefe",
+    "offset": "Fassade verschieben",
+    "storeys": "Geschosse",
+    "storeysHint": "Nach oben/unten ziehen oder ▲ ▼ für die Geschosszahl",
+    "rotation": "Drehung",
+    "rotateHint": "Ziehen, um das Volumen zu drehen",
+    "distance": "Abstand",
+    "typeWhileDragging": "Wert tippen + Enter · Alt: ohne Magnet · Esc bricht ab",
+    "typeToCorrect": "Wert tippen + Enter zum Korrigieren"
+  }
 }
