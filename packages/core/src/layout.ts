@@ -22,6 +22,7 @@ import {
   intersection,
   normalizePolygon,
   offsetPolygons,
+  polygonDistance,
   offsetPolyline,
   pointInPolygon,
   overlapArea,
@@ -1267,6 +1268,10 @@ function layoutStorey(
         return Math.max(...pool.map((t) => t.areaMax));
       };
       const shared = (a: Polygon, b: Polygon) => facadeOf(a, polygonEdges([b])).length;
+      // no dwelling half in the dark middle of the building (Soheyl 23.11.2026): at most
+      // max(4 m², 10 %) of it outside the zone in front of its façade
+      const dark = (p: Polygon) =>
+        darkArea(p, facOf(p).segments) > Math.max(4, 0.1 * polygonArea(p));
       // one compact piece: no hole, no neck narrower than 1 m
       const single = (ps: Polygon[]) => {
         const xs = ps.filter((q) => polygonArea(q) > 0.05);
@@ -1317,15 +1322,17 @@ function layoutStorey(
         const p = polys[i]!;
         const area = polygonArea(p);
         const cap = maxArea(p);
-        if (area <= cap + 1e-6) continue;
+        if (area <= cap + 1e-6 && !dark(p)) continue;
+        // the way from the door to the kept part is a shared corridor, never a long hall of
+        // the dwelling in the dark middle of the building (Soheyl 23.11.2026)
+        const hall = new WeakMap<Polygon, Polygon>();
         const cands = trimToArea(p, facOf(p).segments, cap - 0.05, (q) => {
-          let r: Polygon | undefined = q;
-          if (facadeOf(q, accessEdges).length < DOOR) {
-            const band = corridorIn(p, access(), q, 1.2, true);
-            r = band ? single(union([q, band])) : undefined;
-          }
-          // the kept part must still allow its size (façade not cut away)
-          return r && polygonArea(r) <= maxArea(r) + 1e-6 ? r : undefined;
+          if (polygonArea(q) > maxArea(q) + 1e-6 || dark(q)) return undefined;
+          if (facadeOf(q, accessEdges).length >= DOOR) return q;
+          const band = corridorIn(p, access(), q, 1.2, true);
+          if (!band) return undefined;
+          hall.set(q, band);
+          return q;
         });
         // the rest: to a neighbour that stays in range (a larger type), or unused secondary
         // area – but never façade left unused
@@ -1334,7 +1341,9 @@ function layoutStorey(
             const plan: { piece: Polygon; to?: number; m?: Polygon }[] = [];
             const grown = new Map<number, Polygon>();
             let ok = true;
-            for (const piece of difference([p], [kept]).filter((q) => polygonArea(q) > 0.5)) {
+            const band = hall.get(kept);
+            const taken = band ? [kept, band] : [kept];
+            for (const piece of difference([p], taken).filter((q) => polygonArea(q) > 0.05)) {
               const take = live()
                 .filter((j) => j !== i && shared(grown.get(j) ?? polys[j]!, piece) > 2.4)
                 .map((j) => ({ j, m: single(union([grown.get(j) ?? polys[j]!, piece])) }))
@@ -1355,6 +1364,10 @@ function layoutStorey(
             if (!ok) continue;
             polys[i] = simplify(kept);
             delete raw[i]!.type;
+            if (band) {
+              circulation.push({ kind: 'corridor', polygon: band, area: polygonArea(band) });
+              accessEdges = polygonEdges(access());
+            }
             for (const [j, m] of grown) {
               polys[j] = simplify(m);
               delete raw[j]!.type;
@@ -1379,6 +1392,7 @@ function layoutStorey(
               const ar = polygonArea(q);
               return (
                 door(q) >= DOOR &&
+                !dark(q) &&
                 allowedFor(q).some((t) => ar >= t.areaMin - 1e-6 && ar <= t.areaMax + 1e-6)
               );
             };
@@ -1394,6 +1408,74 @@ function layoutStorey(
           delete raw[i]!.type;
           delete raw[bestSplit.j]!.type;
         } else apply(true); // last resort: the surplus stays unused, even on the façade
+      }
+
+      // 3. a dark leftover big enough for the stair (inner corner of an L, Soheyl 23.11.2026):
+      // the nearest stair and its lift move there, their old place goes to the dwellings
+      const sw = dim.stairCoreWidth;
+      const cd = dim.coreDepth;
+      for (const o of [...open]) {
+        if (o.kind !== 'open' || o.area < sw * cd) continue;
+        const hall = circulation.filter(
+          (c) => c.kind !== 'lift' && shared(o.polygon, c.polygon) >= 2,
+        );
+        if (!hall.length) continue;
+        const hallEdges = polygonEdges(hall.map((c) => c.polygon));
+        const ci = cores
+          .map((c, k) => ({ k, d: polygonDistance(c.polygon, o.polygon) }))
+          .filter(({ k }) => hall.some((h) => shared(cores[k]!.polygon, h.polygon) >= 1))
+          .sort((x, y) => x.d - y.d)[0]?.k;
+        if (ci === undefined) continue;
+        const placed = placeInPiece(o.polygon, [sw, cd], hallEdges);
+        if (!placed) continue;
+        const old = cores[ci]!;
+        const oldLift = circulation.find(
+          (c) => c.kind === 'lift' && polygonDistance(c.polygon, old.polygon) < 4,
+        );
+        let rest = difference([o.polygon], [placed.polygon]);
+        let lift: Polygon | undefined;
+        if (oldLift) {
+          const [lw, lt] = dim.liftBox;
+          const lp = rest
+            .map((r) => placeInPiece(r, [lw, lt], hallEdges))
+            .find((x): x is NonNullable<typeof x> => !!x);
+          if (lp) {
+            lift = lp.polygon;
+            rest = difference(rest, [lift]);
+          }
+        }
+        cores[ci] = {
+          kind: 'core',
+          polygon: placed.polygon,
+          area: polygonArea(placed.polygon),
+          index: old.index ?? ci,
+          box: placed.box,
+        };
+        open.splice(open.indexOf(o), 1);
+        for (const r of rest.filter((q) => polygonArea(q) > 0.05))
+          circulation.push({ kind: 'landing', polygon: r, area: polygonArea(r) });
+        const freed = [old.polygon];
+        if (lift && oldLift) {
+          circulation.splice(circulation.indexOf(oldLift), 1);
+          circulation.push({ kind: 'lift', polygon: lift, area: polygonArea(lift) });
+          freed.push(oldLift.polygon);
+        }
+        // the old stair (and lift) to the neighbouring dwelling, else to the landing
+        for (const f of freed) {
+          const take = live()
+            .filter((j) => shared(polys[j]!, f) > 2)
+            .map((j) => ({ j, m: single(union([polys[j]!, f])) }))
+            .filter(
+              (c): c is { j: number; m: Polygon } =>
+                !!c.m && polygonArea(c.m) <= maxArea(c.m) + 1e-6 && !dark(c.m),
+            )
+            .sort((x, y) => polygonArea(y.m) - polygonArea(x.m))[0];
+          if (take) {
+            polys[take.j] = simplify(take.m);
+            delete raw[take.j]!.type;
+          } else circulation.push({ kind: 'landing', polygon: f, area: polygonArea(f) });
+        }
+        accessEdges = polygonEdges(access());
       }
     }
     const accessNow = [...cores, ...circulation].map((c) => c.polygon);
@@ -1665,16 +1747,7 @@ function trimToArea(
 ): Polygon[] {
   if (!facade.length) return [];
   const out: Polygon[] = [];
-  const bands = (d: number) =>
-    facade.map(([a, b]) => {
-      const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
-      let n: Vec2 = [-(b[1] - a[1]) / l, (b[0] - a[0]) / l];
-      const m: Vec2 = [(a[0] + b[0]) / 2 + n[0] * 0.05, (a[1] + b[1]) / 2 + n[1] * 0.05];
-      if (!pointInPolygon(m, p)) n = [-n[0], -n[1]];
-      return normalizePolygon({
-        outer: [a, b, [b[0] + n[0] * d, b[1] + n[1] * d], [a[0] + n[0] * d, a[1] + n[1] * d]],
-      });
-    });
+  const bands = (d: number) => facadeBands(p, facade, d);
   const at = (d: number) => {
     const k = intersection([p], union(bands(d))).filter((q) => polygonArea(q) > 0.05);
     if (k.length !== 1) return undefined;
@@ -1756,6 +1829,58 @@ function slabSplits(p: Polygon): [Polygon, Polygon][] {
     }
   }
   return out;
+}
+
+/** Rectangles reaching `d` m into `p` from each of its façade pieces (perpendicular). */
+function facadeBands(p: Polygon, facade: readonly [Vec2, Vec2][], d: number): Polygon[] {
+  return facade.map(([a, b]) => {
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    let n: Vec2 = [-(b[1] - a[1]) / l, (b[0] - a[0]) / l];
+    const m: Vec2 = [(a[0] + b[0]) / 2 + n[0] * 0.05, (a[1] + b[1]) / 2 + n[1] * 0.05];
+    if (!pointInPolygon(m, p)) n = [-n[0], -n[1]];
+    return normalizePolygon({
+      outer: [a, b, [b[0] + n[0] * d, b[1] + n[1] * d], [a[0] + n[0] * d, a[1] + n[1] * d]],
+    });
+  });
+}
+
+/** Area of `p` not in front of any of its façade pieces (within `d` m): the dark part. */
+function darkArea(p: Polygon, facade: readonly [Vec2, Vec2][], d = 12): number {
+  if (!facade.length) return polygonArea(p);
+  const lit = intersection([p], union(facadeBands(p, facade, d)));
+  return polygonArea(p) - lit.reduce((s, q) => s + polygonArea(q), 0);
+}
+
+/**
+ * A rectangle of `size` (either way round) inside `piece`, in one of its corners along its main
+ * directions, with one side on `onto` (≥ 1.2 m): polygon and oriented box. Undefined if none.
+ */
+function placeInPiece(
+  piece: Polygon,
+  size: [number, number],
+  onto: readonly [Vec2, Vec2][],
+): { polygon: Polygon; box: CoreBox } | undefined {
+  const u = dirOf([piece]);
+  const f0: Frame = { o: [0, 0], u, n: [-u[1], u[0]] };
+  const [a0, b0, a1, b1] = frameExtents(f0, [piece]);
+  let best: { polygon: Polygon; box: CoreBox; s: number } | undefined;
+  for (const [w, d] of [size, [size[1], size[0]] as [number, number]])
+    for (const a of [a0, a1 - w])
+      for (const b of [b0, b1 - d]) {
+        const r: Rect = [a, b, a + w, b + d];
+        const poly = rectPoly(f0, r);
+        const inside = intersection([piece], [poly]).reduce((x, q) => x + polygonArea(q), 0);
+        if (inside < w * d - 0.05) continue;
+        const door = facadeOf(poly, onto).length;
+        if (door < 1.2) continue;
+        if (!best || door > best.s)
+          best = {
+            polygon: poly,
+            box: { o: toWorld(f0, a, b), u: f0.u, n: f0.n, w, d },
+            s: door,
+          };
+      }
+  return best && { polygon: best.polygon, box: best.box };
 }
 
 /** A dwelling counts on the storey of its entrance (the séjour level of a duplex). */

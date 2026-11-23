@@ -153,4 +153,27 @@ describe('floor-plan guide', () => {
       }
     }
   });
+
+  it('puts the stair into the dark inner corner of an L instead of leaving it empty', () => {
+    const m = mass(
+      {
+        kind: 'freeLine',
+        points: [
+          [-20, 10],
+          [20, 10],
+          [20, -20],
+        ],
+        closed: false,
+        depth: 13,
+        alignment: 'center',
+      },
+      { access: 'dreispaenner' },
+    );
+    const ml = massLayout(m, massToSolids(m, settings), settings);
+    const st = ml.storeys.find((s) => s.usage === 'wohnen')!;
+    // the ~44 m² dark inner corner is no longer left empty
+    expect(st.open.filter((o) => o.area > 25)).toHaveLength(0);
+    // the corner stair still has its stair box (drawn with flights)
+    for (const c of st.cores) expect(c.box).toBeDefined();
+  });
 });
