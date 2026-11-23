@@ -4,7 +4,6 @@ import type { VisualStyle } from '../../store/tools';
 
 /** Styles drawn with lit faces: sun shadows and ambient occlusion apply to them. */
 export const LIT_STYLES: ReadonlySet<VisualStyle> = new Set([
-  'shaded',
   'realistic',
   'consistentColors',
   'granulometry',
@@ -12,7 +11,7 @@ export const LIT_STYLES: ReadonlySet<VisualStyle> = new Set([
 
 /**
  * Scene "looks" (ambiances): colour palette, lighting, soft shadows and ambient occlusion of the
- * 3D view. Independent of the visual style (shaded, granulometry, …), which decides *what* is
+ * 3D view. Independent of the visual style (realistic, granulometry, …), which decides *what* is
  * drawn; the look decides how the model is lit and coloured.
  */
 export type SceneLook = 'maquette' | 'bois' | 'diagramme' | 'classique';
@@ -46,7 +45,7 @@ export interface LookSpec {
   siteFill: number;
   /**
    * Physical model materials (procedural textures): project masses in solid wood, neighbouring
-   * buildings in cast plaster. Applies to the shaded and realistic styles.
+   * buildings in cast plaster. Applies to the realistic style.
    */
   model?: boolean;
   /** Colour of the storey lines on the masses (default: the context edge colour). */

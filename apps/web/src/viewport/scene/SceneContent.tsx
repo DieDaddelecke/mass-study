@@ -109,12 +109,6 @@ function FaceMaterial({
 }) {
   if (textured) return <primitive object={textured} attach="material" />;
   const common = { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 } as const;
-  if (style === 'wireframe')
-    return <meshBasicMaterial {...common} colorWrite={false} depthWrite={false} />;
-  // explicit colorWrite / depthWrite: r3f reuses the material instance when switching from the
-  // wireframe style and would otherwise keep its invisible settings.
-  if (style === 'hiddenLine')
-    return <meshBasicMaterial {...common} color={color} colorWrite depthWrite />;
   if (style === 'realistic')
     return <meshStandardMaterial {...common} color={color} roughness={0.9} />;
   return <meshLambertMaterial {...common} color={color} />;
@@ -384,7 +378,7 @@ function buildMasses(
 }
 
 /** Styles in which the model look shows its wood (not the colour-coded ones). */
-const WOOD_STYLES: ReadonlySet<VisualStyle> = new Set(['shaded', 'realistic']);
+const WOOD_STYLES: ReadonlySet<VisualStyle> = new Set(['realistic']);
 
 function Masses(
   props: Props & { pal: ScenePalette; edgeWidth: number; model: boolean; storeyLine?: string },
@@ -541,7 +535,7 @@ function Masses(
         edgeWidth={edgeWidth}
         woods={woods}
       />
-      {outdoor && style !== 'wireframe' && (
+      {outdoor && (
         <OutdoorMeshes o={outdoor} style={style} shadows={shadows} pal={pal} woods={woods} />
       )}
       {[...built.edges].map(([id, e]) => {
@@ -618,9 +612,7 @@ function Roofs({
                 }}
                 onPointerOut={() => hoverOut(b.id)}
               >
-                {style === 'wireframe' ? (
-                  <meshBasicMaterial colorWrite={false} depthWrite={false} side={DoubleSide} />
-                ) : woods?.wood.get(b.id) ? (
+                {woods?.wood.get(b.id) ? (
                   <primitive object={woods.wood.get(b.id)!} attach="material" />
                 ) : (
                   <meshLambertMaterial
@@ -716,7 +708,7 @@ export function SceneContent(props: Props) {
       <SkyBackground top={look.sky[0]} horizon={look.sky[1]} />
       <fog attach="fog" args={[look.sky[1], 900, 3200]} />
       <Ground style={style} shadows={shadows} pal={pal} />
-      {layers.basemap !== 'none' && style !== 'wireframe' && (
+      {layers.basemap !== 'none' && (
         <Basemap project={project} kind={layers.basemap} z={Z.basemap} />
       )}
       {project.surroundings && (

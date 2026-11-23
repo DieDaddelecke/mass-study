@@ -242,9 +242,6 @@
     "perspective": "Perspektive",
     "orthographic": "Orthogonal",
     "styles": {
-      "wireframe": "Drahtmodell",
-      "hiddenLine": "Verdeckte Linien",
-      "shaded": "Schattiert",
       "consistentColors": "Einheitliche Farben",
       "granulometry": "Granulometrie",
       "realistic": "Realistisch"

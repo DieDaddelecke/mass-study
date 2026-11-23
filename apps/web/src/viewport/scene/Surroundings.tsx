@@ -377,16 +377,15 @@ function clipAreas(data: SurroundingsData, project: Project): SurroundingsData {
   return { ...data, green: clip(data.green), water: clip(data.water) };
 }
 
-export function Surroundings({ project, data: raw, layers, pal, style, shadows }: Props) {
+export function Surroundings({ project, data: raw, layers, pal, shadows }: Props) {
   const data = useMemo(() => clipAreas(raw, project), [raw, project]);
   const dim = layers.basemap !== 'none';
-  const wire = style === 'wireframe';
   return (
     <group>
-      {(layers.green || layers.water) && !wire && (
+      {(layers.green || layers.water) && (
         <GreenWater data={data} layers={layers} pal={pal} dim={dim} />
       )}
-      {layers.roads && <Roads data={data} pal={pal} dim={dim || wire} />}
+      {layers.roads && <Roads data={data} pal={pal} dim={dim} />}
       {layers.trees && <Trees project={project} data={data} pal={pal} shadows={shadows} />}
       {layers.parcels && <Parcels project={project} data={data} pal={pal} />}
     </group>

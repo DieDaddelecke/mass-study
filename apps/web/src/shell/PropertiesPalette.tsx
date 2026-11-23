@@ -15,7 +15,7 @@ import type { Draft } from 'immer';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../i18n';
 import { actions, activeVariant, useProjectStore } from '../store/projectStore';
-import type { VisualStyle } from '../store/tools';
+import { STYLES, type VisualStyle } from '../store/tools';
 import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
 import { useViewportStore } from '../viewport/viewportStore';
@@ -459,15 +459,6 @@ function ContextProperties({ c }: { c: ContextBuilding }) {
     </Group>
   );
 }
-
-const STYLES: VisualStyle[] = [
-  'wireframe',
-  'hiddenLine',
-  'shaded',
-  'consistentColors',
-  'granulometry',
-  'realistic',
-];
 
 function ViewProperties() {
   const { t, i18n } = useTranslation('shell');

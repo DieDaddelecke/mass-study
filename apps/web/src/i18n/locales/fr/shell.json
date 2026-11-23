@@ -242,9 +242,6 @@
     "perspective": "Perspective",
     "orthographic": "Orthographique",
     "styles": {
-      "wireframe": "Filaire",
-      "hiddenLine": "Lignes cachées",
-      "shaded": "Ombré",
       "consistentColors": "Couleurs cohérentes",
       "granulometry": "Granulométrie",
       "realistic": "Réaliste"

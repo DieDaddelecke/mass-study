@@ -15,9 +15,6 @@
     "W": "W"
   },
   "style": {
-    "wireframe": "Wireframe",
-    "hiddenLine": "Hidden line",
-    "shaded": "Shaded",
     "consistentColors": "Consistent colours",
     "granulometry": "Granulometry",
     "realistic": "Realistic"
