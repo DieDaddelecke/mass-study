@@ -10,7 +10,12 @@
  * rectangles inside each bar, which are then clipped to the real footprint, so the pieces are
  * always disjoint, inside the footprint and – together – cover it exactly.
  */
-import { analyzeMasses, type MassResult, type VariantResult } from './analysis.js';
+import {
+  analyzeMasses,
+  isMemoizedMassResult,
+  type MassResult,
+  type VariantResult,
+} from './analysis.js';
 import { largestRemainder, unitMix, unitsPerCoreRange } from './mix.js';
 import {
   difference,
@@ -1633,15 +1638,24 @@ export function massLayouts(input: Project | VariantResult, settings?: Settings)
     s = settings;
     result = input;
   }
-  return result.masses.map((m: MassResult) =>
-    massLayout(
+  return result.masses.map((m: MassResult) => {
+    // memoized mass results have frozen inputs: their layout can be reused as long as the
+    // settings are the same (moving one mass then only lays out that mass again)
+    const memo = isMemoizedMassResult(m);
+    const hit = memo ? layoutMemo.get(m) : undefined;
+    if (hit && hit.settings === s) return hit.layout;
+    const layout = massLayout(
       m.mass,
       m.solids.map((r) => r.solid),
       s,
       m.dwellings.total,
-    ),
-  );
+    );
+    if (memo) layoutMemo.set(m, { settings: s, layout });
+    return layout;
+  });
 }
+
+const layoutMemo = new WeakMap<MassResult, { settings: Settings; layout: MassLayout }>();
 
 /** Area-based dwelling count for a living area (re-exported for the UI comparison note). */
 export const areaBasedUnitCount = (livingArea: number, settings: Settings): number =>

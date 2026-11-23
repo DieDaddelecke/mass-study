@@ -19,7 +19,6 @@ import { LIT_STYLES } from './scene/looks';
 import { useProjectStore } from '../store/projectStore';
 import { useAnalysis } from '../store/useAnalysis';
 import { defaultCutLevel } from './scene/storeyCut';
-import { massLayouts } from '@kubatur/core';
 
 const STYLES: VisualStyle[] = [
   'wireframe',
@@ -81,12 +80,7 @@ export function ViewControlBar({ plan = false }: { plan?: boolean }) {
   const toggleCut = () => {
     if (cutLevel !== null) return setCutLevel(null);
     if (!project || !analysis) return;
-    let layouts = null;
-    try {
-      layouts = massLayouts(analysis.result, project.settings);
-    } catch {
-      /* no dwellings: highest storey */
-    }
+    const layouts = analysis.layouts;
     setCutLevel(
       defaultCutLevel(
         analysis.result.solids.map((r) => r.solid),

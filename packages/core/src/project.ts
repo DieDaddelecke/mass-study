@@ -1,5 +1,5 @@
 import { analyzeMasses, type VariantResult } from './analysis.js';
-import { massLayouts } from './layout.js';
+import { massLayouts, type MassLayout } from './layout.js';
 import { modelWarnings, type ModelWarning } from './checks.js';
 import { greenKpis, type GreenKpis } from './green.js';
 import { defaultTypology } from './generators.js';
@@ -136,6 +136,8 @@ export interface ProjectAnalysis {
   warnings: ModelWarning[];
   /** Vegetation zones of the variant. */
   green: GreenKpis;
+  /** Schematic dwelling layout of every mass (same order as `result.masses`). */
+  layouts: MassLayout[];
 }
 
 /** Full live analysis of one variant (default: the active one). */
@@ -171,7 +173,7 @@ export function analyzeProject(
       massIds: failingMasses,
       data: { count: failing },
     });
-  return { result, de, fr, constraints, warnings, green };
+  return { result, de, fr, constraints, warnings, green, layouts };
 }
 
 // ---------------------------------------------------------------------------

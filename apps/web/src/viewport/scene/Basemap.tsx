@@ -103,10 +103,13 @@ async function stitch(kind: BasemapKind, r: TileRange): Promise<HTMLCanvasElemen
 
 /** IGN plan / ortho tiles stitched into one ground texture (drawn only if tiles load). */
 export function Basemap({ project, kind, z }: { project: Project; kind: BasemapKind; z: number }) {
-  const range = useMemo(() => {
+  // keyed by value: editing a mass gives a new project object but the same tile range, and the
+  // tiles must not be stitched again (that re-created the texture on every edit)
+  const rangeKey = useMemo(() => {
     const e = contextExtent(project);
-    return tileRangeForLocalBox(project.geo, e.min, e.max, zoomForRadius(e.radius));
+    return JSON.stringify(tileRangeForLocalBox(project.geo, e.min, e.max, zoomForRadius(e.radius)));
   }, [project]);
+  const range = useMemo(() => JSON.parse(rangeKey) as TileRange, [rangeKey]);
   const geometry = useMemo(
     () => mosaicQuad(mosaicCorners(project.geo, range), z),
     [project.geo, range, z],
