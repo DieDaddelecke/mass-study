@@ -80,7 +80,9 @@ describe('floor-plan guide', () => {
     ];
     const rooms = unitRoomLayout(rect(0, 0, 12, 12), [S, N], 2, rules, { exterior: [S, N] });
     const sej = of(rooms, 'sejour')[0]!;
-    expect(ringCentroid(sej.polygon.outer)[1]).toBeLessThan(6);
+    // on the south façade (the day zone may reach into the dwelling behind it)
+    expect(Math.min(...sej.polygon.outer.map((p) => p[1]))).toBeLessThan(0.01);
+    expect(sej.facadeOk).toBe(true);
   });
 
   it('bedrooms do not face the gallery while the exterior has room', () => {
@@ -91,7 +93,7 @@ describe('floor-plan guide', () => {
     const rooms = unitRoomLayout(rect(0, 0, 12, 8), [S, G], 3, rules, { exterior: [S] });
     for (const r of rooms.filter((x) => x.kind === 'chambre' || x.kind === 'chambrePmr'))
       expect(r.onGallery).toBeFalsy();
-    expect(ringCentroid(of(rooms, 'sejour')[0]!.polygon.outer)[1]).toBeLessThan(4);
+    expect(Math.min(...of(rooms, 'sejour')[0]!.polygon.outer.map((p) => p[1]))).toBeLessThan(0.01);
   });
 
   it('séjours stack from storey to storey', () => {

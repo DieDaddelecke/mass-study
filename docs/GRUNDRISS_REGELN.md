@@ -136,6 +136,23 @@ Die Laubengang-Seite zählt als Fassade (umschaltbar).
 - **Treppenhaus:** der Kern enthält nur die Treppe; der Aufzug liegt gegenüber der Treppe
   auf der anderen Seite des Podests (Dreispänner; Einstellung `cores.liftOpposite`).
 
+## Regeln aus den Beispielplänen (baumschlager eberle, freigegeben 23.11.2026)
+
+- **A. Fassade im Verhältnis zur Fläche:** Fassadenlänge einer Wohnung ≥ 12 % ihrer
+  Wohnfläche (Einstellung `facadeAreaRatio`). Wohnungen darunter werden markiert.
+- **B. Tageszone:** Entrée, Küche und Séjour dürfen einen zusammenhängenden Bereich bilden.
+  Der Séjour darf dafür als L in die Wohnungstiefe wachsen, wenn der Anbau mindestens 2 m breit
+  ist und der Séjour insgesamt nicht tiefer als 1,6 × seine Breite wird. Zimmer, Bäder und WC
+  bleiben einfache Rechtecke.
+- **C. Nasszellen** liegen nahe der Wohnungstür bzw. am Kern; Bäder von Nachbarwohnungen
+  werden an der Trennwand gespiegelt, jede Wohnung behält ihren eigenen Schacht.
+- **D. Kein langer Flur:** der Eingang führt direkt in die Tageszone, die Zimmer werden über eine
+  kleine Diele erschlossen.
+- **E. Fassadenraster:** Wohnungstrennwände rasten auf ein Fassadenraster ein, Standard 1,25 m
+  (Einstellung `facadeGrid`).
+- **F. Punkthaus:** zentraler Kern mit Treppe, Aufzug an der kleinen Halle, 4 bis 7 Wohnungen je
+  Kern.
+
 ## Offene Punkte
 
 - Maximale Länge eines Innenflurs (couloir) ist noch nicht festgelegt.

@@ -93,7 +93,8 @@
     "duplexStair": "Innentreppe der Maisonette",
     "areaFail": "{{count}} Raum/Räume unter der Mindestfläche",
     "galleryRoom": "{{count}} Zimmer zum Laubengang (schraffiert)",
-    "orientFail": "{{count}} Wohnung(en) ohne zwei Ausrichtungen (ab T3) oder nur nach Norden"
+    "orientFail": "{{count}} Wohnung(en) ohne zwei Ausrichtungen (ab T3) oder nur nach Norden",
+    "ratioFail": "{{count}} Wohnung(en) mit Fassade unter {{pct}} % der Fläche"
   },
   "ridge": "First"
 }

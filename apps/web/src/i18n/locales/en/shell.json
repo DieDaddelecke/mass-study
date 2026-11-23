@@ -326,7 +326,9 @@
       "sdb": "Bathroom",
       "sde": "Shower room",
       "wc": "WC"
-    }
+    },
+    "facadeAreaRatio": "Min. façade as % of area",
+    "facadeGrid": "Façade grid (party walls)"
   },
   "rules": {
     "fr": "France (PLU)",

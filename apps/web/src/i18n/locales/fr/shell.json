@@ -326,7 +326,9 @@
       "sdb": "Salle de bain",
       "sde": "Salle d'eau",
       "wc": "WC"
-    }
+    },
+    "facadeAreaRatio": "Façade min. en % de la surface",
+    "facadeGrid": "Trame de façade (murs séparatifs)"
   },
   "rules": {
     "fr": "Plan local d'urbanisme (PLU)",

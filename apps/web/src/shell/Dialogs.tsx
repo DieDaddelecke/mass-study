@@ -285,6 +285,16 @@ function SettingsDialog({ project }: { project: Project }) {
               onChange={(e) => setRule('separateKitchen', e.target.checked)}
             />
           </Row>
+          {num(
+            t('settings.facadeAreaRatio'),
+            rules.facadeAreaRatio * 100,
+            (v) => setRule('facadeAreaRatio', v / 100),
+            { suffix: '%', digits: 0 },
+          )}
+          {num(t('settings.facadeGrid'), rules.facadeGrid, (v) => setRule('facadeGrid', v), {
+            suffix: 'm',
+            digits: 2,
+          })}
           {num(t('settings.shaftSize'), rules.shaftSize, (v) => setRule('shaftSize', v), {
             suffix: 'm',
             digits: 2,

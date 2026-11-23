@@ -32,6 +32,8 @@ export const DEFAULT_UNIT_RULES: Required<UnitRules> = {
   minAreas: DEFAULT_MIN_AREAS,
   unitsPerCoreMin: 3,
   unitsPerCoreMax: 8,
+  facadeAreaRatio: 0.12,
+  facadeGrid: 1.25,
 };
 
 /** Fully resolved unit rules (all optional values filled in). */

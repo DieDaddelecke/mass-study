@@ -17,6 +17,7 @@
 import {
   difference,
   intersection,
+  union,
   normalizePolygon,
   overlapArea,
   pointInPolygon,
@@ -438,6 +439,57 @@ export function unitRoomLayout(
   };
 
   /**
+   * Largest free rectangle behind the séjour (from its back wall into the dwelling, within
+   * [sLo, sHi] along the façade, overlapping the séjour): the day zone's second leg.
+   */
+  function dayExtension(
+    run: Run,
+    sej: Placed,
+    sLo: number,
+    sHi: number,
+    blockers: readonly Polygon[],
+  ): [number, number, number, number] | undefined {
+    const t0 = sej.depth;
+    const free = (a0: number, a1: number, b1: number) => {
+      const bx = box(run, a0, a1, t0, b1);
+      let ps = intersection([unit], [bx]);
+      if (blockers.length) ps = difference(ps, blockers);
+      return ps.reduce((x, p) => x + polygonArea(p), 0) >= (a1 - a0) * (b1 - t0) - 0.01;
+    };
+    let best: [number, number, number, number] | undefined;
+    let bestA = 0;
+    // a real part of the day zone, not a corridor: ≥ 2 m wide, and the whole séjour no deeper
+    // than 1.6 × its width (office rule: rooms are not elongated)
+    const MIN_W = 2.0;
+    const sw = sej.s1 - sej.s0;
+    for (let d = 1.0; t0 + d <= run.depth + 1e-6; d += 0.25) {
+      const b1 = t0 + d;
+      for (const side of [1, -1] as const) {
+        const anchor = side > 0 ? sej.s0 : sej.s1;
+        const max = side > 0 ? sHi - anchor : anchor - sLo;
+        const ok = (w: number) =>
+          side > 0 ? free(anchor, anchor + w, b1) : free(anchor - w, anchor, b1);
+        if (max < MIN_W || !ok(MIN_W)) continue;
+        let lo = MIN_W;
+        let hi = max;
+        if (ok(hi)) lo = hi;
+        else
+          for (let k = 0; k < 12; k++) {
+            const m = (lo + hi) / 2;
+            if (ok(m)) lo = m;
+            else hi = m;
+          }
+        if (b1 > RATIO.sejour * Math.max(sw, lo)) continue;
+        if (lo * d > bestA + 1e-6) {
+          bestA = lo * d;
+          best = side > 0 ? [anchor, anchor + lo, t0, b1] : [anchor - lo, anchor, t0, b1];
+        }
+      }
+    }
+    return best;
+  }
+
+  /**
    * Largest free rectangle [s0, s1, t0, t1] inside [s0, s1] × [t0, t1] of a façade piece (inside
    * the dwelling, clear of `taken`): shallower, or narrower from either side. Rooms are always
    * single rectangles (office rule 23.11.2026). `narrowFirst`: prefer keeping the depth.
@@ -740,9 +792,51 @@ export function unitRoomLayout(
     out.push(...wetRooms.rooms);
     a.taken.push(...wetRooms.blocks);
   }
-  // --- passage / entrance: the rest of the dwelling -----------------------------------
-  for (const p of difference([unit], a.taken))
-    if (polygonArea(p) > 1) out.push(makeRoom('degagement', p, 0, 0));
+  // --- day zone and passage (office rules B/D) -------------------------------------
+  // The entrance opens into the day zone: the séjour takes the rest of the dwelling on its
+  // side of the day/night boundary (it may run round a corner, an L); the rest on the night
+  // side is the small hall (dégagement) to the bedrooms and bathrooms.
+  const sejP = a.placed.find((p) => p.room.kind === 'sejour');
+  let rest = difference([unit], a.taken).filter((p) => polygonArea(p) > 0.05);
+  if (sejP) {
+    const run = runs[sejP.run]!;
+    const lastDay = a.placed
+      .filter((p) => p.run === sejP.run && (p.room.kind === 'sejour' || p.room.kind === 'cuisine'))
+      .reduce((x, y) => (a.dir > 0 ? (y.s1 > x.s1 ? y : x) : y.s0 < x.s0 ? y : x));
+    const hasNight = a.placed.some((p) => NIGHT.includes(p.room.kind));
+    const others = a.placed.filter((p) => p !== sejP).map((p) => p.block);
+    const wetBlocks = a.taken.slice(a.placed.length);
+    // the day side of the dwelling along this façade piece (s range)
+    let sLo = Infinity;
+    let sHi = -Infinity;
+    for (const q of unit.outer) {
+      const t = (q[0] - run.o[0]) * run.u[0] + (q[1] - run.o[1]) * run.u[1];
+      sLo = Math.min(sLo, t);
+      sHi = Math.max(sHi, t);
+    }
+    if (hasNight) {
+      if (a.dir > 0) sHi = Math.min(sHi, lastDay.s1);
+      else sLo = Math.max(sLo, lastDay.s0);
+    }
+    // one rectangle behind the séjour, from its back wall into the dwelling: séjour + this =
+    // a simple L or T (no ragged shapes)
+    const blockers = [...others, ...wetBlocks];
+    const back = dayExtension(run, sejP, sLo, sHi, blockers);
+    if (back && (back[1] - back[0]) * (back[3] - back[2]) > 1.5 && back[3] - back[2] > 0.9) {
+      const merged = union([sejP.room.polygon, box(run, back[0], back[1], back[2], back[3])]);
+      if (merged.length === 1) {
+        const z = merged[0]!;
+        Object.assign(
+          sejP.room,
+          makeRoom('sejour', z, sejP.room.facadeRequired, sejP.room.areaRequired),
+        );
+        const b = box(run, back[0] - wall, back[1] + wall, back[2], back[3] + wall);
+        a.taken.push(b);
+        rest = difference(rest, [b, sejP.block]).filter((p) => polygonArea(p) > 0.05);
+      }
+    }
+  }
+  for (const p of rest) if (polygonArea(p) > 1) out.push(makeRoom('degagement', p, 0, 0));
 
   const rank: Record<RoomKind, number> = {
     sejour: 0,
@@ -861,7 +955,10 @@ export function unitRoomLayout(
         ok * 100 +
         rooms.length * 10 +
         rooms.reduce((x, r) => x + r.area, 0) * 0.1 +
-        (nextToPmr ? 40 : 0) -
+        (nextToPmr ? 40 : 0) +
+        // close to the entrance and back to back with the neighbour's bathroom (rule C)
+        (rooms.some((r) => r.kind !== 'gaine' && near(r.polygon, ['sdb', 'sde', 'wc'])) ? 25 : 0) -
+        Math.min(30, 3 * Math.min(...rooms.map((r) => entranceDist(r.polygon)), 10)) -
         anchors.indexOf(an) * 0.01;
       if (!bestW || s > bestW.s + 1e-6) bestW = { rooms, blocks, s };
     }

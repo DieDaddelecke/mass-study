@@ -326,7 +326,9 @@
       "sdb": "Bad (SDB)",
       "sde": "Duschbad (SDE)",
       "wc": "WC"
-    }
+    },
+    "facadeAreaRatio": "Mindestfassade in % der Fläche",
+    "facadeGrid": "Fassadenraster (Wohnungstrennwände)"
   },
   "rules": {
     "fr": "Frankreich (PLU)",

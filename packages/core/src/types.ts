@@ -436,6 +436,10 @@ export interface UnitRules {
   /** Dwellings per stair core and storey (gallery, corridor, point block), min / max. */
   unitsPerCoreMin?: number;
   unitsPerCoreMax?: number;
+  /** Façade length at least this share of the dwelling area, m per m² (0.12). */
+  facadeAreaRatio?: number;
+  /** Party walls on this façade grid, m (1.25; 0 = off). */
+  facadeGrid?: number;
 }
 
 /** Minimum room areas of the office rules, m². */

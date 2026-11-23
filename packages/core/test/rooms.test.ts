@@ -107,7 +107,9 @@ describe('rooms of a dwelling', () => {
         // every room is one rectangle (no L shapes), not long and narrow
         for (const r of u.rooms) {
           if (r.kind === 'degagement') continue;
-          expect(r.polygon.outer).toHaveLength(4);
+          // the séjour (day zone) may be an L or T: séjour + one rectangle behind it
+          if (r.kind === 'sejour') expect(r.polygon.outer.length).toBeLessThanOrEqual(8);
+          else expect(r.polygon.outer).toHaveLength(4);
           expect(r.polygon.holes ?? []).toHaveLength(0);
           if (r.kind === 'chambre' || r.kind === 'chambrePmr') {
             const [a, b, c] = r.polygon.outer;

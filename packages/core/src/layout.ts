@@ -107,6 +107,8 @@ export interface LayoutUnit {
    * core (gaine, SDB, WC, SDE) behind them and the passage (dégagement).
    */
   rooms: LayoutRoom[];
+  /** Façade at least `facadeAreaRatio` (12 %) of the area, in m per m² (office rule A). */
+  facadeRatioOk?: boolean;
   /** Orientations of the façade of the unit (pieces ≥ 0.8 m). */
   orientations?: FacadeSide[];
   /**
@@ -764,13 +766,37 @@ function planBar(
         const s0 = (i * L) / n;
         const s1 = ((i + 1) * L) / n;
         const cy = D / 2;
-        const k: Rect = [cx - cw / 2, cy - cd / 2, cx + cw / 2, cy + cd / 2];
+        // stair-only core with the lift across the hall (office rule F), else stair + lift
+        const [lw, lt] = dim.liftBox;
+        const opp = dim.liftOpposite && cd >= lw;
+        const kw = opp ? Math.min(cw, dim.stairCoreWidth) : cw;
+        const ld = Math.min(dim.landingDepth, (s1 - s0 - kw) / 4);
+        const span = kw + (opp ? ld + lt : 0);
+        const k: Rect = [cx - span / 2, cy - cd / 2, cx - span / 2 + kw, cy + cd / 2];
         plan.cores.push(k);
-        const ld = Math.min(dim.landingDepth, (s1 - s0 - cw) / 4);
         plan.circulation.push({ kind: 'landing', rect: [k[0] - ld, k[1], k[0], k[3]] });
         plan.circulation.push({ kind: 'landing', rect: [k[2], k[1], k[2] + ld, k[3]] });
-        const hole: Rect = [k[0] - ld, k[1], k[2] + ld, k[3]];
-        const area = (s1 - s0) * D - cw * cd;
+        let right = k[2] + ld;
+        if (opp) {
+          plan.circulation.push({
+            kind: 'lift',
+            rect: [right, cy - lw / 2, right + lt, cy + lw / 2],
+          });
+          if (cd - lw > 0.3) {
+            // the rest beside the lift belongs to the hall
+            plan.circulation.push({
+              kind: 'landing',
+              rect: [right, k[1], right + lt, cy - lw / 2],
+            });
+            plan.circulation.push({
+              kind: 'landing',
+              rect: [right, cy + lw / 2, right + lt, k[3]],
+            });
+          }
+          right += lt;
+        }
+        const hole: Rect = [k[0] - ld, k[1], right, k[3]];
+        const area = (s1 - s0) * D - span * cd;
         const six = area / 6 >= avgTarget * 0.85 && s1 - s0 >= 3 * 6;
         const cols = six ? [s0, s0 + (s1 - s0) / 3, s1 - (s1 - s0) / 3, s1] : [s0, cx, s1];
         const rows = [0, cy, D];
@@ -1089,6 +1115,24 @@ function layoutStorey(
           ordered.map((t) => Math.max(t.areaTarget, minWidth(t) * (b1 - b0))),
           ordered.map(minWidth),
         );
+        // party walls on the façade grid (office rule E, default 1.25 m): each boundary moves
+        // to the nearest grid line that keeps both neighbours at their minimum width
+        const grid = rules.facadeGrid;
+        if (grid > 0 && ordered.length > 1) {
+          let x = a0;
+          const bounds = widths.slice(0, -1).map((w) => (x += w));
+          for (let k = 0; k < bounds.length; k++) {
+            const lo = (k ? bounds[k - 1]! : a0) + minWidth(ordered[k]!);
+            const hi = (k + 1 < bounds.length ? bounds[k + 1]! : a1) - minWidth(ordered[k + 1]!);
+            const g = a0 + Math.round((bounds[k]! - a0) / grid) * grid;
+            const cands = [g, g - grid, g + grid].filter((v) => v >= lo - 1e-6 && v <= hi + 1e-6);
+            if (cands.length)
+              bounds[k] = cands.reduce((p, q) =>
+                Math.abs(q - bounds[k]!) < Math.abs(p - bounds[k]!) ? q : p,
+              );
+          }
+          bounds.forEach((b, k) => (widths[k] = b - (k ? bounds[k - 1]! : a0)));
+        }
         let a = a0;
         ordered.forEach((t, i) => {
           const w = i === ordered.length - 1 ? a1 - a : widths[i]!;
@@ -1250,6 +1294,7 @@ function layoutStorey(
           mainRooms: unitRooms(choice.type),
         }),
         ...orientationCheck(facade.segments, polygon, unitRooms(choice.type)),
+        facadeRatioOk: facade.length >= rules.facadeAreaRatio * area - 1e-6,
       });
     });
     // outdoor spaces: one per dwelling, in front of (or next to) the séjour

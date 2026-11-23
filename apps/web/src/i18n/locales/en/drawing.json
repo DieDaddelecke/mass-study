@@ -93,7 +93,8 @@
     "duplexStair": "Internal duplex stair",
     "areaFail": "{{count}} room(s) below the minimum area",
     "galleryRoom": "{{count}} bedroom(s) facing the gallery (hatched)",
-    "orientFail": "{{count}} dwelling(s) without two orientations (from T3) or facing north only"
+    "orientFail": "{{count}} dwelling(s) without two orientations (from T3) or facing north only",
+    "ratioFail": "{{count}} dwelling(s) with a façade below {{pct}} % of the area"
   },
   "ridge": "ridge"
 }

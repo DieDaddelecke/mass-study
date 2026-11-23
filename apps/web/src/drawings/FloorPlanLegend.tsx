@@ -59,6 +59,9 @@ export function FloorPlanLegend({
   const hasHall = rooms.some((r) => r.kind === 'degagement');
   const units = here.flatMap(({ s }) => s.units);
   const outdoor = units.filter((u) => u.outdoor);
+  const ratioFail = units.filter(
+    (u) => u.facadeRatioOk === false && u.duplex?.level !== 'nuit',
+  ).length;
   const orientFail = units.filter(
     (u) => u.orientationOk === false && u.duplex?.level !== 'nuit',
   ).length;
@@ -213,6 +216,14 @@ export function FloorPlanLegend({
       </p>
       {failing > 0 && (
         <p className="dv-legend-note dv-legend-warn">{t('fp.facadeFail', { count: failing })}</p>
+      )}
+      {ratioFail > 0 && (
+        <p className="dv-legend-note dv-legend-warn">
+          {t('fp.ratioFail', {
+            count: ratioFail,
+            pct: Math.round((rules.facadeAreaRatio ?? 0.12) * 100),
+          })}
+        </p>
       )}
       {orientFail > 0 && (
         <p className="dv-legend-note dv-legend-warn">{t('fp.orientFail', { count: orientFail })}</p>
