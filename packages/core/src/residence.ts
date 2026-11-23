@@ -63,7 +63,7 @@ export interface ResidenceOptions {
   /** Units of the whole building: the common rooms go on this storey, sized for them. */
   totalUnits?: number;
   /** Neighbour boundaries: façades facing them within `distance` get no windows. */
-  party?: { segs: [Vec2, Vec2][]; distance: number };
+  party?: { segs: [Vec2, Vec2][]; distance: number; site?: Polygon };
 }
 
 interface Row {
@@ -214,7 +214,7 @@ export function residenceStoreyLayout(
   const outline = union(outlines);
   const allSegs = polygonEdges(outline);
   const blind = opts.party
-    ? blindFacades(allSegs, outline, opts.party.segs, opts.party.distance)
+    ? blindFacades(allSegs, outline, opts.party.segs, opts.party.distance, opts.party.site)
     : [];
   const facadeSegs = subtractSegments(allSegs, blind);
   const bars: Bar[] = outlines.flatMap((p) => solidBars(mass, p));

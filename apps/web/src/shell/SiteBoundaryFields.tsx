@@ -62,8 +62,8 @@ export function SiteBoundaryFields() {
   const setHover = useUiStore((s) => s.setHover);
   const n = (v: number, d = 1) => formatNumber(v, d, i18n.language);
   const edges = useMemo(
-    () => edgesOf(siteBoundaries(project.site, project.surroundings)),
-    [project.site, project.surroundings],
+    () => edgesOf(siteBoundaries(project.site, project.surroundings, project.context)),
+    [project.site, project.surroundings, project.context],
   );
   const rules = resolveBoundaryRules(project.settings);
   if (!edges.length) return null;

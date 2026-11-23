@@ -189,4 +189,60 @@ describe('site boundaries', () => {
     for (const g of free.circulation.filter((c) => c.kind === 'gallery'))
       expect(ringBBox(g.polygon.outer).maxY).toBeCloseTo(bb.maxY, 1);
   });
+
+  it('counts a façade standing a little beyond the neighbour boundary as blind', () => {
+    const b = rect(10, 30, 50, 40.6); // north façade 0.6 m over the boundary y = 40
+    const edges: Seg[] = b.outer.map((p, i) => [p, b.outer[(i + 1) % b.outer.length]!]);
+    const party: Seg[] = [
+      [
+        [0, 40],
+        [60, 40],
+      ],
+    ];
+    expect(len(blindFacades(edges, [b], party, 8))).toBeCloseTo(40, 0);
+  });
+
+  it('does not take a driveway on a built neighbouring plot for a street', () => {
+    const drive: Surroundings = {
+      ...surroundings,
+      roads: [
+        ...surroundings.roads,
+        {
+          id: 'drive',
+          centerline: [
+            [-20, 5],
+            [-5, 35],
+          ],
+          width: 3,
+          widthEstimated: true,
+          kind: 'service',
+          level: 0,
+          source: 'ign',
+        },
+        {
+          id: 'lane',
+          centerline: [
+            [5, 48],
+            [55, 48],
+          ],
+          width: 4,
+          widthEstimated: true,
+          kind: 'residential',
+          level: 0,
+          source: 'ign',
+        },
+      ],
+    };
+    const built = [{ footprint: rect(10, 55, 40, 70) }];
+    const segs = classifyBoundary(site, drive, built);
+    const west = segs.filter((x) => x.a[0] === 0 && x.b[0] === 0);
+    const north = segs.filter((x) => x.a[1] === 40 && x.b[1] === 40);
+    expect(west.every((x) => x.kind === 'neighbour')).toBe(true);
+    // a street inside a built plot is a private lane
+    expect(north.every((x) => x.kind === 'neighbour')).toBe(true);
+    // the same lane in an empty parcel is a road parcel
+    expect(classifyBoundary(site, drive).some((x) => x.a[1] === 40 && x.kind === 'road')).toBe(
+      true,
+    );
+  });
 });

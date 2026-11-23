@@ -498,7 +498,7 @@ export function buildPlan(input: PlanInput): TransferPlan {
             solids,
             input.project.settings,
             undefined,
-            siteEdges(input.project.site, input.project.surroundings),
+            siteEdges(input.project.site, input.project.surroundings, input.project.context),
           )
         : null;
     const stairs: CoreStair[] = layout

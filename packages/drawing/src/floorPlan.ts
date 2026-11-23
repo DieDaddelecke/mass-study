@@ -479,7 +479,7 @@ export function floorPlan(
         });
     // neighbour boundaries (limites séparatives) in orange, labelled; streets labelled
     const text = opts.boundaryText ?? defaultBoundaryText;
-    for (const s of siteBoundaries(project.site, project.surroundings)) {
+    for (const s of siteBoundaries(project.site, project.surroundings, project.context)) {
       const pieces = clipSegment([s.a, s.b], ext);
       if (!pieces) continue;
       const [a, b] = pieces;
