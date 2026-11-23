@@ -315,3 +315,121 @@ export function sideSegment(
   const b: Vec2 = g.axis === 'length' ? [g.sign > 0 ? x1 : x0, y1] : [x1, g.sign > 0 ? y1 : y0];
   return [toWorldPoint(m, a), toWorldPoint(m, b)];
 }
+
+// ---------------------------------------------------------------------------
+// Direct editing (push / pull of façades)
+// ---------------------------------------------------------------------------
+
+/** A façade that can be pushed / pulled: world segment and outward normal. */
+export type Face =
+  | { kind: 'side'; grip: SideGrip; seg: [Vec2, Vec2]; normal: Vec2 }
+  | { kind: 'edge'; index: number; seg: [Vec2, Vec2]; normal: Vec2 };
+
+function signedArea(r: readonly Vec2[]): number {
+  let a = 0;
+  for (let i = 0; i < r.length; i++) {
+    const p = r[i]!;
+    const q = r[(i + 1) % r.length]!;
+    a += p[0] * q[1] - q[0] * p[1];
+  }
+  return a / 2;
+}
+
+/** Outward unit normal of edge `i` of a ring (local coordinates). */
+export function ringEdgeNormal(ring: readonly Vec2[], i: number): Vec2 {
+  const a = ring[i]!;
+  const b = ring[(i + 1) % ring.length]!;
+  const l = dist(a, b) || 1;
+  const e: Vec2 = [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
+  return signedArea(ring) >= 0 ? [e[1], -e[0]] : [-e[1], e[0]];
+}
+
+/** Push-pullable façades of a mass: the four sides of rectangular typologies, polygon edges. */
+export function massFaces(m: Pick<Mass, 'position' | 'rotation' | 'typology'>): Face[] {
+  const t = m.typology;
+  if (localExtents(t)) {
+    return sideGrips(t).map(({ grip }) => ({
+      kind: 'side' as const,
+      grip,
+      seg: sideSegment(m, grip)!,
+      normal: gripWorldDir(m, grip),
+    }));
+  }
+  if (t.kind === 'freePolygon') {
+    const r = t.polygon.outer;
+    return r.map((_, i) => ({
+      kind: 'edge' as const,
+      index: i,
+      seg: [toWorldPoint(m, r[i]!), toWorldPoint(m, r[(i + 1) % r.length]!)] as [Vec2, Vec2],
+      normal: rotatePoint(ringEdgeNormal(r, i), m.rotation),
+    }));
+  }
+  return [];
+}
+
+/**
+ * Move edge `i` of a ring by `d` along its outward normal. The end points slide along the
+ * neighbouring edges so that the polygon stays closed and the neighbours keep their direction
+ * (SketchUp-like push / pull); a neighbour that is (almost) parallel is extended along the normal.
+ */
+export function offsetRingEdge(ring: readonly Vec2[], i: number, d: number): Vec2[] {
+  const n = ring.length;
+  if (n < 3) return [...ring];
+  const nrm = ringEdgeNormal(ring, i);
+  const ia = i;
+  const ib = (i + 1) % n;
+  const slide = (p: Vec2, from: Vec2): Vec2 => {
+    const l = dist(from, p);
+    const u: Vec2 = l > 1e-9 ? [(p[0] - from[0]) / l, (p[1] - from[1]) / l] : nrm;
+    const un = u[0] * nrm[0] + u[1] * nrm[1];
+    if (Math.abs(un) < 0.2) return [p[0] + nrm[0] * d, p[1] + nrm[1] * d];
+    const t = d / un;
+    return [p[0] + u[0] * t, p[1] + u[1] * t];
+  };
+  const out = ring.map((p) => [p[0], p[1]] as Vec2);
+  out[ia] = slide(ring[ia]!, ring[(ia - 1 + n) % n]!);
+  out[ib] = slide(ring[ib]!, ring[(ib + 1) % n]!);
+  return out;
+}
+
+/** Apply a push / pull of `delta` metres (outward positive) to a face of a mass. */
+export function applyFace(
+  m: Pick<Mass, 'position' | 'rotation' | 'typology'>,
+  f: Face,
+  delta: number,
+): { position: Vec2; typology: Typology } {
+  if (f.kind === 'side') return applySideGrip(m, f.grip, delta);
+  const t = m.typology;
+  if (t.kind !== 'freePolygon') return { position: m.position, typology: t };
+  const outer = offsetRingEdge(t.polygon.outer, f.index, delta);
+  if (Math.abs(polygonArea({ outer })) < 1) return { position: m.position, typology: t };
+  return {
+    position: m.position,
+    typology: { kind: 'freePolygon', polygon: { ...t.polygon, outer } },
+  };
+}
+
+/** Size of a rectangular typology along a side grip's axis (m), or null. */
+export function sideSize(t: Typology, axis: SideGrip['axis']): number | null {
+  const e = localExtents(t);
+  if (!e) return null;
+  return axis === 'length' ? e[1] - e[0] : e[3] - e[2];
+}
+
+/**
+ * Model displacement along an axis from a mouse movement: `s0`/`s1` are the screen positions of
+ * the axis origin and of origin + 1 m, `mouse` the pointer movement in pixels. Null when the axis
+ * points (almost) at the camera.
+ */
+export function screenAxisDelta(s0: Vec2, s1: Vec2, mouse: Vec2, minPx = 2): number | null {
+  const ax: Vec2 = [s1[0] - s0[0], s1[1] - s0[1]];
+  const l2 = ax[0] * ax[0] + ax[1] * ax[1];
+  if (l2 < minPx * minPx) return null;
+  return (mouse[0] * ax[0] + mouse[1] * ax[1]) / l2;
+}
+
+/** Parse a typed number ("12,5", "-3", "4.") — null when not a finite number. */
+export function parseTyped(s: string): number | null {
+  const v = parseFloat(s.replace(',', '.'));
+  return Number.isFinite(v) ? v : null;
+}
