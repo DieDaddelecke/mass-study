@@ -14,15 +14,17 @@
     "S": "S",
     "W": "O"
   },
-  "style": {
-    "consistentColors": "Couleurs uniformes",
-    "granulometry": "Granulométrie",
-    "realistic": "Réaliste"
+  "display": {
+    "maquette": "Maquette blanche",
+    "bois": "Maquette bois",
+    "diagramme": "Diagramme",
+    "usages": "Couleurs d'usage",
+    "granulometrie": "Granulométrie"
   },
   "bar": {
     "label": "Contrôle de la vue",
     "scaleDisabled": "Échelle (sans objet en 3D)",
-    "visualStyle": "Style visuel",
+    "display": "Affichage",
     "sun": "Soleil et ombres",
     "toOrtho": "Passer en vue orthogonale",
     "toPersp": "Passer en vue perspective",

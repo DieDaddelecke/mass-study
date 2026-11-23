@@ -15,11 +15,9 @@ import type { Draft } from 'immer';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../i18n';
 import { actions, activeVariant, useProjectStore } from '../store/projectStore';
-import { STYLES, type VisualStyle } from '../store/tools';
+import { DISPLAY_MODES, setDisplayMode, useDisplayMode, type DisplayMode } from '../store/display';
 import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
-import { useViewportStore } from '../viewport/viewportStore';
-import { SCENE_LOOKS, type SceneLook } from '../viewport/scene/looks';
 import { DuplexFields } from './DuplexFields';
 import { OutdoorFields } from './OutdoorFields';
 import { PlantingProperties, RoofFields, TerraceFields } from './MassShapeFields';
@@ -465,14 +463,11 @@ function ContextProperties({ c }: { c: ContextBuilding }) {
 function ViewProperties() {
   const { t, i18n } = useTranslation('shell');
   const project = useProjectStore((s) => s.project)!;
-  const style = useUiStore((s) => s.visualStyle);
-  const setStyle = useUiStore((s) => s.setVisualStyle);
+  const mode = useDisplayMode();
   const projection = useUiStore((s) => s.projection);
   const setProjection = useUiStore((s) => s.setProjection);
   // the plan view is always parallel, seen from above
   const plan = useUiStore((s) => s.activeView === 'plan');
-  const look = useViewportStore((s) => s.look);
-  const setLook = useViewportStore((s) => s.setLook);
   const setDialog = useShellStore((s) => s.setDialog);
   const n = (v: number, d = 0) => formatNumber(v, d, i18n.language);
   const siteArea = polygonsArea(project.site.parcels.map((p) => p.polygon));
@@ -521,20 +516,11 @@ function ViewProperties() {
         </button>
       </Group>
       <Group title={t('props.group.graphics')}>
-        <Row label={t('view.style')}>
-          <select value={style} onChange={(e) => setStyle(e.target.value as VisualStyle)}>
-            {STYLES.map((s) => (
-              <option key={s} value={s}>
-                {t(`view.styles.${s}`)}
-              </option>
-            ))}
-          </select>
-        </Row>
-        <Row label={t('view.look')}>
-          <select value={look} onChange={(e) => setLook(e.target.value as SceneLook)}>
-            {SCENE_LOOKS.map((l) => (
-              <option key={l} value={l}>
-                {t(`view.looks.${l}`)}
+        <Row label={t('view.display')}>
+          <select value={mode} onChange={(e) => setDisplayMode(e.target.value as DisplayMode)}>
+            {DISPLAY_MODES.map((m) => (
+              <option key={m} value={m}>
+                {t(`view.displays.${m}`)}
               </option>
             ))}
           </select>

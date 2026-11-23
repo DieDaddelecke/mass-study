@@ -236,21 +236,16 @@
     "floorPlan": "Geschossgrundrisse"
   },
   "view": {
-    "style": "Visueller Stil",
-    "look": "Ambiente",
+    "display": "Darstellung",
     "projection": "Projektion",
     "perspective": "Perspektive",
     "orthographic": "Orthogonal",
-    "styles": {
-      "consistentColors": "Einheitliche Farben",
-      "granulometry": "Granulometrie",
-      "realistic": "Realistisch"
-    },
-    "looks": {
+    "displays": {
       "maquette": "Weißes Modell",
       "bois": "Holzmodell",
       "diagramme": "Diagramm",
-      "classique": "Klassisch"
+      "usages": "Nutzungsfarben",
+      "granulometrie": "Granulometrie"
     }
   },
   "status": {

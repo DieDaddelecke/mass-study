@@ -14,15 +14,17 @@
     "S": "S",
     "W": "W"
   },
-  "style": {
-    "consistentColors": "Konsistente Farben",
-    "granulometry": "Granulometrie",
-    "realistic": "Realistisch"
+  "display": {
+    "maquette": "Weißes Modell",
+    "bois": "Holzmodell",
+    "diagramme": "Diagramm",
+    "usages": "Nutzungsfarben",
+    "granulometrie": "Granulometrie"
   },
   "bar": {
     "label": "Ansichtssteuerung",
     "scaleDisabled": "Maßstab (in 3D nicht verfügbar)",
-    "visualStyle": "Visueller Stil",
+    "display": "Darstellung",
     "sun": "Sonne und Schatten",
     "toOrtho": "Orthogonale Ansicht",
     "toPersp": "Perspektivische Ansicht",
