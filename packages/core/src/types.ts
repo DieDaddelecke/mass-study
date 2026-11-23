@@ -425,6 +425,34 @@ export interface UnitRules {
   interiorWall: number;
   /** Whether the gallery side of a Laubengang dwelling counts as façade. */
   galleryCountsAsFacade: boolean;
+  /** Separate kitchen (cuisine fermée), when there is façade for it, m (2.15). */
+  kitchenMinFacade?: number;
+  /** From T3: separate kitchen on the façade when the façade allows it (else open). */
+  separateKitchen?: boolean;
+  /** Shaft (gaine technique) of a dwelling, side length, m (0.60). One per dwelling. */
+  shaftSize?: number;
+  /** Minimum room areas, m². */
+  minAreas?: Partial<RoomMinAreas>;
+  /** Dwellings per stair core and storey (gallery, corridor, point block), min / max. */
+  unitsPerCoreMin?: number;
+  unitsPerCoreMax?: number;
+  /** Façade length at least this share of the dwelling area, m per m² (0.12). */
+  facadeAreaRatio?: number;
+  /** Party walls on this façade grid, m (1.25; 0 = off). */
+  facadeGrid?: number;
+}
+
+/** Minimum room areas of the office rules, m². */
+export interface RoomMinAreas {
+  sejour: number;
+  /** Séjour with open kitchen. */
+  sejourCuisine: number;
+  cuisine: number;
+  chambre: number;
+  chambrePmr: number;
+  sdb: number;
+  sde: number;
+  wc: number;
 }
 
 export interface Settings {
@@ -468,6 +496,11 @@ export interface Settings {
     landingDepth?: number;
     /** Stair and lift inside the cores (defaults: DEFAULT_STAIR_RULES). */
     stair?: Partial<StairRules>;
+    /**
+     * Lift across the landing, opposite the stair (narrow core: the core holds the stair
+     * only), instead of beside the stair. Default true (office rule 23.11.2026).
+     */
+    liftOpposite?: boolean;
   };
   unitMix: UnitType[];
   /** Office façade rules for dwellings (defaults when missing). */

@@ -5,21 +5,53 @@
  * bedroom has one PMR bedroom with ≥ 2.80 m; T3/T4/T5 have 1/2/3 further bedrooms with ≥ 2.50 m;
  * 10 cm per partition (cloison) between the rooms along the façade.
  */
-import type { Polygon, Settings, UnitRules, UnitType, Vec2 } from './types.js';
+import type { Polygon, RoomMinAreas, Settings, UnitRules, UnitType, Vec2 } from './types.js';
 
-export const DEFAULT_UNIT_RULES: UnitRules = {
+/** Minimum room areas (office rules 2026-11-23, docs/GRUNDRISS_REGELN.md), m². */
+export const DEFAULT_MIN_AREAS: RoomMinAreas = {
+  sejour: 20,
+  sejourCuisine: 25,
+  cuisine: 7,
+  chambre: 10,
+  chambrePmr: 12,
+  sdb: 5,
+  sde: 4,
+  wc: 2,
+};
+
+export const DEFAULT_UNIT_RULES: Required<UnitRules> = {
   livingMinFacade: 3.6,
   pmrBedroomMinFacade: 2.8,
   bedroomMinFacade: 2.5,
   interiorWall: 0.1,
   // office decision 2026-11-21: the coursive side counts as façade
   galleryCountsAsFacade: true,
+  kitchenMinFacade: 2.15,
+  separateKitchen: false,
+  shaftSize: 0.6,
+  minAreas: DEFAULT_MIN_AREAS,
+  unitsPerCoreMin: 3,
+  unitsPerCoreMax: 8,
+  facadeAreaRatio: 0.12,
+  facadeGrid: 1.25,
 };
 
+/** Fully resolved unit rules (all optional values filled in). */
+export type ResolvedUnitRules = Required<UnitRules> & { minAreas: RoomMinAreas };
+
 /** Rules of the settings with defaults for missing values (older project files). */
-export function resolveUnitRules(settings: Pick<Settings, 'unitRules'>): UnitRules {
-  return { ...DEFAULT_UNIT_RULES, ...(settings.unitRules ?? {}) };
+export function resolveUnitRules(settings: Pick<Settings, 'unitRules'>): ResolvedUnitRules {
+  const r: Partial<UnitRules> = settings.unitRules ?? {};
+  return {
+    ...DEFAULT_UNIT_RULES,
+    ...r,
+    minAreas: { ...DEFAULT_MIN_AREAS, ...(r.minAreas ?? {}) },
+  } as ResolvedUnitRules;
 }
+
+/** Resolve a rules object that may come without the newer optional values. */
+export const fullRules = (rules: UnitRules): ResolvedUnitRules =>
+  resolveUnitRules({ unitRules: rules });
 
 /** Number of main rooms of a type: `rooms`, else the first digit in the id or label, else 1. */
 export function unitRooms(t: Pick<UnitType, 'id' | 'label' | 'rooms'>): number {
@@ -275,4 +307,10 @@ export function minUnitWidth(
   }
   const r = Math.round(hi * 100) / 100;
   return fits(r) ? r : Math.ceil(hi * 100 - 1e-6) / 100;
+}
+
+/** Dwellings per core and storey (gallery, corridor, point block): [min, max]. */
+export function coreRange(settings: Pick<Settings, 'unitRules'>): [number, number] {
+  const r = resolveUnitRules(settings);
+  return [r.unitsPerCoreMin, Math.max(r.unitsPerCoreMin, r.unitsPerCoreMax)];
 }

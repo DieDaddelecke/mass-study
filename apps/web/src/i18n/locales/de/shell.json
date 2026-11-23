@@ -310,7 +310,25 @@
     "bedroomMinFacade": "Schlafzimmer – min. Fassade",
     "interiorWall": "Innenwand zwischen Räumen",
     "galleryCountsAsFacade": "Laubengangseite zählt als Fassade",
-    "unitRulesNote": "Mindest-Fassadenlänge: {{list}}"
+    "unitRulesNote": "Mindest-Fassadenlänge: {{list}}",
+    "kitchenMinFacade": "Separate Küche, Mindestfassade",
+    "separateKitchen": "Separate Küche ab T3 (wenn die Fassade reicht)",
+    "shaftSize": "Schacht (Seitenlänge)",
+    "unitsPerCoreMin": "Wohnungen je Treppenhaus, min.",
+    "unitsPerCoreMax": "Wohnungen je Treppenhaus, max.",
+    "minAreas": "Mindestflächen",
+    "minArea": {
+      "sejour": "Séjour",
+      "sejourCuisine": "Séjour + offene Küche",
+      "cuisine": "Küche separat",
+      "chambre": "Zimmer",
+      "chambrePmr": "Zimmer PMR",
+      "sdb": "Bad (SDB)",
+      "sde": "Duschbad (SDE)",
+      "wc": "WC"
+    },
+    "facadeAreaRatio": "Mindestfassade in % der Fläche",
+    "facadeGrid": "Fassadenraster (Wohnungstrennwände)"
   },
   "rules": {
     "fr": "Frankreich (PLU)",

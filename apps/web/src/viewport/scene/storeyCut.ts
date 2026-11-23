@@ -288,6 +288,12 @@ export function buildStoreyCut(
           wall(wallRing([lift], LIFT_WALL));
         }
       }
+      // lift opposite the stair, across the landing
+      for (const c of st.circulation)
+        if (c.kind === 'lift') {
+          add([c.polygon], z0, z0 + FLOOR * 2, LIFT_COLOR);
+          wall(wallRing([c.polygon], LIFT_WALL));
+        }
     } else add(footprints, z0, z0 + FLOOR, PLAIN_FLOOR);
 
     // façade walls

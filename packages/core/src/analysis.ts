@@ -1,3 +1,4 @@
+import { coreRange } from './unitRules.js';
 import { solidAreas, sumAreas, type AreaFigures } from './areas.js';
 import { polygonArea, union, polygonsArea } from './geometry.js';
 import { typologySegments } from './generators.js';
@@ -196,7 +197,7 @@ function computeMass(mass: Mass, settings: Settings): MassResult {
   }
 
   let mixHint: MassResult['mixHint'];
-  const expected = unitsPerCoreRange(access);
+  const expected = unitsPerCoreRange(access, coreRange(settings));
   const resStoreys = new Set(
     results.filter((r) => r.solid.usage === 'wohnen').map((r) => r.solid.storeyIndex),
   ).size;
