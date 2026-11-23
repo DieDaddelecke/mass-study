@@ -242,9 +242,6 @@
     "perspective": "Perspective",
     "orthographic": "Orthographic",
     "styles": {
-      "wireframe": "Wireframe",
-      "hiddenLine": "Hidden line",
-      "shaded": "Shaded",
       "consistentColors": "Consistent colors",
       "granulometry": "Granulometry",
       "realistic": "Realistic"

@@ -15,9 +15,6 @@
     "W": "O"
   },
   "style": {
-    "wireframe": "Filaire",
-    "hiddenLine": "Lignes cachées",
-    "shaded": "Ombré",
     "consistentColors": "Couleurs uniformes",
     "granulometry": "Granulométrie",
     "realistic": "Réaliste"
