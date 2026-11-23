@@ -15,12 +15,20 @@ import {
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
-import { BufferGeometry, DoubleSide, LineDashedMaterial, LineSegments, Material } from 'three';
+import {
+  BufferGeometry,
+  DoubleSide,
+  LineDashedMaterial,
+  LineSegments,
+  Material,
+  type MeshStandardMaterial,
+} from 'three';
 import { activeVariant } from '../../store/projectStore';
 import type { VisualStyle } from '../../store/tools';
 import { useUiStore } from '../../store/uiStore';
 import { palette, type ScenePalette } from '../../theme/palette';
 import { useLook } from './useLook';
+import { usePlasterMaterial, useWoodMaterials, type ModelMaterials } from './useModelMaterials';
 import { LIT_STYLES } from './looks';
 import { SkyBackground } from './SkyBackground';
 import { Basemap } from './Basemap';
@@ -89,7 +97,17 @@ function hoverOut(id: string) {
 }
 
 /** Face material props per visual style (lit / unlit, colour). */
-function FaceMaterial({ style, color }: { style: VisualStyle; color: string }) {
+function FaceMaterial({
+  style,
+  color,
+  textured,
+}: {
+  style: VisualStyle;
+  color: string;
+  /** Model look: textured material (wood, plaster) used instead of the plain colour. */
+  textured?: MeshStandardMaterial | null | undefined;
+}) {
+  if (textured) return <primitive object={textured} attach="material" />;
   const common = { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 } as const;
   if (style === 'wireframe')
     return <meshBasicMaterial {...common} colorWrite={false} depthWrite={false} />;
@@ -192,12 +210,15 @@ function ContextBuildings({
   style,
   shadows,
   pal,
+  model,
 }: {
   buildings: readonly ContextBuilding[];
   style: VisualStyle;
   shadows: boolean;
   pal: ScenePalette;
+  model: boolean;
 }) {
+  const plaster = usePlasterMaterial(pal.contextBuilding, model && LIT_STYLES.has(style));
   const geo = useMemo(() => buildContextGeometry(buildings), [buildings]);
   const lines = useMemo(() => {
     const solid = new LineSegments(segmentsGeometry(geo.edges));
@@ -260,7 +281,7 @@ function ContextBuildings({
             if (h && geo.ids.includes(h)) useUiStore.getState().setHover(null);
           }}
         >
-          <FaceMaterial style={style} color={pal.contextBuilding} />
+          <FaceMaterial style={style} color={pal.contextBuilding} textured={plaster} />
         </mesh>
       )}
       <primitive object={lines.solid} />
@@ -362,8 +383,14 @@ function buildMasses(
   return { solids: out, edges };
 }
 
-function Masses(props: Props & { pal: ScenePalette; edgeWidth: number }) {
+/** Styles in which the model look shows its wood (not the colour-coded ones). */
+const WOOD_STYLES: ReadonlySet<VisualStyle> = new Set(['shaded', 'realistic']);
+
+function Masses(
+  props: Props & { pal: ScenePalette; edgeWidth: number; model: boolean; storeyLine?: string },
+) {
   const { project, style, shadows, pal, edgeWidth } = props;
+  const woods = useWoodMaterials(project, props.solids, props.model && WOOD_STYLES.has(style));
   const cut = props.cutLevel ?? null;
   // with a storey cut: only the storeys below it are drawn as volumes
   const solids = useMemo(
@@ -451,7 +478,11 @@ function Masses(props: Props & { pal: ScenePalette; edgeWidth: number }) {
               receiveShadow={shadows}
               {...pick(s.massId)}
             >
-              <FaceMaterial style={style} color={faceColor(s.usage)} />
+              <FaceMaterial
+                style={style}
+                color={faceColor(s.usage)}
+                textured={woods?.wood.get(s.massId)}
+              />
             </mesh>
           )}
           {selection.includes(s.massId) && (
@@ -508,9 +539,10 @@ function Masses(props: Props & { pal: ScenePalette; edgeWidth: number }) {
         pal={pal}
         faceColor={pal.mass}
         edgeWidth={edgeWidth}
+        woods={woods}
       />
       {outdoor && style !== 'wireframe' && (
-        <OutdoorMeshes o={outdoor} style={style} shadows={shadows} pal={pal} />
+        <OutdoorMeshes o={outdoor} style={style} shadows={shadows} pal={pal} woods={woods} />
       )}
       {[...built.edges].map(([id, e]) => {
         const hot = hover === id || selection.includes(id);
@@ -521,7 +553,10 @@ function Masses(props: Props & { pal: ScenePalette; edgeWidth: number }) {
               color={hot ? ACCENT : pal.massEdge}
               width={hot ? 3 : style === 'realistic' ? Math.min(1.2, edgeWidth) : edgeWidth}
             />
-            <ThinLines segments={e.thin} color={hot ? ACCENT : pal.contextEdge} />
+            <ThinLines
+              segments={e.thin}
+              color={hot ? ACCENT : (props.storeyLine ?? pal.contextEdge)}
+            />
           </group>
         );
       })}
@@ -536,7 +571,9 @@ function Roofs({
   pal,
   faceColor,
   edgeWidth,
+  woods,
 }: {
+  woods: ModelMaterials | null;
   roofs?: readonly RoofPiece[] | undefined;
   style: VisualStyle;
   shadows: boolean;
@@ -583,6 +620,8 @@ function Roofs({
               >
                 {style === 'wireframe' ? (
                   <meshBasicMaterial colorWrite={false} depthWrite={false} side={DoubleSide} />
+                ) : woods?.wood.get(b.id) ? (
+                  <primitive object={woods.wood.get(b.id)!} attach="material" />
                 ) : (
                   <meshLambertMaterial
                     color={faceColor}
@@ -611,17 +650,19 @@ function OutdoorMeshes({
   style,
   shadows,
   pal,
+  woods,
 }: {
   o: OutdoorScene;
   style: VisualStyle;
   shadows: boolean;
   pal: ScenePalette;
+  woods: ModelMaterials | null;
 }) {
   return (
     <group>
       {o.slabs && (
         <mesh geometry={o.slabs} castShadow={shadows} receiveShadow={shadows} raycast={() => null}>
-          <FaceMaterial style={style} color={pal.mass} />
+          <FaceMaterial style={style} color={pal.mass} textured={woods?.slabs} />
         </mesh>
       )}
       {o.rails && (
@@ -691,7 +732,13 @@ export function SceneContent(props: Props) {
       <SiteBoundary project={project} pal={pal} fillOpacity={look.siteFill} />
       {layers.buildings && (
         <>
-          <ContextBuildings buildings={project.context} style={style} shadows={shadows} pal={pal} />
+          <ContextBuildings
+            buildings={project.context}
+            style={style}
+            shadows={shadows}
+            pal={pal}
+            model={!!look.model}
+          />
           <SelectedContext buildings={project.context} />
         </>
       )}
@@ -700,7 +747,13 @@ export function SceneContent(props: Props) {
         pal={pal}
         shadows={shadows}
       />
-      <Masses {...props} pal={pal} edgeWidth={look.edgeWidth} />
+      <Masses
+        {...props}
+        pal={pal}
+        edgeWidth={look.edgeWidth}
+        model={!!look.model}
+        storeyLine={look.storeyLine}
+      />
     </group>
   );
 }

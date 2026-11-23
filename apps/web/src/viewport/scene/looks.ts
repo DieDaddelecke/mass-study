@@ -44,6 +44,13 @@ export interface LookSpec {
    * transparent overlays look stronger, hence lower values there (dark backgrounds even more so).
    */
   siteFill: number;
+  /**
+   * Physical model materials (procedural textures): project masses in solid wood, neighbouring
+   * buildings in cast plaster. Applies to the shaded and realistic styles.
+   */
+  model?: boolean;
+  /** Colour of the storey lines on the masses (default: the context edge colour). */
+  storeyLine?: string;
 }
 
 const SUN_SW: readonly [number, number, number] = [-0.45, -0.9, 1];
@@ -51,6 +58,8 @@ const SUN_SW: readonly [number, number, number] = [-0.45, -0.9, 1];
 const SUN_SSE: readonly [number, number, number] = [0.5, -1, 0.95];
 /** Low east-south-east sun: long graphic shadows. */
 const SUN_LOW: readonly [number, number, number] = [0.9, -0.5, 0.65];
+/** Studio lamp from the south-south-east, fairly low: long soft shadows across the base. */
+const SUN_STUDIO: readonly [number, number, number] = [0.45, -0.9, 0.6];
 
 const base = (theme: ThemeName) => palette[theme];
 
@@ -120,69 +129,76 @@ const LOOKS: Record<SceneLook, Record<ThemeName, LookSpec>> = {
       siteFill: 0.02,
     },
   },
-  /** Wood and cardboard competition model: kraft base, balsa neighbours, white project. */
+  /**
+   * Physical wood model: solid wood blocks with visible grain for the project, cast plaster
+   * neighbours, on a plain studio background with soft lamp light and long soft shadows.
+   */
   bois: {
     light: {
       pal: {
         ...base('light'),
-        sky: '#f4efe6',
-        ground: '#e2d4bb',
-        contextBuilding: '#ead9bb',
-        contextEdge: '#b89f7a',
-        mass: '#ffffff',
-        massEdge: '#4a3c2e',
-        road: '#d6c5a8',
-        footway: '#dbccb2',
-        green: '#cbd1a3',
-        wood: '#b6c18a',
-        tree: '#9cae74',
-        water: '#c4d3cf',
-        parcel: '#a08c6d',
+        sky: '#ebe9e5',
+        ground: '#e7e5e1',
+        contextBuilding: '#f3f1ec',
+        contextEdge: '#c9c4bb',
+        mass: '#7d5a40',
+        massEdge: '#b08d70',
+        road: '#dfdcd6',
+        footway: '#e3e1dc',
+        green: '#dcddd2',
+        wood: '#d3d6c6',
+        tree: '#b48e57',
+        water: '#d5dadb',
+        parcel: '#bdb7ad',
       },
-      sky: ['#e3ddd3', '#f4efe6'],
-      hemi: { sky: '#fff8ee', ground: '#c7b08a', intensity: 1.35 },
-      ambient: 0.28,
+      sky: ['#dedcd8', '#ebe9e5'],
+      hemi: { sky: '#ffffff', ground: '#d9d4cc', intensity: 1.25 },
+      ambient: 0.32,
       sun: {
-        color: '#ffe8c8',
-        intensity: 2.5,
-        dir: SUN_SSE,
-        softness: 5,
-        shadowIntensity: 0.6,
+        color: '#fff4e6',
+        intensity: 2.7,
+        dir: SUN_STUDIO,
+        softness: 10,
+        shadowIntensity: 0.5,
       },
-      ao: { intensity: 2.4, radius: 4, color: '#3a2a18' },
-      edgeWidth: 1.4,
-      siteFill: 0.045,
+      ao: { intensity: 2.4, radius: 4, color: '#2c2520' },
+      edgeWidth: 1,
+      siteFill: 0.035,
+      model: true,
+      storeyLine: '#5e4332',
     },
     dark: {
       pal: {
         ...base('dark'),
-        sky: '#221d18',
-        ground: '#2b241c',
-        contextBuilding: '#4a3d2e',
-        contextEdge: '#6d5a44',
-        mass: '#f2ede4',
-        massEdge: '#140f0a',
-        road: '#352c22',
-        footway: '#30281f',
-        green: '#333a24',
-        wood: '#39422a',
-        tree: '#66774a',
-        water: '#26343a',
-        parcel: '#7a6850',
+        sky: '#2c2d2b',
+        ground: '#30312f',
+        contextBuilding: '#d9d6d0',
+        contextEdge: '#55554f',
+        mass: '#7d5a40',
+        massEdge: '#a07f64',
+        road: '#363734',
+        footway: '#333431',
+        green: '#33372f',
+        wood: '#363b31',
+        tree: '#a07c4b',
+        water: '#2f3638',
+        parcel: '#6a6861',
       },
-      sky: ['#110e0b', '#221d18'],
-      hemi: { sky: '#f3dfc2', ground: '#2b241c', intensity: 0.95 },
-      ambient: 0.2,
+      sky: ['#202120', '#2c2d2b'],
+      hemi: { sky: '#f2eee8', ground: '#30312f', intensity: 1.0 },
+      ambient: 0.22,
       sun: {
-        color: '#ffdfb0',
-        intensity: 2.3,
-        dir: SUN_SSE,
-        softness: 5,
-        shadowIntensity: 0.7,
+        color: '#fff1de',
+        intensity: 2.6,
+        dir: SUN_STUDIO,
+        softness: 10,
+        shadowIntensity: 0.65,
       },
       ao: { intensity: 2.2, radius: 4, color: '#000000' },
-      edgeWidth: 1.4,
+      edgeWidth: 1,
       siteFill: 0.02,
+      model: true,
+      storeyLine: '#5e4332',
     },
   },
   /** Graphic axonometry: coloured project against a quiet, light grey context, long shadows. */
