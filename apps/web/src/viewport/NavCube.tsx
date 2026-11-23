@@ -1,4 +1,4 @@
-import { Canvas, useFrame, type ThreeEvent } from '@react-three/fiber';
+import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { House } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +7,9 @@ import { cubeRegion, type V3 } from './scene/cameraFit';
 import { controlsRef } from './scene/controlsRef';
 import { palette } from '../theme/palette';
 import { useViewportStore } from './viewportStore';
+
+/** Redraws the nav cube; called by the main view on each of its frames (camera moved). */
+export const navCubeInvalidate: { current: (() => void) | null } = { current: null };
 
 function labelTexture(text: string, rotate180 = false): CanvasTexture {
   const c = document.createElement('canvas');
@@ -84,6 +87,13 @@ function CubeScene() {
   useEffect(() => () => [...textures, ...letters].forEach((x) => x.dispose()), [textures, letters]);
 
   const box = useMemo(() => new BoxGeometry(1.002, 1.002, 1.002), []);
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    navCubeInvalidate.current = invalidate;
+    return () => {
+      if (navCubeInvalidate.current === invalidate) navCubeInvalidate.current = null;
+    };
+  }, [invalidate]);
   useFrame(({ camera }) => {
     const c = controlsRef.current;
     if (!c) return;
@@ -175,6 +185,8 @@ export function NavCube() {
         <House size={15} strokeWidth={1.75} />
       </button>
       <Canvas
+        // drawn only when the main view moves (see navCubeInvalidate), not 60× per second
+        frameloop="demand"
         dpr={[1, 2]}
         gl={{ alpha: true, antialias: true }}
         camera={{ fov: 34, position: [0, 0, 3.7], up: [0, 0, 1] }}

@@ -67,9 +67,31 @@ export function shade(hex: string, k: number): string {
   return `#${ch.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
 }
 
-/** Fill of a room inside a dwelling of colour `unit`: séjour a little darker. */
+/** Wet rooms and shaft (light blue-grey) and the passage of a dwelling. */
+export const WET_COLOR = '#d6e2ea';
+export const SHAFT_COLOR = '#8a9aa6';
+
+/**
+ * Fill of a room inside a dwelling of colour `unit`: séjour a little darker, kitchen in
+ * between, wet rooms blue-grey, the shaft dark, the passage like the rest of the dwelling.
+ */
 export function roomColor(unit: string, kind: RoomKind): string {
-  return kind === 'sejour' ? shade(unit, 0.12) : unit;
+  switch (kind) {
+    case 'sejour':
+      return shade(unit, 0.12);
+    case 'cuisine':
+      return shade(unit, 0.06);
+    case 'sdb':
+    case 'sde':
+    case 'wc':
+      return WET_COLOR;
+    case 'gaine':
+      return SHAFT_COLOR;
+    case 'degagement':
+      return serviceColor(unit);
+    default:
+      return unit;
+  }
 }
 
 /** Fill of the rest of a dwelling (entrance, kitchen, bathroom) when its rooms are drawn. */
@@ -78,9 +100,18 @@ export const serviceColor = (unit: string): string => shade(unit, -0.5);
 /** Short room labels (French plan convention). */
 export const ROOM_LABELS: Record<RoomKind, string> = {
   sejour: 'séj.',
+  cuisine: 'cuis.',
   chambrePmr: 'PMR',
   chambre: 'ch.',
+  sdb: 'sdb',
+  sde: 'sde',
+  wc: 'wc',
+  gaine: 'g.',
+  degagement: 'dgt',
 };
+
+/** Rooms drawn without a label (too small or self-evident). */
+const UNLABELLED: readonly RoomKind[] = ['gaine', 'degagement'];
 
 /** Short outdoor space labels (French plan convention). */
 export const OUTDOOR_LABELS: Record<OutdoorType, string> = {
@@ -194,7 +225,7 @@ export function unitTitle(
 
 /** Areas to keep the unit label clear of: rooms and the duplex stair. */
 export const labelObstacles = (u: Pick<LayoutUnit, 'rooms' | 'duplex'>): { polygon: Polygon }[] => [
-  ...(u.rooms ?? []),
+  ...(u.rooms ?? []).filter((r) => r.kind !== 'degagement'),
   ...(u.duplex?.stair ? [{ polygon: u.duplex.stair }] : []),
 ];
 
@@ -394,7 +425,17 @@ export function floorPlan(
   const dpx = opts.duplexText ?? DUPLEX_LABELS;
   for (const st of storeys) {
     for (const o of st.open) items.push(fill(o.polygon, FLOOR_PLAN_COLORS.open));
-    for (const c of st.circulation) items.push(fill(c.polygon, FLOOR_PLAN_COLORS.circulation));
+    for (const c of st.circulation)
+      if (c.kind === 'lift') {
+        // lift shaft opposite the stair: core fill with the shaft cross
+        items.push(fill(c.polygon, FLOOR_PLAN_COLORS.core));
+        const r = c.polygon.outer;
+        items.push(line(r, 1, 'solid', FLOOR_PLAN_COLORS.coreLine, true));
+        if (r.length === 4) {
+          items.push(line([r[0]!, r[2]!], 1, 'solid', FLOOR_PLAN_COLORS.coreLine));
+          items.push(line([r[1]!, r[3]!], 1, 'solid', FLOOR_PLAN_COLORS.coreLine));
+        }
+      } else items.push(fill(c.polygon, FLOOR_PLAN_COLORS.circulation));
     // spaces of residences / offices (common rooms, shafts, plateau)
     const spaceName = opts.spaceText ?? ((k: SpaceKind) => SPACE_LABELS[k]);
     const spaceItems = (sp: LayoutSpace, owner?: string) => {
@@ -467,17 +508,32 @@ export function floorPlan(
             rings: rings(r.polygon),
             fill: roomColor(base, r.kind),
             pen: 1,
-            stroke: r.facadeOk ? '#55534e' : FLOOR_PLAN_COLORS.facadeFail,
-            title: `${u.label} · ${roomName(r.kind)} · ${fmtArea(r.area)} · ${(
-              opts.facadeText ?? defaultFacadeText
-            )(r.facade, r.facadeRequired)}${r.facadeOk ? '' : ' !'}`,
+            stroke: r.facadeOk && !r.onGallery ? '#55534e' : FLOOR_PLAN_COLORS.facadeFail,
+            title: `${u.label} · ${roomName(r.kind)} · ${fmtArea(r.area)}${
+              r.areaRequired > 0 ? ` (min ${fmtArea(r.areaRequired)})${r.areaOk ? '' : ' !'}` : ''
+            }${
+              r.facadeRequired > 0
+                ? ` · ${(opts.facadeText ?? defaultFacadeText)(r.facade, r.facadeRequired)}${r.facadeOk ? '' : ' !'}`
+                : ''
+            }${r.onGallery ? ' · coursive !' : ''}`,
+            ...(r.onGallery
+              ? {
+                  hatch: { angle: 45, spacingMm: 1.6, pen: 1, color: FLOOR_PLAN_COLORS.facadeFail },
+                }
+              : {}),
           });
-          if (opts.roomLabels !== false && opts.labels !== false && r.area >= 7)
+          const small = r.area < 7;
+          if (
+            opts.roomLabels !== false &&
+            opts.labels !== false &&
+            !UNLABELLED.includes(r.kind) &&
+            r.area >= 1.8
+          )
             labels.push({
               kind: 'text',
               at: labelPoint(r.polygon),
               text: roomName(r.kind),
-              sizeMm: 1.3,
+              sizeMm: small ? 1.0 : 1.3,
               anchor: 'middle',
               baseline: 'middle',
               color: r.facadeOk ? '#4a4843' : FLOOR_PLAN_COLORS.facadeFail,

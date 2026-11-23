@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   defaultSettings,
   duplexMix,
+  isFacadeRoom,
   massLayout,
   massToSolids,
   polygonArea,
@@ -68,14 +69,14 @@ describe('duplex layout', () => {
           expect(u.duplex!.level).toBe('jour');
           expect(u.duplex!.part).toBe('lower');
           expect(u.duplex!.storeys).toEqual([lo, hi]);
-          expect(u.rooms.map((r) => r.kind)).toEqual(['sejour', 'chambrePmr']);
+          expect(u.rooms.filter(isFacadeRoom).map((r) => r.kind)).toEqual(['sejour', 'chambrePmr']);
           expect(u.facadeOk).toBe(true);
           // same polygon on both levels, total = both levels
           const v = U.find(
             (x) => Math.abs(polygonArea(x.polygon) - polygonArea(u.polygon)) < 1e-6,
           )!;
           expect(v.duplex!.level).toBe('nuit');
-          expect(v.rooms.every((r) => r.kind === 'chambre')).toBe(true);
+          expect(v.rooms.filter(isFacadeRoom).every((r) => r.kind === 'chambre')).toBe(true);
           expect(v.outdoor).toBeUndefined();
           expect(u.duplex!.totalArea).toBeCloseTo(u.area + v.area);
           expect(u.duplex!.stair).toBeDefined();

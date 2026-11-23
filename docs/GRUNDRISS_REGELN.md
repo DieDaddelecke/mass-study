@@ -1,0 +1,159 @@
+# Leitfaden Wohnungsgrundrisse (Règles de plan des logements)
+
+Stand: 23.11.2026, mit Soheyl abgestimmt. Profil Frankreich. Diese Regeln steuern den
+schematischen Grundriss-Generator (`packages/core/src/rooms.ts`, `layout.ts`). Alle Zahlen
+sollen in den Einstellungen änderbar sein, mit den Werten hier als Vorgabe.
+
+Begriffe: Séjour = Wohnraum, Chambre = Zimmer, Chambre PMR = barrierefreies Zimmer,
+SDB = Salle de bain, SDE = Salle d'eau, Entrée = Eingangsbereich/Flur.
+
+## 1. Fassadenbreiten (bestehende Büro-Regeln)
+
+| Raum                                         | Mindest-Fassade |
+| -------------------------------------------- | --------------- |
+| Séjour                                       | 3,60 m          |
+| Chambre PMR (jede Wohnung ab T2, genau eine) | 2,80 m          |
+| weitere Chambres (T3: 1, T4: 2, T5: 3)       | 2,50 m          |
+| Cuisine, wenn separat                        | 2,15 m          |
+| Wand zwischen Räumen                         | ≥ 0,10 m        |
+
+Die Laubengang-Seite zählt als Fassade (umschaltbar).
+
+## 2. Mindestflächen
+
+| Raum                     | Mindestfläche |
+| ------------------------ | ------------- |
+| Séjour (ohne Küche)      | 20 m²         |
+| Séjour + Cuisine (offen) | 25 m²         |
+| Cuisine separat          | 7 m²          |
+| Chambre                  | 10 m²         |
+| Chambre PMR              | 12 m²         |
+| SDB                      | 5 m²          |
+| SDE                      | 4 m²          |
+| WC                       | 2 m²          |
+
+## 3. Zonierung
+
+- **Tageszone** (Entrée, Cuisine, Séjour) liegt am Wohnungseingang.
+- **Nachtzone** (Chambres, Bad) liegt gebündelt am anderen Ende. Zu den Zimmern geht man
+  nicht durch den Séjour.
+- **Entrée:** ab T2 immer ein Eingangsbereich bzw. Flur. Ein kleines T2 darf direkt in den
+  Séjour erschlossen werden, ein T1 ebenfalls.
+- **Reihenfolge entlang der Fassade:** Séjour → Chambre PMR (nah an Bad und Eingang) →
+  weitere Chambres.
+
+## 4. Séjour
+
+- Bei Eckwohnungen liegt der Séjour in der Ecke (Fassade auf zwei Seiten).
+- Danach nach Himmelsrichtung: **Süd > West > Ost > Nord**.
+- Bei durchgehenden Wohnungen (traversant) geht der Séjour durch.
+- Die Séjours und vor allem Loggien und Balkone liegen **übereinander**, damit ein
+  ruhiges Fassadenbild entsteht. An Rücksprüngen (z. B. Gradient) darf das wechseln.
+
+## 5. Orientierung
+
+- **Ab T3 hat jede Wohnung mindestens zwei Ausrichtungen.** Lässt das Volumen das nicht zu,
+  braucht es größere Rücksprünge oder durchgehende Wohnungen. Der Generator meldet solche
+  Wohnungen als Verstoß.
+- Reine Nordwohnungen mit nur einer Ausrichtung sind verboten, auch bei T1 und T2.
+
+## 6. Küche
+
+- T1 und T2: offen im Séjour.
+- Ab T3: offen oder abtrennbar, immer direkt am Séjour.
+- Innenliegend (ohne Fenster) erlaubt, wenn sie zum Séjour offen ist.
+- Separate Küche: an der Fassade, mindestens 2,15 m.
+
+## 7. Bäder und WC
+
+| Typ    | Nasszellen                   |
+| ------ | ---------------------------- |
+| T1, T2 | 1 SDB mit WC                 |
+| T3     | 1 SDB + 1 WC separat         |
+| T4, T5 | 1 SDB + 1 SDE + 1 WC separat |
+
+- Bäder dürfen innenliegend sein (VMC).
+- SDB und WC sind PMR-gerecht und liegen neben der Chambre PMR.
+
+## 8. Schächte (gaines)
+
+- Jede Wohnung hat **einen eigenen Schacht, 60 × 60 cm**. Zwei Wohnungen teilen sich nie
+  einen Schacht.
+- Küche, SDB, SDE und WC einer Wohnung liegen an diesem Schacht.
+- Schächte laufen senkrecht durch alle Geschosse.
+- Über einem Wohn- oder Schlafraum der Wohnung darunter liegt keine Nasszelle.
+
+## 9. Lage in der Wohnungstiefe
+
+- Fassade: Séjour und Chambres (und eine separate Küche).
+- Innenzone, zwischen Erschließung und Wohnräumen: Entrée, SDB, SDE, WC, Schacht und
+  innenliegende Küche.
+- Rangements (Placard, Cellier) werden nicht geplant.
+
+## 10. Laubengang
+
+- Zum Laubengang liegen Entrée, Küche und Bad. Der Séjour (mit Balkon) liegt immer außen.
+- Schlafzimmer liegen außen. Nur wenn die Fassade nicht reicht, darf ein Zimmer zum
+  Laubengang liegen; es wird im Plan schraffiert und in der Legende gemeldet
+  (Entscheidung 23.11.2026).
+- Keine weitere Regel für Abstände zum Laubengang.
+
+## 11. Erschließung und Verteilung
+
+- Wohnungen pro Treppenhaus und Geschoss: **einstellbar, mindestens 3, höchstens 8**.
+- Große Wohnungen (T4, T5) an die Ecken, kleine (T1, T2) in die Mitte.
+- Nachbarwohnungen werden gespiegelt: Séjour an Séjour, Zimmer an Zimmer (Schallschutz).
+
+## 12. Stapelung
+
+- Wohnungstrennwände und Schächte liegen über alle Geschosse übereinander, nach
+  Möglichkeit auch derselbe Wohnungstyp.
+- An Rücksprüngen darf davon abgewichen werden.
+
+## 13. Außenräume
+
+- Ein Außenraum pro Wohnung, am Séjour, mindestens 4 m² (Loggia ≥ 1,80 m tief,
+  Balkon ≥ 1,40 m). Keine Staffelung nach Typ, kein zweiter Außenraum.
+
+## Umsetzung im Generator (Stand 23.11.2026)
+
+- Raumkette entlang der Fassade, Séjour am Kettenanfang; Bewertung der Varianten: alle
+  Mindestfassaden > Mindestflächen > Ecke bzw. zwei Ausrichtungen > Stapelung über dem
+  Séjour darunter > Himmelsrichtung > Spiegelung zur Nachbarwohnung > Nähe zum Eingang.
+- Nasskern: Schacht 60 × 60 cm an der Grenze zwischen Tag- und Nachtzone, daneben SDB
+  (neben der Chambre PMR), WC, SDE. Zwischen Räumen auf gegenüberliegenden Fassaden bleibt
+  eine Innenzone von 2,20 m.
+- Separate Küche ab T3 als Einstellung (Standard: offen).
+- Wohnungen pro Treppenhaus 3 bis 8 (Laubengang, Mittelflur, Punkthaus); Zwei- und
+  Dreispänner bleiben bei 2 bzw. 3.
+- Wohnungen ab T3 mit nur einer Ausrichtung und reine Nordwohnungen werden gemeldet.
+
+## Ergänzungen 23.11.2026 (Rückmeldung zum Plan)
+
+- Jeder Raum ist **ein einfaches Rechteck**, keine L-Formen.
+- Räume sind nicht lang gezogen: Tiefe höchstens 1,6 × Breite (Séjour, Zimmer), Zimmer
+  höchstens 4,20 m breit (PMR 4,40 m), Séjour höchstens 7 m.
+- **Treppenhaus:** der Kern enthält nur die Treppe; der Aufzug liegt gegenüber der Treppe
+  auf der anderen Seite des Podests (Dreispänner; Einstellung `cores.liftOpposite`).
+
+## Regeln aus den Beispielplänen (baumschlager eberle, freigegeben 23.11.2026)
+
+- **A. Fassade im Verhältnis zur Fläche:** Fassadenlänge einer Wohnung ≥ 12 % ihrer
+  Wohnfläche (Einstellung `facadeAreaRatio`). Wohnungen darunter werden markiert.
+- **B. Tageszone:** Entrée, Küche und Séjour dürfen einen zusammenhängenden Bereich bilden.
+  Der Séjour darf dafür als L in die Wohnungstiefe wachsen, wenn der Anbau mindestens 2 m breit
+  ist und der Séjour insgesamt nicht tiefer als 1,6 × seine Breite wird. Zimmer, Bäder und WC
+  bleiben einfache Rechtecke.
+- **C. Nasszellen** liegen nahe der Wohnungstür bzw. am Kern; Bäder von Nachbarwohnungen
+  werden an der Trennwand gespiegelt, jede Wohnung behält ihren eigenen Schacht.
+- **D. Kein langer Flur:** der Eingang führt direkt in die Tageszone, die Zimmer werden über eine
+  kleine Diele erschlossen.
+- **E. Fassadenraster:** Wohnungstrennwände rasten auf ein Fassadenraster ein, Standard 1,25 m
+  (Einstellung `facadeGrid`).
+- **F. Punkthaus:** zentraler Kern mit Treppe, Aufzug an der kleinen Halle, 4 bis 7 Wohnungen je
+  Kern.
+
+## Offene Punkte
+
+- Maximale Länge eines Innenflurs (couloir) ist noch nicht festgelegt.
+- Auswertung der Beispielpläne des Büros steht noch aus.

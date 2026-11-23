@@ -43,5 +43,17 @@
       "impossible": "This façade cannot be aligned (staggered sections) — use a parallel reference or the whole volume"
     }
   },
-  "greenPrefix": "Green"
+  "greenPrefix": "Green",
+  "edit": {
+    "length": "Length",
+    "depth": "Depth",
+    "offset": "Façade offset",
+    "storeys": "Storeys",
+    "storeysHint": "Drag up/down or ▲ ▼ to change the number of storeys",
+    "rotation": "Rotation",
+    "rotateHint": "Drag to rotate the volume",
+    "distance": "Distance",
+    "typeWhileDragging": "Type a value + Enter · Alt: no magnet · Esc cancels",
+    "typeToCorrect": "Type a value + Enter to correct"
+  }
 }

@@ -132,7 +132,7 @@ function SettingsDialog({ project }: { project: Project }) {
   );
   const pct = (v: number) => v * 100;
   const rules = resolveUnitRules(s);
-  const setRule = (k: keyof UnitRules, v: number | boolean) =>
+  const setRule = (k: Exclude<keyof UnitRules, 'minAreas'>, v: number | boolean) =>
     patch((d) => ({ ...d, unitRules: { ...resolveUnitRules(d), [k]: v } }));
   const facadeList = s.unitMix
     .map((u) => `${u.label} ${formatNumber(requiredFacade(u, rules))} m`)
@@ -268,6 +268,70 @@ function SettingsDialog({ project }: { project: Project }) {
               onChange={(e) => setRule('galleryCountsAsFacade', e.target.checked)}
             />
           </Row>
+          {num(
+            t('settings.kitchenMinFacade'),
+            rules.kitchenMinFacade,
+            (v) => setRule('kitchenMinFacade', v),
+            {
+              suffix: 'm',
+              digits: 2,
+            },
+          )}
+          <Row label={t('settings.separateKitchen')}>
+            <input
+              type="checkbox"
+              aria-label={t('settings.separateKitchen')}
+              checked={rules.separateKitchen}
+              onChange={(e) => setRule('separateKitchen', e.target.checked)}
+            />
+          </Row>
+          {num(
+            t('settings.facadeAreaRatio'),
+            rules.facadeAreaRatio * 100,
+            (v) => setRule('facadeAreaRatio', v / 100),
+            { suffix: '%', digits: 0 },
+          )}
+          {num(t('settings.facadeGrid'), rules.facadeGrid, (v) => setRule('facadeGrid', v), {
+            suffix: 'm',
+            digits: 2,
+          })}
+          {num(t('settings.shaftSize'), rules.shaftSize, (v) => setRule('shaftSize', v), {
+            suffix: 'm',
+            digits: 2,
+          })}
+          {(['unitsPerCoreMin', 'unitsPerCoreMax'] as const).map((k) => (
+            <div key={k}>
+              {num(t(`settings.${k}`), rules[k], (v) => setRule(k, Math.max(1, Math.round(v))), {
+                digits: 0,
+              })}
+            </div>
+          ))}
+          <h4>{t('settings.minAreas')}</h4>
+          {(
+            [
+              'sejour',
+              'sejourCuisine',
+              'cuisine',
+              'chambre',
+              'chambrePmr',
+              'sdb',
+              'sde',
+              'wc',
+            ] as const
+          ).map((k) => (
+            <div key={k}>
+              {num(
+                t(`settings.minArea.${k}`),
+                rules.minAreas[k],
+                (v) =>
+                  patch((d) => {
+                    const r = resolveUnitRules(d);
+                    return { ...d, unitRules: { ...r, minAreas: { ...r.minAreas, [k]: v } } };
+                  }),
+                { suffix: 'm²', digits: 1 },
+              )}
+            </div>
+          ))}
           <p className="muted">{t('settings.unitRulesNote', { list: facadeList })}</p>
           <h3>{t('outdoor.rules')}</h3>
           {(

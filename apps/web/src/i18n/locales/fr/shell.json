@@ -314,7 +314,25 @@
     "bedroomMinFacade": "Chambre – façade min.",
     "interiorWall": "Cloison entre pièces",
     "galleryCountsAsFacade": "La coursive compte comme façade",
-    "unitRulesNote": "Longueur de façade min. : {{list}}"
+    "unitRulesNote": "Longueur de façade min. : {{list}}",
+    "kitchenMinFacade": "Cuisine séparée, façade min.",
+    "separateKitchen": "Cuisine séparée dès T3 (si la façade le permet)",
+    "shaftSize": "Gaine technique (côté)",
+    "unitsPerCoreMin": "Logements par palier, min.",
+    "unitsPerCoreMax": "Logements par palier, max.",
+    "minAreas": "Surfaces minimales",
+    "minArea": {
+      "sejour": "Séjour",
+      "sejourCuisine": "Séjour + cuisine ouverte",
+      "cuisine": "Cuisine séparée",
+      "chambre": "Chambre",
+      "chambrePmr": "Chambre PMR",
+      "sdb": "Salle de bain",
+      "sde": "Salle d'eau",
+      "wc": "WC"
+    },
+    "facadeAreaRatio": "Façade min. en % de la surface",
+    "facadeGrid": "Trame de façade (murs séparatifs)"
   },
   "rules": {
     "fr": "Plan local d'urbanisme (PLU)",

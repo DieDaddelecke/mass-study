@@ -5,31 +5,19 @@ import {
   normalizePolygon,
   polygonArea,
   newId,
-  storeyLabel,
   TEMPLATES,
   toWorld,
   typologySegments,
   type Mass,
   type Polygon,
-  type Project,
   type Typology,
   type Vec2,
 } from '@kubatur/core';
-import { Billboard, Html, Line } from '@react-three/drei';
-import { labelLayerRef } from '../scene/controlsRef';
-import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
+import { Billboard, Line } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Plane,
-  Raycaster,
-  Vector2,
-  Vector3,
-  type Camera,
-  type Group,
-  type OrthographicCamera,
-  type PerspectiveCamera,
-} from 'three';
+import { Raycaster, Vector3 } from 'three';
 import { activeVariant, actions, useProjectStore } from '../../store/projectStore';
 import type { ToolState } from '../../store/tools';
 import { useUiStore } from '../../store/uiStore';
@@ -37,31 +25,23 @@ import { useViewportStore } from '../viewportStore';
 import { IMPLEMENTED_TOOLS } from './capabilities';
 import {
   angleOf,
-  applySideGrip,
   freeLinePlacement,
   freePolygonPlacement,
-  gripWorldDir,
-  heightGripCount,
   isClosingClick,
   isRepeatClick,
   mirrorMass,
-  moveVertex,
   add,
   pointAtLength,
   rotateAbout,
-  sideSegment,
   selectionCentroid,
-  sideGrips,
-  stackTop,
   sub,
-  toWorldPoint,
   twoClickPlacement,
-  vertexGrips,
   type Placement,
-  type SideGrip,
 } from './math';
 import { alignFacade, alignVolume, pickableEdges, pickEdge, type PickableEdge } from './align';
-import { facadeMagnet, magnetSnap } from './magnet';
+import { magnetSnap } from './magnet';
+import { DirectEdit, ValueEditLabel } from './DirectEdit';
+import { markCommitted, typedValue, useValueEdit, valueEditKey } from './valueEdit';
 import {
   collectSnapGeometry,
   dist,
@@ -70,105 +50,22 @@ import {
   type SnapGeometry,
   type SnapResult,
 } from './snap';
-
-const ACCENT = '#1e6fd9';
-const GHOST = '#e07b00';
-const SNAP_PX = 10;
-const CLICK_PX = 5;
-const GROUND = new Plane(new Vector3(0, 0, 1), 0);
-
-// ---------------------------------------------------------------------------
-// Camera helpers
-// ---------------------------------------------------------------------------
-
-function rayFromClient(x: number, y: number, dom: HTMLElement, camera: Camera, rc: Raycaster) {
-  const r = dom.getBoundingClientRect();
-  rc.setFromCamera(
-    new Vector2(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1),
-    camera,
-  );
-  return rc.ray;
-}
-
-function groundFromClient(
-  x: number,
-  y: number,
-  dom: HTMLElement,
-  camera: Camera,
-  rc: Raycaster,
-): Vec2 | null {
-  const v = new Vector3();
-  return rayFromClient(x, y, dom, camera, rc).intersectPlane(GROUND, v) ? [v.x, v.y] : null;
-}
-
-/** Size of one screen pixel in model units at `p`. */
-function worldPerPixel(camera: Camera, p: Vector3, heightPx: number): number {
-  const o = camera as OrthographicCamera;
-  if (o.isOrthographicCamera) return (o.top - o.bottom) / o.zoom / Math.max(1, heightPx);
-  const pc = camera as PerspectiveCamera;
-  const d = camera.position.distanceTo(p);
-  return (d * 2 * Math.tan(((pc.fov ?? 50) * Math.PI) / 360)) / Math.max(1, heightPx);
-}
-
-/** Children are drawn in "pixel units" × px (screen-constant size). */
-function ScreenScaled({
-  position,
-  px,
-  children,
-}: {
-  position: [number, number, number];
-  px: number;
-  children: ReactNode;
-}) {
-  const ref = useRef<Group>(null);
-  const { camera, size } = useThree();
-  useFrame(() => {
-    const g = ref.current;
-    if (g) g.scale.setScalar(worldPerPixel(camera, g.position, size.height) * px);
-  });
-  return (
-    <group ref={ref} position={position}>
-      {children}
-    </group>
-  );
-}
-
-const isTyping = (e: KeyboardEvent) => {
-  const el = e.target as HTMLElement | null;
-  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
-};
-
-function useProjectMasses(): { project: Project | null; masses: Mass[] } {
-  const project = useProjectStore((s) => s.project);
-  return useMemo(
-    () => ({ project, masses: project ? activeVariant(project).masses : [] }),
-    [project],
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Drawing primitives
-// ---------------------------------------------------------------------------
-
-function Outline({ poly, color, z = 0.05 }: { poly: Polygon; color: string; z?: number }) {
-  const rings = [poly.outer, ...(poly.holes ?? [])];
-  return (
-    <>
-      {rings.map((r, i) =>
-        r.length >= 2 ? (
-          <Line
-            key={i}
-            points={[...r, r[0]!].map((p) => [p[0], p[1], z] as [number, number, number])}
-            color={color}
-            lineWidth={2}
-            depthTest={false}
-            renderOrder={10}
-          />
-        ) : null,
-      )}
-    </>
-  );
-}
+import {
+  ACCENT,
+  CLICK_PX,
+  GHOST,
+  GROUND,
+  Guides,
+  isTyping,
+  Label,
+  Outline,
+  rayFromClient,
+  groundFromClient,
+  ScreenScaled,
+  SNAP_PX,
+  useProjectMasses,
+  worldPerPixel,
+} from './primitives';
 
 function circlePts(n = 16, r = 0.35): [number, number, number][] {
   return Array.from({ length: n + 1 }, (_, i) => {
@@ -242,32 +139,6 @@ function SnapGlyph({ snap }: { snap: SnapResult }) {
         </ScreenScaled>
       )}
     </>
-  );
-}
-
-function Label({ at, text }: { at: [number, number, number]; text: string }) {
-  return (
-    <Html
-      portal={labelLayerRef as React.RefObject<HTMLElement>}
-      position={at}
-      center
-      style={{ pointerEvents: 'none' }}
-      zIndexRange={[20, 10]}
-    >
-      <div
-        style={{
-          background: 'rgba(255,255,255,0.92)',
-          color: '#111',
-          border: `1px solid ${ACCENT}`,
-          borderRadius: 3,
-          padding: '1px 5px',
-          font: '11px system-ui, sans-serif',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {text}
-      </div>
-    </Html>
   );
 }
 
@@ -381,36 +252,6 @@ export function movedPlacement(
     position: [q[0] + mv.extra[0], q[1] + mv.extra[1]],
     rotation: r?.rotation ?? m.rotation,
   };
-}
-
-function Guides({ guides }: { guides: readonly Segment[] }) {
-  return (
-    <>
-      {guides.map((g, i) => {
-        // extend the guide a little beyond the target edge
-        const dx = g[1][0] - g[0][0];
-        const dy = g[1][1] - g[0][1];
-        const l = Math.hypot(dx, dy) || 1;
-        const e = 6 / l;
-        return (
-          <Line
-            key={i}
-            points={[
-              [g[0][0] - dx * e, g[0][1] - dy * e, 0.09],
-              [g[1][0] + dx * e, g[1][1] + dy * e, 0.09],
-            ]}
-            color="#d6336c"
-            lineWidth={1.5}
-            dashed
-            dashSize={0.8}
-            gapSize={0.4}
-            depthTest={false}
-            renderOrder={12}
-          />
-        );
-      })}
-    </>
-  );
 }
 
 interface DrawState {
@@ -859,202 +700,6 @@ function ActiveTool({ kind }: { kind: ActiveKind }) {
     </group>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Grips
-// ---------------------------------------------------------------------------
-
-const stop = (e: ThreeEvent<PointerEvent | MouseEvent>) => e.stopPropagation();
-
-type GripDrag =
-  { type: 'side'; grip: SideGrip } | { type: 'vertex'; index: number } | { type: 'height' };
-
-function Grips({ mass }: { mass: Mass }) {
-  const { camera, gl } = useThree();
-  // plan view: the height grip would point at the camera (storeys: inspector or 3D)
-  const plan = useUiStore((st) => st.activeView === 'plan');
-  const rc = useMemo(() => new Raycaster(), []);
-  const { project, masses } = useProjectMasses();
-  const [preview, setPreview] = useState<Mass | null>(null);
-  const [guides, setGuides] = useState<Segment[]>([]);
-  const cleanup = useRef<(() => void) | null>(null);
-  useEffect(() => () => cleanup.current?.(), []);
-
-  const m = preview ?? mass;
-  const top = stackTop(m.storeys);
-  const fps = massFootprints(m);
-  const centre = selectionCentroid([m]);
-  const notation = project?.settings.notation ?? 'fr';
-
-  const begin = (e: ThreeEvent<PointerEvent>, drag: GripDrag) => {
-    e.stopPropagation();
-    if (e.button !== 0) return;
-    const dom = gl.domElement;
-    const vs = useViewportStore.getState();
-    vs.setControlsEnabled(false);
-    const start = mass;
-    const startGround = groundFromClient(e.clientX, e.clientY, dom, camera, rc);
-    // vertical plane through the grip, facing the camera
-    const n = new Vector3().subVectors(camera.position, new Vector3(centre[0], centre[1], top));
-    n.z = 0;
-    if (n.lengthSq() < 1e-9) n.set(0, 1, 0);
-    n.normalize();
-    const vplane = new Plane().setFromNormalAndCoplanarPoint(
-      n,
-      new Vector3(centre[0], centre[1], top),
-    );
-    const zAt = (x: number, y: number) => {
-      const v = new Vector3();
-      return rayFromClient(x, y, dom, camera, rc).intersectPlane(vplane, v) ? v.z : null;
-    };
-    const startZ = zAt(e.clientX, e.clientY);
-    const geom = project ? collectSnapGeometry(project, masses, [mass.id]) : null;
-    let current: Mass | null = null;
-
-    const onMove = (ev: PointerEvent) => {
-      let next: Mass;
-      if (drag.type === 'height') {
-        const z = zAt(ev.clientX, ev.clientY);
-        if (z === null || startZ === null) return;
-        const count = heightGripCount(
-          start.storeys.upper.count,
-          z - startZ,
-          start.storeys.upper.height,
-        );
-        next = {
-          ...start,
-          storeys: { ...start.storeys, upper: { ...start.storeys.upper, count } },
-        };
-      } else {
-        const p = groundFromClient(ev.clientX, ev.clientY, dom, camera, rc);
-        if (!p || !startGround) return;
-        if (drag.type === 'side') {
-          const dir = gripWorldDir(start, drag.grip);
-          const raw = (p[0] - startGround[0]) * dir[0] + (p[1] - startGround[1]) * dir[1];
-          const s = useUiStore.getState().snap;
-          let delta =
-            s.enabled && s.grid && s.gridSize > 0 ? Math.round(raw / s.gridSize) * s.gridSize : raw;
-          let guide: Segment | null = null;
-          const seg0 = sideSegment(start, drag.grip);
-          if (s.enabled && s.magnet && !ev.altKey && geom && seg0) {
-            const tol =
-              worldPerPixel(camera, new Vector3(p[0], p[1], 0), dom.clientHeight) * SNAP_PX * 1.2;
-            const moved: Segment = [
-              [seg0[0][0] + dir[0] * raw, seg0[0][1] + dir[1] * raw],
-              [seg0[1][0] + dir[0] * raw, seg0[1][1] + dir[1] * raw],
-            ];
-            const f = facadeMagnet(moved, dir, geom.edges, tol);
-            if (f) {
-              delta = raw + f.offset;
-              guide = f.guide;
-            }
-          }
-          setGuides(guide ? [guide] : []);
-          next = { ...start, ...applySideGrip(start, drag.grip, delta) };
-        } else {
-          const tol = worldPerPixel(camera, new Vector3(p[0], p[1], 0), dom.clientHeight) * SNAP_PX;
-          const sp = geom ? snapPoint(p, geom, useUiStore.getState().snap, tol).point : p;
-          next = { ...start, typology: moveVertex(start, drag.index, sp) };
-        }
-        useUiStore.getState().setCursor(p);
-      }
-      current = next;
-      setPreview(next);
-    };
-    const end = (commit: boolean) => {
-      cleanup.current?.();
-      cleanup.current = null;
-      const c = current;
-      if (commit && c) {
-        actions.updateMass(start.id, (d) => {
-          d.position = c.position;
-          d.typology = c.typology;
-          d.storeys.upper.count = c.storeys.upper.count;
-        });
-      }
-      setPreview(null);
-      setGuides([]);
-    };
-    const onUp = () => end(true);
-    const onKey = (ev: KeyboardEvent) => {
-      if (ev.key === 'Escape') end(false);
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('keydown', onKey);
-    cleanup.current = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('keydown', onKey);
-      useViewportStore.getState().setControlsEnabled(true);
-    };
-  };
-
-  const handle = { onClick: stop, onDoubleClick: stop, onPointerUp: stop };
-  return (
-    <group>
-      {preview && fps.map((f, i) => <Outline key={i} poly={f} color={GHOST} z={0.1} />)}
-      <Guides guides={guides} />
-      {sideGrips(m.typology).map(({ grip, local, dir }) => {
-        const w = toWorldPoint(m, local);
-        const wd = gripWorldDir(m, grip);
-        const ang = Math.atan2(wd[1], wd[0]);
-        void dir;
-        return (
-          <ScreenScaled key={`${grip.axis}${grip.sign}`} position={[w[0], w[1], 0.3]} px={14}>
-            <group rotation={[0, 0, ang - Math.PI / 2]}>
-              <mesh
-                position={[0, 0.8, 0]}
-                renderOrder={20}
-                onPointerDown={(e) => begin(e, { type: 'side', grip })}
-                {...handle}
-              >
-                <coneGeometry args={[0.6, 1.2, 3]} />
-                <meshBasicMaterial color={ACCENT} depthTest={false} />
-              </mesh>
-            </group>
-          </ScreenScaled>
-        );
-      })}
-      {vertexGrips(m.typology).map((lp, i) => {
-        const w = toWorldPoint(m, lp);
-        return (
-          <ScreenScaled key={`v${i}`} position={[w[0], w[1], 0.2]} px={10}>
-            <mesh
-              renderOrder={20}
-              onPointerDown={(e) => begin(e, { type: 'vertex', index: i })}
-              {...handle}
-            >
-              <boxGeometry args={[1, 1, 1]} />
-              <meshBasicMaterial color={ACCENT} depthTest={false} />
-            </mesh>
-          </ScreenScaled>
-        );
-      })}
-      {!plan && (
-        <ScreenScaled position={[centre[0], centre[1], top]} px={14}>
-          <mesh
-            position={[0, 0, 1.2]}
-            rotation={[Math.PI / 2, 0, 0]}
-            renderOrder={20}
-            onPointerDown={(e) => begin(e, { type: 'height' })}
-            {...handle}
-          >
-            <coneGeometry args={[0.6, 1.4, 12]} />
-            <meshBasicMaterial color={ACCENT} depthTest={false} />
-          </mesh>
-        </ScreenScaled>
-      )}
-      {preview && preview.storeys.upper.count !== mass.storeys.upper.count && (
-        <Label
-          at={[centre[0], centre[1], top + 2]}
-          text={storeyLabel(preview.storeys.upper.count, notation, false)}
-        />
-      )}
-    </group>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Align (AL): reference edge, then façade
 // ---------------------------------------------------------------------------
@@ -1197,6 +842,7 @@ export function startMassDrag(e: PointerEvent, id: string): boolean {
 }
 
 function MassDrag() {
+  const { t } = useTranslation('tools');
   const { camera, gl } = useThree();
   const rc = useMemo(() => new Raycaster(), []);
   const { project, masses } = useProjectMasses();
@@ -1223,6 +869,21 @@ function MassDrag() {
       const down: [number, number] = [e.clientX, e.clientY];
       let active = false;
       let mv: MagnetMove | null = null;
+      let editSet = false;
+      let lastDir: Vec2 = [0, 0];
+      /** Typed distance: straight move along the current drag direction (no magnet). */
+      const exact = (v: number) => {
+        const l = Math.hypot(lastDir[0], lastDir[1]);
+        if (l < 1e-9) return;
+        const u: Vec2 = [(lastDir[0] / l) * v, (lastDir[1] / l) * v];
+        const byId = new Map(sel.map((m) => [m.id, m.position]));
+        actions.updateMasses(ids, (x) => {
+          const p0 = byId.get(x.id) ?? x.position;
+          x.position = [p0[0] + u[0], p0[1] + u[1]];
+          const r0 = sel.find((m) => m.id === x.id)?.rotation;
+          if (r0 !== undefined) x.rotation = r0;
+        });
+      };
       useViewportStore.getState().setControlsEnabled(false);
       const onMove = (ev: PointerEvent) => {
         if (!active && Math.hypot(ev.clientX - down[0], ev.clientY - down[1]) < CLICK_PX) return;
@@ -1239,6 +900,23 @@ function MassDrag() {
           ];
         mv = magnetMove(sel, d, geom.edges, tol * 1.2, ev.altKey, geom.siteEdges);
         const cur = mv;
+        lastDir = add(cur.d0, cur.extra);
+        if (!editSet) {
+          editSet = true;
+          useValueEdit.getState().set({
+            label: t('edit.distance'),
+            unit: 'm',
+            decimals: 2,
+            value: 0,
+            at: [q[0], q[1], 0.5],
+            apply: exact,
+            abortDrag: () => finish(false),
+          });
+        }
+        useValueEdit.getState().patch({
+          value: Math.hypot(lastDir[0], lastDir[1]),
+          at: [q[0], q[1], 0.5],
+        });
         setGhosts(sel.flatMap((m) => massFootprints({ ...m, ...movedPlacement(m, cur) })));
         setGuides(cur.guides);
         const tot = add(add(cur.d0, cur.extra), [0, 0]);
@@ -1254,19 +932,31 @@ function MassDrag() {
         cleanup?.();
         cleanup = null;
         const m = mv;
-        if (commit && active && m)
+        const typed = commit && active ? typedValue() : null;
+        if (typed !== null) {
+          exact(typed);
+          useValueEdit.getState().patch({ value: typed, abortDrag: undefined });
+          useValueEdit.getState().setTyped('');
+          markCommitted();
+        } else if (commit && active && m) {
           actions.updateMasses(ids, (x) => {
             const r = movedPlacement(x, m);
             x.position = r.position;
             x.rotation = r.rotation;
           });
+          useValueEdit.getState().patch({ abortDrag: undefined });
+          markCommitted();
+        } else if (editSet) useValueEdit.getState().patch({ abortDrag: undefined });
         setGhosts([]);
         setGuides([]);
         setLabel(null);
       };
       const onUp = () => finish(true);
       const onKey = (ev: KeyboardEvent) => {
-        if (ev.key === 'Escape') finish(false);
+        if (ev.key === 'Escape' && !useValueEdit.getState().typed) {
+          finish(false);
+          useValueEdit.getState().set(null);
+        }
       };
       window.addEventListener('pointermove', onMove);
       window.addEventListener('pointerup', onUp);
@@ -1284,7 +974,7 @@ function MassDrag() {
       dragStarter = null;
       cleanup?.();
     };
-  }, [camera, gl, rc]);
+  }, [camera, gl, rc, t]);
 
   return (
     <group>
@@ -1305,7 +995,47 @@ const MODIFY: readonly ToolState['kind'][] = ['move', 'copy', 'rotate', 'mirror'
  * Rendered by the scene inside the R3F <Canvas>. Handles placement, snapping, move/rotate/copy/
  * mirror/array (pointer input via the canvas DOM element and a ray against z = 0) and grips.
  */
+/**
+ * Keyboard and lifetime of the measurements box (select tool): digits / Enter go to the current
+ * or last direct edit; a new pointer interaction, another selection or tool, or an unrelated
+ * document change closes it.
+ */
+function useValueEditLifecycle() {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (isTyping(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (useUiStore.getState().tool.kind !== 'select') return;
+      if (valueEditKey(e.key)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+    const onDown = () => {
+      const ve = useValueEdit.getState();
+      if (ve.edit && !ve.edit.abortDrag) ve.set(null);
+    };
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('pointerdown', onDown, true);
+    const unsubUi = useUiStore.subscribe((s, p) => {
+      if (s.selection !== p.selection || s.tool !== p.tool) useValueEdit.getState().set(null);
+    });
+    const unsubDoc = useProjectStore.subscribe((s) => {
+      const e = useValueEdit.getState().edit;
+      if (e && !e.abortDrag && e.committed && s.project !== e.committed)
+        useValueEdit.getState().set(null);
+    });
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('pointerdown', onDown, true);
+      unsubUi();
+      unsubDoc();
+      useValueEdit.getState().set(null);
+    };
+  }, []);
+}
+
 export function ToolLayer() {
+  useValueEditLifecycle();
   const { t } = useTranslation('tools');
   const tool = useUiStore((s) => s.tool);
   const selection = useUiStore((s) => s.selection);
@@ -1334,7 +1064,8 @@ export function ToolLayer() {
     return (
       <>
         <MassDrag />
-        {m && <Grips key={m.id} mass={m} />}
+        {m && <DirectEdit key={m.id} mass={m} />}
+        <ValueEditLabel />
       </>
     );
   }

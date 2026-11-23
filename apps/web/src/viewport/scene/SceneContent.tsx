@@ -7,14 +7,15 @@ import {
   type PlantingZone,
   type RoofPiece,
   type ContextBuilding,
+  type Mass,
   type MassLayout,
   type Polygon,
   type Project,
   type SolidResult,
 } from '@kubatur/core';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { ThreeEvent } from '@react-three/fiber';
-import { useEffect, useMemo } from 'react';
+import { useThree, type ThreeEvent } from '@react-three/fiber';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { BufferGeometry, DoubleSide, LineDashedMaterial, LineSegments, Material } from 'three';
 import { activeVariant } from '../../store/projectStore';
 import type { VisualStyle } from '../../store/tools';
@@ -100,6 +101,25 @@ function FaceMaterial({ style, color }: { style: VisualStyle; color: string }) {
   if (style === 'realistic')
     return <meshStandardMaterial {...common} color={color} roughness={0.9} />;
   return <meshLambertMaterial {...common} color={color} />;
+}
+
+/**
+ * Shadows only depend on the model and the sun, not on the camera: the shadow map is redrawn
+ * when the scene is re-rendered by React (model, look, layers, storey cut, …), not on every
+ * frame while orbiting. Rendered last in SceneContent so it runs after every content change.
+ */
+function ShadowCache() {
+  const gl = useThree((s) => s.gl);
+  useLayoutEffect(() => {
+    gl.shadowMap.autoUpdate = false;
+    return () => {
+      gl.shadowMap.autoUpdate = true;
+    };
+  }, [gl]);
+  useLayoutEffect(() => {
+    gl.shadowMap.needsUpdate = true;
+  });
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -306,14 +326,12 @@ function mergeAll(gs: (BufferGeometry | null)[]): BufferGeometry | null {
 }
 
 function buildMasses(
-  project: Project,
+  masses: readonly Mass[],
   solids: readonly SolidResult[],
   covered: ReadonlySet<string> = new Set(),
   cuts: ReadonlyMap<string, Polygon[]> = new Map(),
 ) {
-  const parapetOf = new Map(
-    activeVariant(project).masses.map((m) => [m.id, effectiveParapet(m, m.storeys)]),
-  );
+  const parapetOf = new Map(masses.map((m) => [m.id, effectiveParapet(m, m.storeys)]));
   const out: MassSolidGeo[] = [];
   const edges = new Map<string, MassEdges>();
   // keys of footprints by mass at their bottom / top heights (to find interior slab lines)
@@ -409,9 +427,11 @@ function Masses(props: Props & { pal: ScenePalette; edgeWidth: number }) {
     },
     [outdoor],
   );
+  // only the masses matter here: a change of vegetation, constraints, … keeps the geometry
+  const masses = activeVariant(project).masses;
   const built = useMemo(
-    () => buildMasses(project, solids, granulo?.covered, outdoor?.loggias),
-    [project, solids, granulo, outdoor],
+    () => buildMasses(masses, solids, granulo?.covered, outdoor?.loggias),
+    [masses, solids, granulo, outdoor],
   );
   useEffect(
     () => () =>
@@ -701,6 +721,7 @@ export function SceneContent(props: Props) {
         shadows={shadows}
       />
       <Masses {...props} pal={pal} edgeWidth={look.edgeWidth} />
+      <ShadowCache />
     </group>
   );
 }

@@ -96,12 +96,13 @@ describe('storeyLayout', () => {
     expect(mixCores(bars, 'laubengang', dim, 65)).toBe(0);
   });
 
-  it('Laubengang follows the mix within ±5 %', () => {
+  it('Laubengang follows the mix within ±7 % (façade grid)', () => {
     const l = layoutOf({ kind: 'solitaer', length: 60, depth: 10 }, 'laubengang');
     expect(l.circulation.some((c) => c.kind === 'gallery')).toBe(true);
     expect(l.units.length).toBeGreaterThan(5);
     // the coursive side counts as façade by default → two façade sides
-    expect(mixDeviation(l, 10 - 1.6, 2)).toBeLessThan(0.05);
+    // party walls on the 1.25 m façade grid move areas by up to half a grid step
+    expect(mixDeviation(l, 10 - 1.6, 2)).toBeLessThan(0.07);
     checkPartition(l);
   });
 

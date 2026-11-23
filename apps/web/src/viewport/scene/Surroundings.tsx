@@ -343,8 +343,12 @@ const CLIP_MAX = 400;
  * Large forests / water bodies reach kilometres beyond the loaded context: clip them to the extent
  * of the other context data (roads, buildings, site), at most CLIP_MAX around the site.
  */
-function clipAreas(data: SurroundingsData, project: Project): SurroundingsData {
-  const ring = project.site.boundary.outer;
+function clipAreas(
+  data: SurroundingsData,
+  boundary: Project['site']['boundary'],
+  context: Project['context'],
+): SurroundingsData {
+  const ring = boundary.outer;
   const [cx, cy] = ring.length ? ringCentroid(ring) : [0, 0];
   let minX = cx - 60,
     minY = cy - 60,
@@ -357,7 +361,7 @@ function clipAreas(data: SurroundingsData, project: Project): SurroundingsData {
     maxY = Math.max(maxY, y);
   };
   for (const r of data.roads) r.centerline.forEach(add);
-  for (const b of project.context) b.footprint.outer.forEach(add);
+  for (const b of context) b.footprint.outer.forEach(add);
   const box = [
     rect(
       Math.max(minX, cx - CLIP_MAX),
@@ -378,7 +382,10 @@ function clipAreas(data: SurroundingsData, project: Project): SurroundingsData {
 }
 
 export function Surroundings({ project, data: raw, layers, pal, style, shadows }: Props) {
-  const data = useMemo(() => clipAreas(raw, project), [raw, project]);
+  // only site and neighbours matter: editing a mass must not rebuild streets, green and trees
+  const { boundary } = project.site;
+  const { context } = project;
+  const data = useMemo(() => clipAreas(raw, boundary, context), [raw, boundary, context]);
   const dim = layers.basemap !== 'none';
   const wire = style === 'wireframe';
   return (

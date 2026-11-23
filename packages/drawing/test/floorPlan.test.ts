@@ -61,7 +61,9 @@ describe('floorPlan', () => {
       for (const c of colours)
         expect(fills.some((f) => f.kind === 'fill' && f.fill === serviceColor(c))).toBe(true);
       const texts = model.items.filter((i) => i.kind === 'text');
-      const roomLabels = st.units.flatMap((u) => u.rooms).filter((r) => r.area >= 7).length;
+      const roomLabels = st.units
+        .flatMap((u) => u.rooms)
+        .filter((r) => r.area >= 1.8 && r.kind !== 'gaine' && r.kind !== 'degagement').length;
       const outdoorLabels = st.units.filter((u) => u.outdoor && u.outdoor.area >= 3).length;
       expect(outdoorLabels).toBe(st.units.length);
       expect(texts.length).toBe(st.units.length * 2 + roomLabels + outdoorLabels);

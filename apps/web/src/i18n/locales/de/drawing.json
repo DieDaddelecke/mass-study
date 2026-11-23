@@ -57,12 +57,21 @@
     "roomShort": {
       "sejour": "Wohn.",
       "chambrePmr": "PMR",
-      "chambre": "Zi."
+      "chambre": "Zi.",
+      "cuisine": "Kü.",
+      "sdb": "Bad",
+      "sde": "Du.",
+      "wc": "WC",
+      "gaine": "S.",
+      "degagement": "Flur"
     },
     "room": {
       "sejour": "Wohnraum (Fassade ≥ {{min}} m)",
       "chambrePmr": "Zimmer PMR (≥ {{min}} m)",
-      "chambre": "Zimmer (≥ {{min}} m)"
+      "chambre": "Zimmer (≥ {{min}} m)",
+      "cuisine": "Küche separat (≥ {{min}} m)",
+      "wet": "Nassräume (SDB, SDE, WC) und Schacht",
+      "degagement": "Entrée / Flur"
     },
     "rooms": "Wohnräume",
     "roomFail": "{{count}} Raum/Räume unter der Mindestfassade (roter Rand)",
@@ -82,6 +91,10 @@
     "duplexCount": "davon {{count}} Maisonette",
     "duplexNuit": "{{count}} Schlafebene(n) von Maisonetten (gezählt auf der Eingangsebene)",
     "duplexStair": "Innentreppe der Maisonette",
+    "areaFail": "{{count}} Raum/Räume unter der Mindestfläche",
+    "galleryRoom": "{{count}} Zimmer zum Laubengang (schraffiert)",
+    "orientFail": "{{count}} Wohnung(en) ohne zwei Ausrichtungen (ab T3) oder nur nach Norden",
+    "ratioFail": "{{count}} Wohnung(en) mit Fassade unter {{pct}} % der Fläche",
     "uses": {
       "residenceTotal": "Wohnheim",
       "beds": "{{count}} Betten",

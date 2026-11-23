@@ -314,7 +314,25 @@
     "bedroomMinFacade": "Bedroom – min. façade",
     "interiorWall": "Partition between rooms",
     "galleryCountsAsFacade": "Gallery side counts as façade",
-    "unitRulesNote": "Minimum façade length: {{list}}"
+    "unitRulesNote": "Minimum façade length: {{list}}",
+    "kitchenMinFacade": "Separate kitchen, min. façade",
+    "separateKitchen": "Separate kitchen from T3 (when the façade allows)",
+    "shaftSize": "Service shaft (side)",
+    "unitsPerCoreMin": "Dwellings per core, min.",
+    "unitsPerCoreMax": "Dwellings per core, max.",
+    "minAreas": "Minimum areas",
+    "minArea": {
+      "sejour": "Living room",
+      "sejourCuisine": "Living room + open kitchen",
+      "cuisine": "Separate kitchen",
+      "chambre": "Bedroom",
+      "chambrePmr": "Accessible bedroom",
+      "sdb": "Bathroom",
+      "sde": "Shower room",
+      "wc": "WC"
+    },
+    "facadeAreaRatio": "Min. façade as % of area",
+    "facadeGrid": "Façade grid (party walls)"
   },
   "rules": {
     "fr": "France (PLU)",

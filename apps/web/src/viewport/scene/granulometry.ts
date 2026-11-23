@@ -118,7 +118,9 @@ export function buildGranulometry(
         prismEdges(u.polygon, st.z0, z1, edgeOpts, edges);
       }
       for (const c of st.cores) add(c.polygon, GRANULO_COLORS.core, true);
-      for (const c of st.circulation) add(c.polygon, GRANULO_COLORS.circulation, false);
+      for (const c of st.circulation)
+        if (c.kind === 'lift') add(c.polygon, GRANULO_COLORS.core, true);
+        else add(c.polygon, GRANULO_COLORS.circulation, false);
       for (const o of st.open) add(o.polygon, GRANULO_COLORS.circulation, false);
       // residence common rooms and office plateaus (shafts sit inside the units)
       for (const sp of st.spaces ?? [])

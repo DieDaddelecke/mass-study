@@ -43,5 +43,17 @@
       "impossible": "Cette façade ne peut pas être alignée (sections décalées) — utilisez une référence parallèle ou le volume entier"
     }
   },
-  "greenPrefix": "Espace vert"
+  "greenPrefix": "Espace vert",
+  "edit": {
+    "length": "Longueur",
+    "depth": "Épaisseur",
+    "offset": "Décalage façade",
+    "storeys": "Étages",
+    "storeysHint": "Glisser vers le haut/bas ou ▲ ▼ pour changer le nombre d'étages",
+    "rotation": "Rotation",
+    "rotateHint": "Glisser pour pivoter le volume",
+    "distance": "Distance",
+    "typeWhileDragging": "Tapez une valeur + Entrée · Alt : sans magnétisme · Échap annule",
+    "typeToCorrect": "Tapez une valeur + Entrée pour corriger"
+  }
 }
