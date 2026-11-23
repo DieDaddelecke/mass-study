@@ -342,7 +342,13 @@ function barFrom(u: Vec2, region: Polygon[]): Bar | undefined {
  */
 function accessTowardsBlind(bars: Bar[], party: LayoutPass['party'], outline: Polygon[]): Bar[] {
   if (!party) return bars;
-  const blind = blindFacades(polygonEdges(outline), outline, party.segs, party.distance);
+  const blind = blindFacades(
+    polygonEdges(outline),
+    outline,
+    party.segs,
+    party.distance,
+    party.site,
+  );
   if (!blind.length) return bars;
   return bars.map((bar) => {
     let near = 0;
@@ -986,7 +992,11 @@ function partyOf(
   if (!site?.party.length || !rules.enabled) return undefined;
   let h = 0;
   for (const s of solids) if (s.aboveGround && s.massId === mass.id) h = Math.max(h, s.z1);
-  return { segs: site.party, distance: vueDistance(rules, h) };
+  return {
+    segs: site.party,
+    distance: vueDistance(rules, h),
+    ...(site.boundary ? { site: site.boundary } : {}),
+  };
 }
 
 interface LayoutPass {
@@ -997,7 +1007,7 @@ interface LayoutPass {
   /** Séjours of the storey below (séjours and loggias stack). */
   below?: Polygon[];
   /** Neighbour boundaries: façades facing them within `distance` get no windows. */
-  party?: { segs: [Vec2, Vec2][]; distance: number };
+  party?: { segs: [Vec2, Vec2][]; distance: number; site?: Polygon };
 }
 
 function layoutStorey(
@@ -1284,7 +1294,9 @@ function layoutStorey(
     // façades facing a neighbour boundary too closely have no windows (vues droites)
     const allSegs = polygonEdges(outline);
     blind.push(
-      ...(pass.party ? blindFacades(allSegs, outline, pass.party.segs, pass.party.distance) : []),
+      ...(pass.party
+        ? blindFacades(allSegs, outline, pass.party.segs, pass.party.distance, pass.party.site)
+        : []),
     );
     const facadeSegs = subtractSegments(allSegs, blind);
     const outlineSegs = [...facadeSegs];

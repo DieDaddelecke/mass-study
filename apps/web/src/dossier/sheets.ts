@@ -626,7 +626,7 @@ function floorPlanDrafts(input: DossierInput, f: Frame, counter: { n: number }):
   const layouts = massLayouts(
     analysis.result,
     project.settings,
-    siteEdges(project.site, project.surroundings),
+    siteEdges(project.site, project.surroundings, project.context),
   );
   const groups = distinctStoreyGroups(layouts, (s) => s.units.length > 0);
   const { solids } = drawingInput(analysis.result);

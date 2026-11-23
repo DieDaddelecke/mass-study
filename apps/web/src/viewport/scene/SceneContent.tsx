@@ -191,8 +191,8 @@ function SiteBoundary({
   // neighbour boundaries (limites séparatives) in orange; the edge hovered in the inspector lit up
   const hover = useUiStore((s) => s.hover);
   const bounds = useMemo(
-    () => siteBoundaries(project.site, project.surroundings),
-    [project.site, project.surroundings],
+    () => siteBoundaries(project.site, project.surroundings, project.context),
+    [project.site, project.surroundings, project.context],
   );
   const party = useMemo(() => {
     const out: number[] = [];

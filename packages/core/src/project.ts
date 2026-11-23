@@ -162,7 +162,7 @@ export function analyzeProject(
   const layouts = massLayouts(
     result,
     project.settings,
-    siteEdges(project.site, project.surroundings),
+    siteEdges(project.site, project.surroundings, project.context),
   );
   let failing = 0;
   const failingMasses: string[] = [];

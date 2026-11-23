@@ -175,7 +175,7 @@ function useUsesTotals(): UsesTotals {
               m.solids.map((r) => r.solid),
               project.settings,
               undefined,
-              siteEdges(project.site, project.surroundings),
+              siteEdges(project.site, project.surroundings, project.context),
             ).storeys,
         ),
       );

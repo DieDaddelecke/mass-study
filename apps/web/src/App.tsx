@@ -1,6 +1,7 @@
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { PanelLeftOpen, PanelRightOpen } from 'lucide-react';
 import { useEffect } from 'react';
+import { boundaryEdgeKey, type BoundaryKind } from '@kubatur/core';
 import { useTranslation } from 'react-i18next';
 import { useProjectStore } from './store/projectStore';
 import { useUiStore } from './store/uiStore';
@@ -38,6 +39,19 @@ if (
   const pos = new URLSearchParams(window.location.search).get('pos')?.split(',').map(Number);
   if (pos?.length === 2 && pos.every(Number.isFinite) && demo.variants[0]?.masses[0])
     demo.variants[0].masses[0].position = [pos[0]!, pos[1]!];
+  // `&edges=2:neighbour,3:neighbour` overrides the kind of boundary edges (1-based)
+  const edges = new URLSearchParams(window.location.search).get('edges');
+  if (edges) {
+    const ring = demo.site.boundary.outer;
+    const kinds: Record<string, BoundaryKind> = {};
+    for (const part of edges.split(',')) {
+      const [i, k] = part.split(':');
+      const a = ring[Number(i) - 1];
+      const b = ring[Number(i) % ring.length];
+      if (a && b && k) kinds[boundaryEdgeKey(a, b)] = k as BoundaryKind;
+    }
+    demo.site.edgeKinds = kinds;
+  }
   openProject(demo);
   // dev/screenshots: `&view=site|elevN|sectionA|axoSW…` opens a view directly
   const view = new URLSearchParams(window.location.search).get('view');

@@ -14,8 +14,9 @@
  *
  * Pure and deterministic; world (project-local) coordinates.
  */
-import { intersection, pointInPolygon, polygonArea } from './geometry.js';
+import { intersection, pointInPolygon, pointSegmentDistance, polygonArea } from './geometry.js';
 import type {
+  ContextBuilding,
   BoundaryKind,
   BoundaryRules,
   ContextRoadKind,
@@ -71,6 +72,8 @@ export function boundaryEdgeKey(a: Vec2, b: Vec2): string {
 }
 
 const PATH_KINDS: ReadonlySet<ContextRoadKind> = new Set(['footway', 'path', 'cycleway', 'track']);
+/** Streets that may run on private plots (driveways, courtyards). */
+const PRIVATE_KINDS: ReadonlySet<ContextRoadKind> = new Set(['service', 'track']);
 const NO_ACCESS_KINDS: ReadonlySet<ContextRoadKind> = new Set(['rail', 'tram', 'motorway']);
 
 /** Distance from a public-space sample to a road edge that still makes it "the street", m. */
@@ -87,25 +90,42 @@ interface Sample {
   name?: string;
 }
 
-const memo = new WeakMap<Site, WeakMap<object, BoundarySegment[]>>();
-const NO_SURROUNDINGS = {};
+const memo = new WeakMap<
+  Site,
+  { surroundings?: Surroundings; buildings?: readonly Built[]; out: BoundarySegment[] }[]
+>();
+
+/** Buildings around the site (a parcel with a building on it is no road parcel). */
+type Built = Pick<ContextBuilding, 'footprint'> & { demolished?: boolean };
 
 /**
  * Classified site boundary (outer ring of `site.boundary`), with the user's overrides applied.
  * Memoized per site / surroundings object.
  */
-export function siteBoundaries(site: Site, surroundings?: Surroundings): BoundarySegment[] {
-  const key: object = surroundings ?? NO_SURROUNDINGS;
-  let m = memo.get(site);
-  const hit = m?.get(key);
-  if (hit) return hit;
-  const out = classifyBoundary(site, surroundings);
-  if (!m) memo.set(site, (m = new WeakMap()));
-  m.set(key, out);
+export function siteBoundaries(
+  site: Site,
+  surroundings?: Surroundings,
+  buildings?: readonly Built[],
+): BoundarySegment[] {
+  let list = memo.get(site);
+  const hit = list?.find((x) => x.surroundings === surroundings && x.buildings === buildings);
+  if (hit) return hit.out;
+  const out = classifyBoundary(site, surroundings, buildings);
+  if (!list) memo.set(site, (list = []));
+  list.push({
+    ...(surroundings ? { surroundings } : {}),
+    ...(buildings ? { buildings } : {}),
+    out,
+  });
+  if (list.length > 4) list.shift();
   return out;
 }
 
-export function classifyBoundary(site: Site, surroundings?: Surroundings): BoundarySegment[] {
+export function classifyBoundary(
+  site: Site,
+  surroundings?: Surroundings,
+  buildings: readonly Built[] = [],
+): BoundarySegment[] {
   const ring = site.boundary.outer;
   if (ring.length < 3) return [];
   const boundary = site.boundary;
@@ -123,12 +143,30 @@ export function classifyBoundary(site: Site, surroundings?: Surroundings): Bound
   const known = neighbours.length > 0 || (surroundings?.parcels.length ?? 0) > 0;
 
   const parcelAt = (q: Vec2) => neighbours.findIndex((x) => pointInPolygon(q, x.polygon));
+  // a neighbouring parcel with a building on it is a plot, never a road parcel
+  const builtParcel = new Map<number, boolean>();
+  const isBuilt = (i: number): boolean => {
+    let v = builtParcel.get(i);
+    if (v === undefined) {
+      const parcel = neighbours[i]!.polygon;
+      v = buildings.some(
+        (b) =>
+          !b.demolished &&
+          intersection([parcel], [b.footprint]).reduce((x, q) => x + polygonArea(q), 0) > 5,
+      );
+      builtParcel.set(i, v);
+    }
+    return v;
+  };
   const sample = (p: Vec2, n: Vec2): Sample => {
     if (!known) return { kind: 'unknown' };
     const probes = PROBES.map((d) => [p[0] + n[0] * d, p[1] + n[1] * d] as Vec2).filter(
       (q) => !pointInPolygon(q, boundary),
     );
     const inParcel = probes.map(parcelAt);
+    // the parcel just outside the edge (all probes in it), else -1 (cadastre gap)
+    const plot =
+      inParcel.length && inParcel.every((x) => x >= 0 && x === inParcel[0]) ? inParcel[0]! : -1;
     // streets within reach; a street counts when its nearest point lies in the cadastre gap
     // (domaine public) or in the very parcel just outside the edge (road parcel, e.g. in a ZAC)
     let road: { d: number; name?: string } | undefined;
@@ -142,7 +180,13 @@ export function classifyBoundary(site: Site, surroundings?: Surroundings): Bound
         if (d >= ROAD_REACH) continue;
         if (pointInPolygon(c, boundary)) continue;
         const at = parcelAt(c);
-        if (at >= 0 && !inParcel.includes(at)) continue;
+        if (plot >= 0) {
+          // beyond the edge lies a neighbouring parcel: a street counts only when it runs in
+          // that very parcel and the parcel is a road parcel (ZAC street), not a plot with a
+          // driveway or a garden path
+          if (at !== plot) continue;
+          if (PATH_KINDS.has(r.kind) || PRIVATE_KINDS.has(r.kind) || isBuilt(at)) continue;
+        } else if (at >= 0 && !inParcel.includes(at)) continue;
         const hit = { d, ...(r.name ? { name: r.name } : {}) };
         if (PATH_KINDS.has(r.kind)) {
           if (!path || d < path.d) path = hit;
@@ -267,14 +311,20 @@ function dominant(runs: { from: number; to: number; s: Sample }[]): BoundaryKind
 export interface SiteEdges {
   /** Boundary pieces towards neighbouring parcels (limites séparatives). */
   party: Seg[];
+  /** The site boundary (façades outside it stand on the neighbour's land). */
+  boundary?: Polygon;
 }
 
 /** The neighbour boundaries of a site, for the layout (undefined when there are none). */
-export function siteEdges(site: Site, surroundings?: Surroundings): SiteEdges | undefined {
-  const party = siteBoundaries(site, surroundings)
+export function siteEdges(
+  site: Site,
+  surroundings?: Surroundings,
+  buildings?: readonly Built[],
+): SiteEdges | undefined {
+  const party = siteBoundaries(site, surroundings, buildings)
     .filter((s) => s.kind === 'neighbour')
     .map((s) => [s.a, s.b] as Seg);
-  return party.length ? { party } : undefined;
+  return party.length ? { party, boundary: site.boundary } : undefined;
 }
 
 /** Minimum distance between a façade with windows and a neighbour boundary, m. */
@@ -282,21 +332,30 @@ export function vueDistance(rules: BoundaryRules, height: number): number {
   return Math.max(rules.vueMin, rules.vueRatio * height);
 }
 
+/** How far a façade may stand beyond a neighbour boundary and still face it, m. */
+const BEHIND = 1.5;
 /** Sampling step along façades, m. */
 const FACADE_STEP = 0.25;
 
 /**
  * Parts of the façade segments (edges of `outline`) whose windows would look straight onto a
  * neighbour boundary closer than `distance` (vues droites): a ray from the façade along its
- * outward normal hits a party segment within the distance.
+ * outward normal hits a party segment within the distance, or the façade stands outside the
+ * `site` close to a neighbour boundary.
  */
 export function blindFacades(
   facade: readonly Seg[],
   outline: readonly Polygon[],
   party: readonly Seg[],
   distance: number,
+  site?: Polygon,
 ): Seg[] {
   if (!party.length || distance <= 0) return [];
+  // a façade outside the site near a neighbour boundary stands on the neighbour's land
+  const trespass = (p: Vec2) =>
+    !!site &&
+    !pointInPolygon(p, site) &&
+    party.some(([c, d]) => pointSegmentDistance(p, c, d) <= distance);
   const inside = (p: Vec2) => outline.some((o) => pointInPolygon(p, o));
   const out: Seg[] = [];
   for (const [a, b] of facade) {
@@ -321,7 +380,7 @@ export function blindFacades(
     for (let k = 0; k < count; k++) {
       const t = ((k + 0.5) / count) * len;
       const p: Vec2 = [a[0] + u[0] * t, a[1] + u[1] * t];
-      const hit = party.some((s) => rayHit(p, n, s, distance));
+      const hit = party.some((s) => rayHit(p, n, s, distance)) || trespass(p);
       if (hit && start < 0) start = k;
       if (!hit) flush(k);
     }
@@ -330,7 +389,10 @@ export function blindFacades(
   return out;
 }
 
-/** Ray p + t·n (t ∈ [-0.05, max]) hits segment s. */
+/**
+ * Ray p + t·n hits segment s for t ∈ [-BEHIND, max]: a façade standing on or a little beyond the
+ * boundary (outline drawn over the parcel line) faces the neighbour too.
+ */
 function rayHit(p: Vec2, n: Vec2, [c, d]: Seg, max: number): boolean {
   const ex = d[0] - c[0];
   const ey = d[1] - c[1];
@@ -340,7 +402,7 @@ function rayHit(p: Vec2, n: Vec2, [c, d]: Seg, max: number): boolean {
   const wy = c[1] - p[1];
   const t = (wx * ey - wy * ex) / den;
   const s = (wx * n[1] - wy * n[0]) / den;
-  return t >= -0.05 && t <= max && s >= -1e-6 && s <= 1 + 1e-6;
+  return t >= -BEHIND && t <= max && s >= -1e-6 && s <= 1 + 1e-6;
 }
 
 /** Segments minus the pieces of `cut` lying on them (collinear, within `tol`). */
