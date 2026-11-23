@@ -139,6 +139,8 @@ const RATIO: Record<FacadeRoomKind, number> = {
 const THROUGH_MAX = 10.5;
 /** Width of the wet rooms along the façade direction, m (depth from the minimum area). */
 const WET_WIDTH: Record<WetKind, number> = { sdb: 2.4, wc: 1.5, sde: 2.0 };
+/** Smallest depth of a wet room: below it the room would become a corridor-like tube, m. */
+const WET_MIN_DEPTH: Record<WetKind, number> = { sdb: 1.7, wc: 0.9, sde: 1.5 };
 /** Inner zone kept between rooms on opposite façades (wet core, passage), m. */
 const INNER = 2.2;
 /** Façade pieces shorter than this are not used for rooms, m. */
@@ -570,8 +572,10 @@ export function unitRoomLayout(
     const d = r[3];
     let [s0, s1] = r;
     // nor wide and shallow (a shallow dwelling): width at most RATIO × depth
-    if (room.kind !== 'sejour' && s1 - s0 > RATIO[room.kind] * d) {
-      const wMax = RATIO[room.kind] * d;
+    // (the séjour up to 2 × its depth: never a strip along the façade, Soheyl 23.11.2026)
+    const wide = room.kind === 'sejour' ? (a.through && i === 0 ? Infinity : 2) : RATIO[room.kind];
+    if (s1 - s0 > wide * d) {
+      const wMax = wide * d;
       if (a.dir > 0) s1 = s0 + wMax;
       else s0 = s1 - wMax;
     }
@@ -897,89 +901,171 @@ export function unitRoomLayout(
           if (!anchors.some((x) => x.p === p && x.g === g && Math.abs(x.s - sv) < 1e-6))
             anchors.push({ p, g, s: sv });
     if (!anchors.length) return { rooms: [], blocks: [] };
-    let bestW: { rooms: LayoutRoom[]; blocks: Polygon[]; s: number } | undefined;
-    for (const an of anchors) {
-      const run = runs[an.p.run]!;
-      const t0 = an.p.depth + wall;
-      // rooms on the opposite façade limit the depth of the wet core
-      const opp = a.placed.filter(
-        (x) => run.facing.includes(x.run) && overlapS(run, an.p, runs[x.run]!, x),
-      );
-      const avail = run.depth - t0 - (opp.length ? Math.max(...opp.map((x) => x.depth)) + wall : 0);
-      if (avail < 0.9) continue;
-      const rooms: LayoutRoom[] = [];
-      const blocks: Polygon[] = [];
-      const taken = [...a.taken];
-      let c = 0;
-      const rects: [number, number, number, number][] = [];
-      const item = (kind: RoomKind, w: number, d: number, need: number, gap: number) => {
-        const s0 = an.g > 0 ? an.s + c : an.s - c - w;
-        const s1 = s0 + w;
-        c += w + gap;
-        const r = fitRect(run, s0, s1, t0, t0 + d, taken, true);
-        if (!r) return;
-        const poly = box(run, r[0], r[1], r[2], r[3]);
-        rooms.push(makeRoom(kind, poly, 0, need));
-        rects.push(r);
-        const b = box(run, r[0] - gap, r[1] + gap, r[2] - gap, r[3] + gap);
-        blocks.push(b);
-        taken.push(b);
-      };
-      const g = rules.shaftSize;
-      item('gaine', g, g, 0, wall);
-      for (const kind of kinds) {
-        const need = rules.minAreas[kind];
-        let w = WET_WIDTH[kind];
-        let d = need / w;
-        if (d > avail) {
-          d = avail;
-          w = need / d;
+    let bestW:
+      | {
+          rooms: LayoutRoom[];
+          blocks: Polygon[];
+          s: number;
+          cut: { p: Placed; poly: Polygon; block: Polygon } | undefined;
         }
-        item(kind, w, d, need, wall);
-      }
-      // no room for the shaft at the junction: next to the first wet room
-      if (!rooms.some((r) => r.kind === 'gaine') && rects.length) {
-        const [a0, a1, b0, b1] = rects[0]!;
-        for (const [x0, y0] of [
-          [a1 + wall, b0],
-          [a0 - wall - g, b0],
-          [a0, b1 + wall],
-          [a0, b0 - wall - g],
-          [a1 + wall, b1 - g],
-          [a0 - wall - g, b1 - g],
-        ] as const) {
-          const bx = box(run, x0, x0 + g, y0, y0 + g);
-          let ps = intersection([unit], [bx]);
-          ps = difference(ps, taken);
-          if (ps.reduce((x, p) => x + polygonArea(p), 0) < g * g - 0.01) continue;
-          rooms.push(makeRoom('gaine', bx, 0, 0));
-          const b = box(run, x0 - wall, x0 + g + wall, y0 - wall, y0 + g + wall);
+      | undefined;
+    // tube-like wet rooms (narrower than their minimum depth) only when nothing else fits
+    for (const strict of [true, false]) {
+      if (bestW) break;
+      for (const an of anchors) {
+        const run = runs[an.p.run]!;
+        const t0 = an.p.depth + wall;
+        // rooms on the opposite façade limit the depth of the wet core
+        const opp = a.placed.filter(
+          (x) => run.facing.includes(x.run) && overlapS(run, an.p, runs[x.run]!, x),
+        );
+        const avail =
+          run.depth - t0 - (opp.length ? Math.max(...opp.map((x) => x.depth)) + wall : 0);
+        if (avail < 0.9) continue;
+        const rooms: LayoutRoom[] = [];
+        const blocks: Polygon[] = [];
+        const taken = [...a.taken];
+        let cut: { p: Placed; poly: Polygon; block: Polygon } | undefined;
+        let c = 0;
+        const rects: [number, number, number, number][] = [];
+        const item = (kind: RoomKind, w: number, d: number, need: number, gap: number) => {
+          const s0 = an.g > 0 ? an.s + c : an.s - c - w;
+          const s1 = s0 + w;
+          c += w + gap;
+          const r = fitRect(run, s0, s1, t0, t0 + d, taken, true);
+          if (!r) return;
+          // a wet room cut down to a tube is left out (the next anchor may fit it)
+          let rw = r[1] - r[0];
+          let rd = r[3] - r[2];
+          // a shallow strip behind the séjour: the bathroom takes a bay out of the back of the
+          // séjour instead (séjour becomes an L), so both stay compact
+          if (
+            !strict &&
+            kind === kinds[0] &&
+            Math.max(rw, rd) > 2.5 * Math.min(rw, rd) &&
+            an.p.room.kind === 'sejour' &&
+            !cut
+          ) {
+            const dd = WET_MIN_DEPTH[kind] + 0.3;
+            const ww = Math.max(need / dd, dd);
+            const q: [number, number, number, number] =
+              an.g > 0 ? [r[0], r[0] + ww, r[3] - dd, r[3]] : [r[1] - ww, r[1], r[3] - dd, r[3]];
+            const qp = box(run, q[0], q[1], q[2], q[3]);
+            const free = difference(
+              intersection([unit], [qp]),
+              taken.filter((x) => x !== an.p.block),
+            ).reduce((x, p) => x + polygonArea(p), 0);
+            const bay = box(run, q[0] - wall, q[1] + wall, q[2] - wall, q[3]);
+            const sej = difference([an.p.room.polygon], [bay]).filter((p) => polygonArea(p) > 0.05);
+            if (
+              free >= ww * dd - 0.05 &&
+              sej.length === 1 &&
+              !sej[0]!.holes?.length &&
+              q[2] - wall > 2.5
+            ) {
+              const blk = difference([an.p.block], [bay]).filter((p) => polygonArea(p) > 0.05);
+              cut = { p: an.p, poly: sej[0]!, block: blk.length === 1 ? blk[0]! : sej[0]! };
+              r[0] = q[0];
+              r[1] = q[1];
+              r[2] = q[2];
+              r[3] = q[3];
+              rw = r[1] - r[0];
+              rd = r[3] - r[2];
+            }
+          }
+          if (
+            (strict ? kind !== 'gaine' : kind !== 'gaine' && kind !== kinds[0]) &&
+            Math.max(rw, rd) > 2.5 * Math.min(rw, rd)
+          )
+            return;
+          const poly = box(run, r[0], r[1], r[2], r[3]);
+          rooms.push(makeRoom(kind, poly, 0, need));
+          rects.push(r);
+          const b = box(run, r[0] - gap, r[1] + gap, r[2] - gap, r[3] + gap);
           blocks.push(b);
           taken.push(b);
-          break;
+        };
+        const g = rules.shaftSize;
+        item('gaine', g, g, 0, wall);
+        if (
+          strict &&
+          kinds.some((k) => rules.minAreas[k] / WET_WIDTH[k] > avail && avail < WET_MIN_DEPTH[k])
+        )
+          continue;
+        for (const kind of kinds) {
+          const need = rules.minAreas[kind];
+          let w = WET_WIDTH[kind];
+          let d = need / w;
+          // the main bathroom always; a second one only when it does not become a tube
+          if (kind !== kinds[0] && d > avail && avail < WET_MIN_DEPTH[kind]) continue;
+          if (d > avail) {
+            d = avail;
+            w = need / d;
+          }
+          item(kind, w, d, need, wall);
         }
-        if (!rooms.some((r) => r.kind === 'gaine') && a1 - a0 > g + wall + 0.9) {
-          // last resort: the bathroom gives up one end for the shaft (both stay rectangles)
-          const first = rooms.find((r) => r.kind !== 'gaine')!;
-          const nb = box(run, a0, a1 - g - wall, b0, b1);
-          Object.assign(first, makeRoom(first.kind, nb, 0, first.areaRequired));
-          rooms.push(makeRoom('gaine', box(run, a1 - g, a1, b0, b0 + g), 0, 0));
+        // no room for the shaft at the junction: next to the first wet room
+        if (!rooms.some((r) => r.kind === 'gaine') && rects.length) {
+          const [a0, a1, b0, b1] = rects[0]!;
+          for (const [x0, y0] of [
+            [a1 + wall, b0],
+            [a0 - wall - g, b0],
+            [a0, b1 + wall],
+            [a0, b0 - wall - g],
+            [a1 + wall, b1 - g],
+            [a0 - wall - g, b1 - g],
+          ] as const) {
+            const bx = box(run, x0, x0 + g, y0, y0 + g);
+            let ps = intersection([unit], [bx]);
+            ps = difference(ps, taken);
+            if (ps.reduce((x, p) => x + polygonArea(p), 0) < g * g - 0.01) continue;
+            rooms.push(makeRoom('gaine', bx, 0, 0));
+            const b = box(run, x0 - wall, x0 + g + wall, y0 - wall, y0 + g + wall);
+            blocks.push(b);
+            taken.push(b);
+            break;
+          }
+          if (
+            !rooms.some((r) => r.kind === 'gaine') &&
+            a1 - a0 > g + wall + 0.9 &&
+            (!strict || 2.5 * (b1 - b0) >= a1 - a0 - g - wall)
+          ) {
+            // last resort: the bathroom gives up one end for the shaft (both stay rectangles)
+            const first = rooms.find((r) => r.kind !== 'gaine')!;
+            const nb = box(run, a0, a1 - g - wall, b0, b1);
+            Object.assign(first, makeRoom(first.kind, nb, 0, first.areaRequired));
+            rooms.push(makeRoom('gaine', box(run, a1 - g, a1, b0, b0 + g), 0, 0));
+          }
         }
+        const ok = rooms.filter((r) => r.areaOk).length;
+        const nextToPmr =
+          pmr &&
+          rooms.some(
+            (r) => r.kind !== 'gaine' && polygonDistance(r.polygon, pmr.room.polygon) < 0.3,
+          );
+        const s =
+          ok * 100 +
+          rooms.length * 10 +
+          rooms.reduce((x, r) => x + r.area, 0) * 0.1 +
+          (nextToPmr ? 40 : 0) +
+          // close to the entrance and back to back with the neighbour's bathroom (rule C)
+          (rooms.some((r) => r.kind !== 'gaine' && near(r.polygon, ['sdb', 'sde', 'wc']))
+            ? 25
+            : 0) -
+          Math.min(30, 3 * Math.min(...rooms.map((r) => entranceDist(r.polygon)), 10)) -
+          anchors.indexOf(an) * 0.01;
+        // the strict pass counts only when every wet room found its place
+        if (strict && kinds.some((k) => !rooms.some((r) => r.kind === k))) continue;
+        if (!bestW || s > bestW.s + 1e-6) bestW = { rooms, blocks, s, cut };
       }
-      const ok = rooms.filter((r) => r.areaOk).length;
-      const nextToPmr =
-        pmr &&
-        rooms.some((r) => r.kind !== 'gaine' && polygonDistance(r.polygon, pmr.room.polygon) < 0.3);
-      const s =
-        ok * 100 +
-        rooms.length * 10 +
-        rooms.reduce((x, r) => x + r.area, 0) * 0.1 +
-        (nextToPmr ? 40 : 0) +
-        // close to the entrance and back to back with the neighbour's bathroom (rule C)
-        (rooms.some((r) => r.kind !== 'gaine' && near(r.polygon, ['sdb', 'sde', 'wc'])) ? 25 : 0) -
-        Math.min(30, 3 * Math.min(...rooms.map((r) => entranceDist(r.polygon)), 10)) -
-        anchors.indexOf(an) * 0.01;
-      if (!bestW || s > bestW.s + 1e-6) bestW = { rooms, blocks, s };
+    }
+    if (bestW?.cut) {
+      const { p, poly, block } = bestW.cut;
+      Object.assign(
+        p.room,
+        makeRoom(p.room.kind, poly, p.room.facadeRequired, p.room.areaRequired),
+      );
+      p.block = block;
     }
     return bestW ?? { rooms: [], blocks: [] };
   }

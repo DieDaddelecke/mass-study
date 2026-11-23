@@ -1285,7 +1285,8 @@ function layoutStorey(
       const single = (ps: Polygon[]) => {
         const xs = ps.filter((q) => polygonArea(q) > 0.05);
         if (xs.length !== 1 || xs[0]!.holes?.length) return undefined;
-        return offsetPolygons([xs[0]!], -0.5).filter((q) => polygonArea(q) > 0.05).length === 1
+        return offsetPolygons([xs[0]!], -0.5).filter((q) => polygonArea(q) > 0.05).length === 1 &&
+          !tubeLike(xs[0]!)
           ? xs[0]
           : undefined;
       };
@@ -1331,12 +1332,12 @@ function layoutStorey(
         const p = polys[i]!;
         const area = polygonArea(p);
         const cap = maxArea(p);
-        if (area <= cap + 1e-6 && !dark(p)) continue;
+        if (area <= cap + 1e-6 && !dark(p) && !tubeLike(p)) continue;
         // the way from the door to the kept part is a shared corridor, never a long hall of
         // the dwelling in the dark middle of the building (Soheyl 23.11.2026)
         const hall = new WeakMap<Polygon, Polygon>();
         const cands = trimToArea(p, facOf(p).segments, cap - 0.05, (q) => {
-          if (polygonArea(q) > maxArea(q) + 1e-6 || dark(q)) return undefined;
+          if (polygonArea(q) > maxArea(q) + 1e-6 || dark(q) || tubeLike(q)) return undefined;
           if (facadeOf(q, accessEdges).length >= DOOR) return q;
           const band = corridorIn(p, access(), q, 1.2, true);
           if (!band) return undefined;
@@ -1417,6 +1418,47 @@ function layoutStorey(
           delete raw[i]!.type;
           delete raw[bestSplit.j]!.type;
         } else apply(true); // last resort: the surplus stays unused, even on the façade
+      }
+
+      // 2b. tube-like dwellings left: their narrow arms go to a neighbour (compact, in range),
+      // else to the landing they touch, else stay unused; a dwelling that is all arm is merged
+      // into a neighbour or given up
+      for (const i of live()) {
+        const p = polys[i]!;
+        if (!tubeLike(p)) continue;
+        const body = offsetPolygons(offsetPolygons([p], -1.4), 1.4);
+        const kept = single(intersection([p], body));
+        const pieces = kept ? difference([p], [kept]).filter((q) => polygonArea(q) > 0.05) : [p];
+        const give = (piece: Polygon, others: number[]) => {
+          const take = others
+            .filter((j) => shared(polys[j]!, piece) > 1.2)
+            .map((j) => ({ j, m: single(union([polys[j]!, piece])) }))
+            .filter(
+              (c): c is { j: number; m: Polygon } =>
+                !!c.m && polygonArea(c.m) <= maxArea(c.m) + 1e-6 && !dark(c.m),
+            )
+            .sort((x, y) => polygonArea(y.m) - polygonArea(x.m))[0];
+          if (take) {
+            polys[take.j] = simplify(take.m);
+            delete raw[take.j]!.type;
+          } else if (circulation.some((c) => c.kind !== 'lift' && shared(c.polygon, piece) > 1.2))
+            circulation.push({ kind: 'landing', polygon: piece, area: polygonArea(piece) });
+          else open.push({ kind: 'open', polygon: piece, area: polygonArea(piece) });
+        };
+        const others = live().filter((j) => j !== i);
+        if (
+          kept &&
+          door(kept) >= DOOR &&
+          allowedFor(kept).some((t) => polygonArea(kept) >= t.areaMin - 1e-6)
+        ) {
+          polys[i] = simplify(kept);
+          delete raw[i]!.type;
+          for (const piece of pieces) give(piece, others);
+        } else {
+          alive[i] = false;
+          give(p, others);
+        }
+        accessEdges = polygonEdges(access());
       }
 
       // 3. a dark leftover big enough for the stair (inner corner of an L, Soheyl 23.11.2026):
@@ -1748,6 +1790,39 @@ function corridorIn(
  * `fix`, which may add the way to the door or reject) has about `target` m². Undefined when no
  * depth works.
  */
+/**
+ * True when `p` has an arm narrower than 2.80 m (the smallest bedroom façade) that is a room of
+ * its own: at least 6 m² and 4.50 m long. Such tube-like dwellings are excluded (Soheyl
+ * 23.11.2026); an entrance strip of 1.20 m by 3 m is not an arm.
+ */
+export function tubeLike(p: Polygon): boolean {
+  const r = 1.4;
+  const body = offsetPolygons(offsetPolygons([p], -r), r);
+  return difference([p], body).some((q) => {
+    const a = polygonArea(q);
+    return a >= 6 && obbLength(q) >= 4.5;
+  });
+}
+
+/** Long side of the smallest rectangle (aligned to one of its edges) around `p`. */
+function obbLength(p: Polygon): number {
+  const r = p.outer;
+  let best: { a: number; l: number } | undefined;
+  for (let i = 0; i < r.length; i++) {
+    const a = r[i]!;
+    const b = r[(i + 1) % r.length]!;
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (l < 0.3) continue;
+    const u: Vec2 = [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
+    const ts = r.map((q) => q[0] * u[0] + q[1] * u[1]);
+    const ns = r.map((q) => q[1] * u[0] - q[0] * u[1]);
+    const w = Math.max(...ts) - Math.min(...ts);
+    const d = Math.max(...ns) - Math.min(...ns);
+    if (!best || w * d < best.a) best = { a: w * d, l: Math.max(w, d) };
+  }
+  return best?.l ?? 0;
+}
+
 function trimToArea(
   p: Polygon,
   facade: readonly [Vec2, Vec2][],
