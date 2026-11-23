@@ -322,6 +322,33 @@ describe('stairs', () => {
 });
 
 describe('executePlan', () => {
+  it('residence and office storeys: units, common rooms and office rooms as zones', async () => {
+    const p = createProject({ name: 'T', localBoundary: rect(-40, -40, 40, 40), profile: 'FR' });
+    const r = createMass('solitaer', { name: 'R', usage: 'wohnheim' });
+    r.typology = { kind: 'solitaer', length: 40, depth: 14 };
+    const o = createMass('solitaer', { name: 'O', position: [0, 25], usage: 'buero' });
+    o.typology = { kind: 'solitaer', length: 40, depth: 13.5 };
+    o.office = { layout: 'mixte' };
+    const pl = buildPlan({
+      project: p,
+      masses: [r, o],
+      stories,
+      options: { ...DEFAULT_OPTIONS },
+      usageLabel: (u) => ({ wohnheim: 'Résidence', buero: 'Bureaux' })[u as string] ?? u,
+    });
+    const names = new Set(pl.items.filter((i) => i.kind === 'zone').map((i) => i.zone!.name));
+    for (const n of ['Studio', 'Studio PMR', 'Duo', 'Salle commune', 'Accueil', 'Bureau'])
+      expect(names.has(n)).toBe(true);
+    expect(names.has('Open space')).toBe(true);
+    expect(names.has('Salle de réunion')).toBe(true);
+    const ac = new FakeArchicad();
+    const res = await executePlan(ac, 19723, pl, { projectId: 'p1', mode: 'create' });
+    expect(res.errors).toEqual([]);
+    expect(ac.attributes.ZoneCategory!.map((c) => c.name)).toEqual(
+      expect.arrayContaining(['MS - Résidence', 'MS - Bureaux', 'MS - Salle commune']),
+    );
+  });
+
   it('creates, tags and layers elements; replace removes only our own', async () => {
     const ac = new FakeArchicad();
     const foreign = ac.addForeign('Zone');

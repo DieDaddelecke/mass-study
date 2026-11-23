@@ -81,7 +81,32 @@
     },
     "duplexCount": "dont {{count}} en duplex",
     "duplexNuit": "{{count}} niveau(x) nuit de duplex (comptés au niveau d'entrée)",
-    "duplexStair": "Escalier intérieur de duplex"
+    "duplexStair": "Escalier intérieur de duplex",
+    "uses": {
+      "residenceTotal": "Résidence",
+      "beds": "{{count}} lits",
+      "office": "{{desks}} postes · SU {{usable}} m² · {{meetings}} salles de réunion",
+      "layout": {
+        "openSpace": "Open space",
+        "cellulaire": "Cloisonné",
+        "mixte": "Mixte"
+      },
+      "deep": "Plateau à {{distance}} m de la façade : trop profond pour l'éclairage naturel",
+      "space": {
+        "sde": "Salle d'eau (avec WC)",
+        "entree": "Entrée",
+        "kitchenette": "Kitchenette",
+        "gaine": "Gaine (partagée par deux studios)",
+        "accueil": "Accueil",
+        "laverie": "Laverie",
+        "salleCommune": "Salle commune",
+        "openSpace": "Open space",
+        "bureau": "Bureau cloisonné",
+        "reunion": "Salle de réunion",
+        "sanitaires": "Sanitaires",
+        "hall": "Hall d'accueil"
+      }
+    }
   },
   "ridge": "faîtage"
 }

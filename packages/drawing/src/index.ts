@@ -6,3 +6,4 @@ export * from './elevation.js';
 export * from './axonometry.js';
 export * from './floorPlan.js';
 export * from './svg.js';
+export * from './spaces.js';

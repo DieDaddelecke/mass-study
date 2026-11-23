@@ -35,6 +35,9 @@ import {
   unitRooms,
 } from './unitRules.js';
 import { duplexProgram, unitRoomLayout, type LayoutRoom } from './rooms.js';
+import type { LayoutSpace, OfficeSummary, ResidenceSummary } from './spaces.js';
+import { residenceStoreyLayout } from './residence.js';
+import { officeStoreyLayout } from './office.js';
 import {
   facadeSide,
   placeOutdoor,
@@ -103,6 +106,8 @@ export interface LayoutUnit {
   outdoor?: LayoutOutdoor;
   /** One level of a duplex dwelling (the same polygon on both storeys). */
   duplex?: LayoutDuplex;
+  /** Interior spaces of a residence unit (entrée, salle d'eau, kitchenette). */
+  spaces?: LayoutSpace[];
 }
 
 /** Level of a duplex dwelling. */
@@ -166,6 +171,10 @@ export interface StoreyLayout {
   unitsPerCore?: number;
   /** Stable signature of the layout (identical storeys share it). */
   signature: string;
+  /** Rooms of residence / office storeys not owned by a unit (shafts, common rooms, plateau). */
+  spaces?: LayoutSpace[];
+  residence?: ResidenceSummary;
+  office?: OfficeSummary;
 }
 
 export interface MassLayout {
@@ -203,13 +212,13 @@ export function layoutDimensions(settings: Pick<Settings, 'cores'>): LayoutDimen
 // Frames and bars
 // ---------------------------------------------------------------------------
 
-interface Frame {
+export interface Frame {
   o: Vec2;
   u: Vec2;
   n: Vec2;
 }
 
-interface Bar {
+export interface Bar {
   frame: Frame;
   /** Region of the footprint owned by this bar (world). */
   region: Polygon[];
@@ -217,7 +226,7 @@ interface Bar {
   depth: number;
 }
 
-type Rect = [number, number, number, number]; // a0, b0, a1, b1 in bar coordinates
+export type Rect = [number, number, number, number]; // a0, b0, a1, b1 in bar coordinates
 
 const toWorld = (f: Frame, a: number, b: number): Vec2 => [
   f.o[0] + f.u[0] * a + f.n[0] * b,
@@ -229,14 +238,14 @@ const toFrame = (f: Frame, p: Vec2): Vec2 => {
   return [dx * f.u[0] + dy * f.u[1], dx * f.n[0] + dy * f.n[1]];
 };
 
-function rectPoly(f: Frame, [a0, b0, a1, b1]: Rect): Polygon {
+export function rectPoly(f: Frame, [a0, b0, a1, b1]: Rect): Polygon {
   return normalizePolygon({
     outer: [toWorld(f, a0, b0), toWorld(f, a1, b0), toWorld(f, a1, b1), toWorld(f, a0, b1)],
   });
 }
 
 /** Oriented rectangle of a (clipped) piece in a bar frame. */
-function boxOf(f: Frame, p: Polygon): CoreBox {
+export function boxOf(f: Frame, p: Polygon): CoreBox {
   const [a0, b0, a1, b1] = frameExtents(f, [p]);
   return { o: toWorld(f, a0, b0), u: f.u, n: f.n, w: a1 - a0, d: b1 - b0 };
 }
@@ -245,7 +254,7 @@ const validRect = (r: Rect): boolean => r[2] - r[0] > 1e-6 && r[3] - r[1] > 1e-6
 const keep = (...rs: Rect[]): Rect[] => rs.filter(validRect);
 
 /** Extents of polygons in a frame. */
-function frameExtents(f: Frame, polys: readonly Polygon[]): Rect {
+export function frameExtents(f: Frame, polys: readonly Polygon[]): Rect {
   let a0 = Infinity,
     b0 = Infinity,
     a1 = -Infinity,
@@ -284,7 +293,7 @@ const unit = (dx: number, dy: number): Vec2 => {
 };
 
 /** Straight bars of one storey solid. */
-function solidBars(mass: Mass, footprint: Polygon): Bar[] {
+export function solidBars(mass: Mass, footprint: Polygon): Bar[] {
   const fp = [normalizePolygon(footprint)];
   const t = mass.typology;
   const cos = Math.cos(mass.rotation);
@@ -556,7 +565,7 @@ function allocate(len: number, weights: readonly number[], mins: readonly number
 }
 
 /** Evenly spaced core centres along [0, L]. */
-const coreCentres = (L: number, n: number): number[] =>
+export const coreCentres = (L: number, n: number): number[] =>
   Array.from({ length: n }, (_, i) => ((i + 0.5) * L) / n);
 
 function planBar(
@@ -1283,7 +1292,7 @@ function onLine([a, b]: [Vec2, Vec2], lines: readonly [Vec2, Vec2][]): boolean {
 }
 
 /** Drop vertices closer than `tol` to the line through their neighbours (clipping noise). */
-function simplify(p: Polygon, tol = 0.02, despike = true): Polygon {
+export function simplify(p: Polygon, tol = 0.02, despike = true): Polygon {
   const ring = (r: Vec2[]): Vec2[] => {
     const pts = [...r];
     let changed = true;
@@ -1534,7 +1543,7 @@ function applyDuplex(
  */
 export function stackCores(storeys: StoreyLayout[]): StoreyLayout[] {
   return storeys.map((st, i) => {
-    if (st.units.length || !st.cores.length) return st;
+    if (st.units.length || !st.cores.length || st.spaces?.length) return st;
     const ref = storeys.slice(i + 1).find((x) => x.units.length && x.cores.length);
     if (!ref) return st;
     const cores: LayoutArea[] = [];
@@ -1563,6 +1572,39 @@ export function stackCores(storeys: StoreyLayout[]): StoreyLayout[] {
   });
 }
 
+/**
+ * Storeys of the uses with their own generator (residence, office), by storey index. The
+ * residence ground floor gets its common rooms sized by the units of the whole building.
+ */
+function specialUseLayouts(
+  mass: Mass,
+  byStorey: Map<number, StoreySolid[]>,
+  settings: Settings,
+): Map<number, StoreyLayout> {
+  const out = new Map<number, StoreyLayout>();
+  const res: number[] = [];
+  for (const [i, solids] of byStorey) {
+    const usage = solids[0]!.usage;
+    if (usage === 'buero') out.set(i, officeStoreyLayout(mass, solids, settings));
+    else if (usage === 'wohnheim') res.push(i);
+  }
+  if (!res.length) return out;
+  res.sort((a, b) => a - b);
+  const lowest = res[0]!;
+  let units = 0;
+  for (const i of res) {
+    const st = residenceStoreyLayout(mass, byStorey.get(i)!, settings);
+    out.set(i, st);
+    units += st.summary.units;
+  }
+  // common rooms on the lowest residence storey (ground floor), for all units
+  const ground = residenceStoreyLayout(mass, byStorey.get(lowest)!, settings, {
+    totalUnits: units,
+  });
+  out.set(lowest, ground);
+  return out;
+}
+
 /** Layouts of all above-ground storeys of one mass (from its storey solids). */
 export function massLayout(
   mass: Mass,
@@ -1579,9 +1621,12 @@ export function massLayout(
     byStorey.set(s.storeyIndex, list);
   }
   const pins = new Map<number, number[][]>();
+  const special = specialUseLayouts(mass, byStorey, settings);
   const simplex = [...byStorey.keys()]
     .sort((a, b) => a - b)
     .map((i) => {
+      const own = special.get(i);
+      if (own) return own;
       const r = layoutStorey(mass, byStorey.get(i)!, settings, access);
       pins.set(i, r.pins);
       return r.layout;

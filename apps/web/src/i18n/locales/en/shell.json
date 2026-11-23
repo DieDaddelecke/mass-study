@@ -266,7 +266,11 @@
   "kpi": {
     "title": "Key figures",
     "target": "{{status}} (target ≤ {{target}})",
-    "open": "Open rules analysis"
+    "open": "Open rules analysis",
+    "residence": "Residence",
+    "residenceTip": "{{units}} units · {{beds}} beds · {{pmr}} accessible (schematic plan)",
+    "desks": "Desks",
+    "desksTip": "Workstations of the schematic plan · usable {{usable}} m²"
   },
   "start": {
     "subtitle": "Sketch, compare and check massing on the real site – in minutes.",
@@ -506,5 +510,33 @@
     "note": "Two stacked storeys from {{storey}} up. Entrance always on the living-room level; living room and accessible bedroom on the day level, further bedrooms on the night level. Façade rules per level.",
     "none": "No duplex: the dwellings of this plan are too large for one duplex level.",
     "count": "{{count}} duplex"
+  },
+  "uses": {
+    "residence": {
+      "title": "Residence",
+      "variant": "Type",
+      "etudiant": "Students",
+      "senior": "Seniors",
+      "studioWidth": "Studio width",
+      "pmrWidth": "Accessible studio width",
+      "cornerWidth": "Corner unit width",
+      "corridorWidth": "Corridor",
+      "pmrShare": "Accessible share",
+      "commonPerUnit": "Common area per unit",
+      "result": "{{units}} units · {{beds}} beds · {{pmr}} accessible · avg {{avg}} m² · common rooms {{common}} m²",
+      "note": "Repetitive studios along a central corridor, accessible studios near the cores, larger units at the corners (duo / T2). Two mirrored studios share one 60 × 80 cm shaft. Common rooms (reception, laundry, lounge) on the ground floor."
+    },
+    "office": {
+      "title": "Offices",
+      "layout": "Layout",
+      "openSpace": "Open space",
+      "cellulaire": "Cellular",
+      "mixte": "Mixed",
+      "grid": "Grid",
+      "areaPerDesk": "Area per desk",
+      "maxDepth": "Max. distance to façade",
+      "result": "{{desks}} desks · usable {{usable}} m² ({{ratio}} % of gross floor area) · {{perDesk}} m²/desk · {{meetings}} meeting rooms",
+      "deep": "{{count}} storey(s) too deep for daylight"
+    }
   }
 }

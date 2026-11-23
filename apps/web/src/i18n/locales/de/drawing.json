@@ -81,7 +81,32 @@
     },
     "duplexCount": "davon {{count}} Maisonette",
     "duplexNuit": "{{count}} Schlafebene(n) von Maisonetten (gezählt auf der Eingangsebene)",
-    "duplexStair": "Innentreppe der Maisonette"
+    "duplexStair": "Innentreppe der Maisonette",
+    "uses": {
+      "residenceTotal": "Wohnheim",
+      "beds": "{{count}} Betten",
+      "office": "{{desks}} Arbeitsplätze · NF {{usable}} m² · {{meetings}} Besprechungsräume",
+      "layout": {
+        "openSpace": "Open Space",
+        "cellulaire": "Einzelbüros",
+        "mixte": "Gemischt"
+      },
+      "deep": "Arbeitsfläche {{distance}} m von der Fassade: zu tief für Tageslicht",
+      "space": {
+        "sde": "Duschbad (mit WC)",
+        "entree": "Eingang",
+        "kitchenette": "Pantryküche",
+        "gaine": "Schacht (für zwei Apartments)",
+        "accueil": "Empfang",
+        "laverie": "Waschraum",
+        "salleCommune": "Gemeinschaftsraum",
+        "openSpace": "Open Space",
+        "bureau": "Einzelbüro",
+        "reunion": "Besprechungsraum",
+        "sanitaires": "Sanitär",
+        "hall": "Eingangshalle"
+      }
+    }
   },
   "ridge": "First"
 }

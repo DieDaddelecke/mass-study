@@ -24,6 +24,7 @@ import { DuplexFields } from './DuplexFields';
 import { OutdoorFields } from './OutdoorFields';
 import { PlantingProperties, RoofFields, TerraceFields } from './MassShapeFields';
 import { TypologyInputs } from './TypologyInputs';
+import { UseFields } from './UseFields';
 import { useShellStore } from './shellStore';
 import { Group, NumField, Row, Segmented, TrafficDot } from './ui';
 
@@ -332,6 +333,7 @@ function MassProperties({ mass }: { mass: Mass }) {
           <DuplexFields mass={mass} settings={project.settings} update={update} />
         </>
       )}
+      <UseFields mass={mass} settings={project.settings} update={update} />
       {res && (
         <Group title={t('props.group.results')}>
           <Row label={t('common:kpi.emprise')}>

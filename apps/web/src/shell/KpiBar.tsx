@@ -1,4 +1,5 @@
-import type { ConstraintRow } from '@kubatur/core';
+import { massLayout, usesTotals, type ConstraintRow, type UsesTotals } from '@kubatur/core';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../i18n';
 import { useProjectStore } from '../store/projectStore';
@@ -22,6 +23,7 @@ export function KpiBar() {
   const profile = useProjectStore((s) => s.project?.settings.profile);
   const analysis = useAnalysis();
   const setDialog = useShellStore((s) => s.setDialog);
+  const uses = useUsesTotals();
   if (!analysis || !profile) return null;
   const lng = i18n.language;
   const n = (v: number, d = 2) => formatNumber(v, d, lng);
@@ -102,6 +104,25 @@ export function KpiBar() {
       { key: 'bgf', label: t('common:kpi.bgf'), value: `${n(analysis.result.areas.bgf, 0)} m²` },
     ];
   }
+  // residences and offices: beds / workstations of the schematic floor plans
+  if (uses.residence)
+    kpis.push({
+      key: 'residence',
+      label: t('kpi.residence'),
+      value: `${uses.residence.units} / ${uses.residence.beds}`,
+      title: t('kpi.residenceTip', {
+        units: uses.residence.units,
+        beds: uses.residence.beds,
+        pmr: uses.residence.pmr,
+      }),
+    });
+  if (uses.office)
+    kpis.push({
+      key: 'desks',
+      label: t('kpi.desks'),
+      value: `${uses.office.desks}`,
+      title: t('kpi.desksTip', { usable: n(uses.office.usable, 0) }),
+    });
   return (
     <div className="glass kpibar" role="group" aria-label={t('kpi.title')}>
       {kpis.map((k) => (
@@ -127,6 +148,33 @@ export function KpiBar() {
       ))}
     </div>
   );
+}
+
+/** Residence / office totals of the masses with these uses (schematic floor plans). */
+function useUsesTotals(): UsesTotals {
+  const project = useProjectStore((s) => s.project);
+  const analysis = useAnalysis();
+  return useMemo(() => {
+    if (!project || !analysis) return {};
+    const special = analysis.result.masses.filter((m) =>
+      m.solids.some((s) => s.solid.usage === 'wohnheim' || s.solid.usage === 'buero'),
+    );
+    if (!special.length) return {};
+    try {
+      return usesTotals(
+        special.flatMap(
+          (m) =>
+            massLayout(
+              m.mass,
+              m.solids.map((r) => r.solid),
+              project.settings,
+            ).storeys,
+        ),
+      );
+    } catch {
+      return {};
+    }
+  }, [project, analysis]);
 }
 
 /** Small pill with the number of warnings; opens the warnings dialog. */

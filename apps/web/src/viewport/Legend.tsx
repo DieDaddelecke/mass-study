@@ -1,5 +1,5 @@
-import { USAGES, type MassLayout, type UnitType } from '@kubatur/core';
-import { unitColor } from '@kubatur/drawing';
+import { USAGES, type MassLayout, type SpaceKind, type UnitType } from '@kubatur/core';
+import { RESIDENCE_COLORS, SPACE_COLORS, unitColor } from '@kubatur/drawing';
 import { GRANULO_COLORS } from './scene/granulometry';
 import { useTranslation } from 'react-i18next';
 import { usageColor } from './scene/colors';
@@ -58,6 +58,25 @@ export function GranulometryLegend({
       ),
     }))
     .filter((r) => r.count > 0);
+  // residence units (own types) and office / common rooms
+  const shown = layouts.flatMap((m) =>
+    m.storeys.filter((st) => level === null || st.storeyIndex === level),
+  );
+  for (const id of Object.keys(RESIDENCE_COLORS)) {
+    const units = shown.flatMap((st) => st.units.filter((u) => u.typeId === id));
+    if (units.length)
+      rows.push({
+        type: { id, label: units[0]!.label } as UnitType,
+        count: units.length,
+      });
+  }
+  const spaceKinds = [
+    ...new Set(
+      shown.flatMap((st) =>
+        (st.spaces ?? []).filter((s) => !s.overlay && s.kind !== 'gaine').map((s) => s.kind),
+      ),
+    ),
+  ] as SpaceKind[];
   const total = rows.reduce((s, r) => s + r.count, 0);
   return (
     <div className="glass vp-legend" aria-label={t('legend.granuloTitle')}>
@@ -65,7 +84,7 @@ export function GranulometryLegend({
         {t('legend.granuloTitle')}
         {level !== null && levelLabel ? ` · ${levelLabel}` : ''}
       </div>
-      {total === 0 && <div className="vp-legend-row">{t('legend.none')}</div>}
+      {total === 0 && !spaceKinds.length && <div className="vp-legend-row">{t('legend.none')}</div>}
       {rows.map((r) => (
         <div key={r.type.id} className="vp-legend-row">
           <span className="vp-legend-swatch" style={{ background: unitColor(r.type.id, mix) }} />
@@ -82,6 +101,12 @@ export function GranulometryLegend({
           </span>
         </div>
       )}
+      {spaceKinds.map((k) => (
+        <div key={k} className="vp-legend-row">
+          <span className="vp-legend-swatch" style={{ background: SPACE_COLORS[k] }} />
+          {t(`drawing:fp.uses.space.${k}`)}
+        </div>
+      ))}
       <div className="vp-legend-row">
         <span className="vp-legend-swatch" style={{ background: GRANULO_COLORS.core }} />
         {t('legend.core')}

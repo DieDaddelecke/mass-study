@@ -81,7 +81,32 @@
     },
     "duplexCount": "of which {{count}} duplex",
     "duplexNuit": "{{count}} duplex night level(s) (counted on the entrance level)",
-    "duplexStair": "Internal duplex stair"
+    "duplexStair": "Internal duplex stair",
+    "uses": {
+      "residenceTotal": "Residence",
+      "beds": "{{count}} beds",
+      "office": "{{desks}} desks · usable {{usable}} m² · {{meetings}} meeting rooms",
+      "layout": {
+        "openSpace": "Open space",
+        "cellulaire": "Cellular",
+        "mixte": "Mixed"
+      },
+      "deep": "Plateau {{distance}} m from the façade: too deep for daylight",
+      "space": {
+        "sde": "Shower room (with WC)",
+        "entree": "Entrance",
+        "kitchenette": "Kitchenette",
+        "gaine": "Shaft (shared by two studios)",
+        "accueil": "Reception",
+        "laverie": "Laundry",
+        "salleCommune": "Common room",
+        "openSpace": "Open space",
+        "bureau": "Cellular office",
+        "reunion": "Meeting room",
+        "sanitaires": "Toilets",
+        "hall": "Entrance hall"
+      }
+    }
   },
   "ridge": "ridge"
 }

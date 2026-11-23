@@ -3,6 +3,7 @@ import type { Usage } from '@kubatur/core';
 /** Usage colours for the "consistent colours" style (SPEC §10). */
 export const USAGE_COLORS: Record<Usage, string> = {
   wohnen: '#f2d35b',
+  wohnheim: '#e9a94f',
   buero: '#5b9bd9',
   gewerbe: '#e0605a',
   gemeinbedarf: '#9b72cf',

@@ -45,6 +45,7 @@ export const IFC_LABELS_FR: IfcLabels = {
   site: 'Terrain',
   usage: {
     wohnen: 'Logement',
+    wohnheim: 'Résidence',
     buero: 'Bureaux',
     gewerbe: 'Commerce / activité',
     gemeinbedarf: 'Équipement',

@@ -3,6 +3,7 @@ import { FLOOR_PLAN_COLORS, roomColor, unitColor } from '@kubatur/drawing';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../i18n';
 import { useShellStore } from '../shell/shellStore';
+import { UsesLegend } from './UsesLegend';
 
 const fmt = (n: number) => Math.round(n).toLocaleString('fr-FR');
 
@@ -39,6 +40,7 @@ export function FloorPlanLegend({
     })
     .filter((c) => c.count > 0 || c.area > 0);
   const total = counts.reduce((a, c) => a + c.count, 0);
+  const special = here.some(({ s }) => s.residence || s.office);
   const totalArea = counts.reduce((a, c) => a + c.area, 0);
   const outOfRange = here.some(({ s }) => s.units.some((u) => u.outOfRange));
   const failing = here.reduce((a, { s }) => a + s.summary.facadeViolations, 0);
@@ -118,9 +120,10 @@ export function FloorPlanLegend({
             </tr>
           </tbody>
         </table>
-      ) : (
+      ) : special ? null : (
         <p className="dv-legend-note">{t('fp.noUnits')}</p>
       )}
+      <UsesLegend storeys={here.map((x) => x.s)} />
       {roomKinds.length > 0 && (
         <ul className="dv-legend-keys">
           {roomKinds.map((k) => (
@@ -178,7 +181,7 @@ export function FloorPlanLegend({
           </li>
         )}
       </ul>
-      <p className="dv-legend-note">
+      <p className="dv-legend-note" hidden={special && total === 0}>
         {t('fp.facadeRule')} :{' '}
         {mix.map((u) => `${u.label} ${formatNumber(requiredFacade(u, rules))} m`).join(' · ')}
       </p>

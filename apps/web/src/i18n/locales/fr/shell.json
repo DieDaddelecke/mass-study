@@ -266,7 +266,11 @@
   "kpi": {
     "title": "Indicateurs",
     "target": "{{status}} (objectif ≤ {{target}})",
-    "open": "Ouvrir l'analyse réglementaire"
+    "open": "Ouvrir l'analyse réglementaire",
+    "residence": "Résidence",
+    "residenceTip": "{{units}} logements · {{beds}} lits · {{pmr}} PMR (plan schématique)",
+    "desks": "Postes",
+    "desksTip": "Postes de travail du plan schématique · SU {{usable}} m²"
   },
   "start": {
     "subtitle": "Esquissez, comparez et vérifiez vos volumétries sur le terrain réel – en quelques minutes.",
@@ -506,5 +510,33 @@
     "note": "Deux niveaux superposés à partir de {{storey}}. Entrée toujours au niveau du séjour ; séjour et chambre PMR au niveau jour, autres chambres au niveau nuit. Règles de façade par niveau.",
     "none": "Aucun duplex : les logements de ce plan sont trop grands pour un niveau de duplex.",
     "count": "{{count}} duplex"
+  },
+  "uses": {
+    "residence": {
+      "title": "Résidence",
+      "variant": "Type",
+      "etudiant": "Étudiants",
+      "senior": "Seniors",
+      "studioWidth": "Largeur studio",
+      "pmrWidth": "Largeur studio PMR",
+      "cornerWidth": "Largeur logement d'angle",
+      "corridorWidth": "Couloir",
+      "pmrShare": "Part PMR",
+      "commonPerUnit": "Locaux communs par logement",
+      "result": "{{units}} logements · {{beds}} lits · {{pmr}} PMR · Ø {{avg}} m² · locaux communs {{common}} m²",
+      "note": "Studios répétitifs le long d'un couloir central, studios PMR près des cages, logements plus grands aux angles (duo / T2). Deux studios en miroir partagent une gaine 60 × 80 cm. Locaux communs (accueil, laverie, salle commune) au rez-de-chaussée."
+    },
+    "office": {
+      "title": "Bureaux",
+      "layout": "Aménagement",
+      "openSpace": "Open space",
+      "cellulaire": "Cloisonné",
+      "mixte": "Mixte",
+      "grid": "Trame",
+      "areaPerDesk": "Surface par poste",
+      "maxDepth": "Distance max. à la façade",
+      "result": "{{desks}} postes · SU {{usable}} m² ({{ratio}} % de la surface brute) · {{perDesk}} m²/poste · {{meetings}} salles de réunion",
+      "deep": "{{count}} niveau(x) trop profond(s) pour l'éclairage naturel"
+    }
   }
 }
