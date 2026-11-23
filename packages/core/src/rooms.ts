@@ -450,31 +450,43 @@ export function unitRoomLayout(
     blockers: readonly Polygon[],
   ): [number, number, number, number] | undefined {
     const t0 = sej.depth;
+    const sw = sej.s1 - sej.s0;
+    // a real part of the day zone, not a corridor: ≥ 2 m wide, and the whole séjour no deeper
+    // than 1.6 × its width (office rule: rooms are not elongated)
+    const MIN_W = 2.0;
+    const maxB1 = Math.min(run.depth, RATIO.sejour * Math.max(sw, sHi - sLo));
+    if (maxB1 - t0 < 1 || sHi - sLo < MIN_W) return undefined;
+    // only blockers near the search area take part in the boolean tests
+    const area = box(run, sLo, sHi, t0, maxB1);
+    const near = blockers.filter((b) => intersection([area], [b]).length > 0);
+    const clip = intersection([unit], [area]);
     const free = (a0: number, a1: number, b1: number) => {
       const bx = box(run, a0, a1, t0, b1);
-      let ps = intersection([unit], [bx]);
-      if (blockers.length) ps = difference(ps, blockers);
+      let ps = intersection(clip, [bx]);
+      if (near.length) ps = difference(ps, near);
       return ps.reduce((x, p) => x + polygonArea(p), 0) >= (a1 - a0) * (b1 - t0) - 0.01;
     };
     let best: [number, number, number, number] | undefined;
     let bestA = 0;
-    // a real part of the day zone, not a corridor: ≥ 2 m wide, and the whole séjour no deeper
-    // than 1.6 × its width (office rule: rooms are not elongated)
-    const MIN_W = 2.0;
-    const sw = sej.s1 - sej.s0;
-    for (let d = 1.0; t0 + d <= run.depth + 1e-6; d += 0.25) {
+    const alive = { 1: true, [-1]: true } as Record<number, boolean>;
+    for (let d = 1.0; t0 + d <= maxB1 + 1e-6; d += 0.25) {
       const b1 = t0 + d;
       for (const side of [1, -1] as const) {
+        if (!alive[side]) continue;
         const anchor = side > 0 ? sej.s0 : sej.s1;
         const max = side > 0 ? sHi - anchor : anchor - sLo;
         const ok = (w: number) =>
           side > 0 ? free(anchor, anchor + w, b1) : free(anchor - w, anchor, b1);
-        if (max < MIN_W || !ok(MIN_W)) continue;
+        // deeper is never freer: once the narrowest strip is blocked, stop on this side
+        if (max < MIN_W || !ok(MIN_W)) {
+          alive[side] = false;
+          continue;
+        }
         let lo = MIN_W;
         let hi = max;
         if (ok(hi)) lo = hi;
         else
-          for (let k = 0; k < 12; k++) {
+          for (let k = 0; k < 7; k++) {
             const m = (lo + hi) / 2;
             if (ok(m)) lo = m;
             else hi = m;
