@@ -9,28 +9,28 @@ SDB = Salle de bain, SDE = Salle d'eau, Entrée = Eingangsbereich/Flur.
 
 ## 1. Fassadenbreiten (bestehende Büro-Regeln)
 
-| Raum | Mindest-Fassade |
-|---|---|
-| Séjour | 3,60 m |
-| Chambre PMR (jede Wohnung ab T2, genau eine) | 2,80 m |
-| weitere Chambres (T3: 1, T4: 2, T5: 3) | 2,50 m |
-| Cuisine, wenn separat | 2,15 m |
-| Wand zwischen Räumen | ≥ 0,10 m |
+| Raum                                         | Mindest-Fassade |
+| -------------------------------------------- | --------------- |
+| Séjour                                       | 3,60 m          |
+| Chambre PMR (jede Wohnung ab T2, genau eine) | 2,80 m          |
+| weitere Chambres (T3: 1, T4: 2, T5: 3)       | 2,50 m          |
+| Cuisine, wenn separat                        | 2,15 m          |
+| Wand zwischen Räumen                         | ≥ 0,10 m        |
 
 Die Laubengang-Seite zählt als Fassade (umschaltbar).
 
 ## 2. Mindestflächen
 
-| Raum | Mindestfläche |
-|---|---|
-| Séjour (ohne Küche) | 20 m² |
-| Séjour + Cuisine (offen) | 25 m² |
-| Cuisine separat | 7 m² |
-| Chambre | 10 m² |
-| Chambre PMR | 12 m² |
-| SDB | 5 m² |
-| SDE | 4 m² |
-| WC | 2 m² |
+| Raum                     | Mindestfläche |
+| ------------------------ | ------------- |
+| Séjour (ohne Küche)      | 20 m²         |
+| Séjour + Cuisine (offen) | 25 m²         |
+| Cuisine separat          | 7 m²          |
+| Chambre                  | 10 m²         |
+| Chambre PMR              | 12 m²         |
+| SDB                      | 5 m²          |
+| SDE                      | 4 m²          |
+| WC                       | 2 m²          |
 
 ## 3. Zonierung
 
@@ -66,10 +66,10 @@ Die Laubengang-Seite zählt als Fassade (umschaltbar).
 
 ## 7. Bäder und WC
 
-| Typ | Nasszellen |
-|---|---|
-| T1, T2 | 1 SDB mit WC |
-| T3 | 1 SDB + 1 WC separat |
+| Typ    | Nasszellen                   |
+| ------ | ---------------------------- |
+| T1, T2 | 1 SDB mit WC                 |
+| T3     | 1 SDB + 1 WC separat         |
 | T4, T5 | 1 SDB + 1 SDE + 1 WC separat |
 
 - Bäder dürfen innenliegend sein (VMC).
