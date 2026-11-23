@@ -62,6 +62,8 @@ export function FloorPlanLegend({
   const ratioFail = units.filter(
     (u) => u.facadeRatioOk === false && u.duplex?.level !== 'nuit',
   ).length;
+  const accessFail = units.filter((u) => u.accessOk === false).length;
+  const oversize = units.filter((u) => u.outOfRange && u.duplex?.level !== 'nuit').length;
   const orientFail = units.filter(
     (u) => u.orientationOk === false && u.duplex?.level !== 'nuit',
   ).length;
@@ -224,6 +226,12 @@ export function FloorPlanLegend({
             pct: Math.round((rules.facadeAreaRatio ?? 0.12) * 100),
           })}
         </p>
+      )}
+      {accessFail > 0 && (
+        <p className="dv-legend-note dv-legend-warn">{t('fp.accessFail', { count: accessFail })}</p>
+      )}
+      {oversize > 0 && (
+        <p className="dv-legend-note dv-legend-warn">{t('fp.oversizeFail', { count: oversize })}</p>
       )}
       {orientFail > 0 && (
         <p className="dv-legend-note dv-legend-warn">{t('fp.orientFail', { count: orientFail })}</p>

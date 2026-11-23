@@ -94,7 +94,9 @@
     "areaFail": "{{count}} pièce(s) sous la surface minimale",
     "galleryRoom": "{{count}} chambre(s) côté coursive (hachurées)",
     "orientFail": "{{count}} logement(s) sans double orientation (dès T3) ou orientés nord seulement",
-    "ratioFail": "{{count}} logement(s) avec une façade inférieure à {{pct}} % de la surface"
+    "ratioFail": "{{count}} logement(s) avec une façade inférieure à {{pct}} % de la surface",
+    "accessFail": "{{count}} logement(s) sans accès depuis la cage d’escalier ou le couloir",
+    "oversizeFail": "{{count}} logement(s) hors de la fourchette de surface de leur type (*)"
   },
   "ridge": "faîtage"
 }

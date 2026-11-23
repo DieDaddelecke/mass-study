@@ -120,4 +120,37 @@ describe('floor-plan guide', () => {
     expect(unitsPerCoreRange('laubengang')).toEqual([3, 8]);
     expect(unitsPerCoreRange('zweispaenner')).toEqual([2, 2]);
   });
+
+  it('every dwelling has a door and no dwelling exceeds what its façade allows (corners)', () => {
+    const cases = [
+      mass(
+        {
+          kind: 'freeLine',
+          points: [
+            [-20, 10],
+            [20, 10],
+            [20, -20],
+          ],
+          closed: false,
+          depth: 13,
+          alignment: 'center',
+        },
+        { access: 'dreispaenner' },
+      ),
+      mass({ kind: 'solitaer', length: 24, depth: 22 }, { access: 'punkthaus' }),
+    ];
+    for (const m of cases) {
+      const ml = massLayout(m, massToSolids(m, settings), settings);
+      for (const st of ml.storeys.filter((s) => s.usage === 'wohnen')) {
+        const over: string[] = [];
+        for (const u of st.units) {
+          expect(u.accessOk).toBe(true);
+          const type = settings.unitMix.find((t) => t.id === u.typeId)!;
+          if (u.area > type.areaMax + 1) over.push(`${u.label} ${u.area.toFixed(0)}`);
+        }
+        // oversize only where nothing else fits (flagged with *), at most one per storey
+        expect(over.length).toBeLessThanOrEqual(1);
+      }
+    }
+  });
 });
