@@ -15,7 +15,7 @@ import type { Draft } from 'immer';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../i18n';
 import { actions, activeVariant, useProjectStore } from '../store/projectStore';
-import type { VisualStyle } from '../store/tools';
+import { STYLES, type VisualStyle } from '../store/tools';
 import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
 import { useViewportStore } from '../viewport/viewportStore';
@@ -24,6 +24,7 @@ import { DuplexFields } from './DuplexFields';
 import { OutdoorFields } from './OutdoorFields';
 import { PlantingProperties, RoofFields, TerraceFields } from './MassShapeFields';
 import { TypologyInputs } from './TypologyInputs';
+import { UseFields } from './UseFields';
 import { useShellStore } from './shellStore';
 import { Group, NumField, Row, Segmented, TrafficDot } from './ui';
 
@@ -332,6 +333,7 @@ function MassProperties({ mass }: { mass: Mass }) {
           <DuplexFields mass={mass} settings={project.settings} update={update} />
         </>
       )}
+      <UseFields mass={mass} settings={project.settings} update={update} />
       {res && (
         <Group title={t('props.group.results')}>
           <Row label={t('common:kpi.emprise')}>
@@ -459,15 +461,6 @@ function ContextProperties({ c }: { c: ContextBuilding }) {
     </Group>
   );
 }
-
-const STYLES: VisualStyle[] = [
-  'wireframe',
-  'hiddenLine',
-  'shaded',
-  'consistentColors',
-  'granulometry',
-  'realistic',
-];
 
 function ViewProperties() {
   const { t, i18n } = useTranslation('shell');

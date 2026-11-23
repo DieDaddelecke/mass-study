@@ -7,7 +7,7 @@ import {
   type StoreySolid,
   type UnitType,
 } from '@kubatur/core';
-import { unitColor } from '@kubatur/drawing';
+import { SPACE_COLORS, unitColor } from '@kubatur/drawing';
 import { BufferGeometry, Color, Float32BufferAttribute } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { extrudePolygon, prismEdges } from './geometry';
@@ -84,7 +84,7 @@ export function buildGranulometry(
     const parts: BufferGeometry[] = [];
     const edges: number[] = [];
     for (const st of m.storeys) {
-      if (!st.units.length) continue;
+      if (!st.units.length && !st.spaces?.length) continue;
       const key = `${m.massId}#${st.storeyIndex}`;
       const z1 = z1Of.get(key);
       if (z1 === undefined || !(z1 > st.z0)) continue;
@@ -122,6 +122,9 @@ export function buildGranulometry(
         if (c.kind === 'lift') add(c.polygon, GRANULO_COLORS.core, true);
         else add(c.polygon, GRANULO_COLORS.circulation, false);
       for (const o of st.open) add(o.polygon, GRANULO_COLORS.circulation, false);
+      // residence common rooms and office plateaus (shafts sit inside the units)
+      for (const sp of st.spaces ?? [])
+        if (sp.kind !== 'gaine' && !sp.overlay) add(sp.polygon, SPACE_COLORS[sp.kind], true);
     }
     if (!parts.length) continue;
     const geometry = mergeGeometries(

@@ -38,7 +38,7 @@ export const useUiStore = create<UiState>()((set) => ({
   tool: { kind: 'select' },
   activeView: '3d',
   openViews: ['3d'],
-  visualStyle: 'shaded',
+  visualStyle: 'realistic',
   projection: 'perspective',
   snap: {
     enabled: true,

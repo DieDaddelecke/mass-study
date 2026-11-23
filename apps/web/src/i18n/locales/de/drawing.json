@@ -94,7 +94,34 @@
     "areaFail": "{{count}} Raum/Räume unter der Mindestfläche",
     "galleryRoom": "{{count}} Zimmer zum Laubengang (schraffiert)",
     "orientFail": "{{count}} Wohnung(en) ohne zwei Ausrichtungen (ab T3) oder nur nach Norden",
-    "ratioFail": "{{count}} Wohnung(en) mit Fassade unter {{pct}} % der Fläche"
+    "ratioFail": "{{count}} Wohnung(en) mit Fassade unter {{pct}} % der Fläche",
+    "accessFail": "{{count}} Wohnung(en) ohne Zugang vom Treppenhaus oder Flur",
+    "oversizeFail": "{{count}} Wohnung(en) außerhalb der Flächenspanne ihres Typs (*)",
+    "uses": {
+      "residenceTotal": "Wohnheim",
+      "beds": "{{count}} Betten",
+      "office": "{{desks}} Arbeitsplätze · NF {{usable}} m² · {{meetings}} Besprechungsräume",
+      "layout": {
+        "openSpace": "Open Space",
+        "cellulaire": "Einzelbüros",
+        "mixte": "Gemischt"
+      },
+      "deep": "Arbeitsfläche {{distance}} m von der Fassade: zu tief für Tageslicht",
+      "space": {
+        "sde": "Duschbad (mit WC)",
+        "entree": "Eingang",
+        "kitchenette": "Pantryküche",
+        "gaine": "Schacht (für zwei Apartments)",
+        "accueil": "Empfang",
+        "laverie": "Waschraum",
+        "salleCommune": "Gemeinschaftsraum",
+        "openSpace": "Open Space",
+        "bureau": "Einzelbüro",
+        "reunion": "Besprechungsraum",
+        "sanitaires": "Sanitär",
+        "hall": "Eingangshalle"
+      }
+    }
   },
   "ridge": "First"
 }

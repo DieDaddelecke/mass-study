@@ -94,7 +94,34 @@
     "areaFail": "{{count}} pièce(s) sous la surface minimale",
     "galleryRoom": "{{count}} chambre(s) côté coursive (hachurées)",
     "orientFail": "{{count}} logement(s) sans double orientation (dès T3) ou orientés nord seulement",
-    "ratioFail": "{{count}} logement(s) avec une façade inférieure à {{pct}} % de la surface"
+    "ratioFail": "{{count}} logement(s) avec une façade inférieure à {{pct}} % de la surface",
+    "accessFail": "{{count}} logement(s) sans accès depuis la cage d’escalier ou le couloir",
+    "oversizeFail": "{{count}} logement(s) hors de la fourchette de surface de leur type (*)",
+    "uses": {
+      "residenceTotal": "Résidence",
+      "beds": "{{count}} lits",
+      "office": "{{desks}} postes · SU {{usable}} m² · {{meetings}} salles de réunion",
+      "layout": {
+        "openSpace": "Open space",
+        "cellulaire": "Cloisonné",
+        "mixte": "Mixte"
+      },
+      "deep": "Plateau à {{distance}} m de la façade : trop profond pour l'éclairage naturel",
+      "space": {
+        "sde": "Salle d'eau (avec WC)",
+        "entree": "Entrée",
+        "kitchenette": "Kitchenette",
+        "gaine": "Gaine (partagée par deux studios)",
+        "accueil": "Accueil",
+        "laverie": "Laverie",
+        "salleCommune": "Salle commune",
+        "openSpace": "Open space",
+        "bureau": "Bureau cloisonné",
+        "reunion": "Salle de réunion",
+        "sanitaires": "Sanitaires",
+        "hall": "Hall d'accueil"
+      }
+    }
   },
   "ridge": "faîtage"
 }

@@ -19,3 +19,6 @@ export * from './outdoor.js';
 export * from './roof.js';
 export * from './green.js';
 export * from './stairs.js';
+export * from './spaces.js';
+export * from './residence.js';
+export * from './office.js';

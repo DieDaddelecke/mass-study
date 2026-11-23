@@ -48,7 +48,7 @@ import {
 import i18n from '../i18n';
 import { useArchicadStore } from '../archicad/archicadStore';
 import { useProjectStore } from '../store/projectStore';
-import type { ToolState, VisualStyle } from '../store/tools';
+import { STYLES, type ToolState } from '../store/tools';
 import { useUiStore } from '../store/uiStore';
 import { useThemeStore } from '../theme/themeStore';
 import { useViewportStore } from '../viewport/viewportStore';
@@ -119,15 +119,6 @@ export const MODIFY_TOOLS: { tool: ToolState; icon: LucideIcon; code: string }[]
   { tool: { kind: 'array', count: 3 }, icon: Grid3x3, code: 'AR' },
   { tool: { kind: 'align' }, icon: AlignStartVertical, code: 'AL' },
   { tool: { kind: 'drawGreen', plantingKind: 'pleineTerre' }, icon: Trees, code: 'VG' },
-];
-
-export const STYLES: VisualStyle[] = [
-  'wireframe',
-  'hiddenLine',
-  'shaded',
-  'consistentColors',
-  'granulometry',
-  'realistic',
 ];
 
 const t = (k: string, o?: Record<string, unknown>) => i18n.t(k, { ns: 'shell', ...o });

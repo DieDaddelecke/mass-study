@@ -15,9 +15,6 @@
     "W": "W"
   },
   "style": {
-    "wireframe": "Drahtmodell",
-    "hiddenLine": "Verdeckte Kanten",
-    "shaded": "Schattiert",
     "consistentColors": "Konsistente Farben",
     "granulometry": "Granulometrie",
     "realistic": "Realistisch"

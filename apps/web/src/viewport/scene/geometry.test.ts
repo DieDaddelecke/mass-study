@@ -1,4 +1,4 @@
-import type { ContextBuilding, Polygon } from '@kubatur/core';
+import { USAGES, type ContextBuilding, type Polygon } from '@kubatur/core';
 import { describe, expect, it } from 'vitest';
 import { USAGE_COLORS, usageColor } from './colors';
 import { cubeRegion, emptyBox, expandBox, fitBox, orthoZoomFor, planFit } from './cameraFit';
@@ -96,7 +96,7 @@ describe('context merge', () => {
 describe('colours', () => {
   it('maps every usage to a distinct colour', () => {
     expect(usageColor('wohnen')).toBe(USAGE_COLORS.wohnen);
-    expect(new Set(Object.values(USAGE_COLORS)).size).toBe(6);
+    expect(new Set(Object.values(USAGE_COLORS)).size).toBe(USAGES.length);
   });
 });
 

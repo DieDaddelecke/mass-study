@@ -72,6 +72,7 @@ export function lightWarning(t: Typology, usage: Usage, settings: Settings): boo
 export function resolveAccess(mass: Mass, settings: Settings): AccessType {
   if (mass.access && mass.access !== 'auto') return mass.access;
   const usage = mass.usage ?? 'wohnen';
+  if (usage === 'wohnheim') return 'mittelflur';
   if (usage !== 'wohnen') return 'buero';
   const t = mass.typology;
   if (t.kind === 'reihe') return 'reihenhaus';

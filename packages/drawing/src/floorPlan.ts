@@ -10,6 +10,8 @@ import {
   union,
   type LayoutArea,
   type LayoutRoom,
+  type LayoutSpace,
+  type SpaceKind,
   type LayoutUnit,
   type OutdoorType,
   type RoomKind,
@@ -24,6 +26,7 @@ import {
 } from '@kubatur/core';
 import polylabel from 'polylabel';
 import { COLORS, line, type CommonOptions } from './common.js';
+import { RESIDENCE_COLORS, SPACE_COLORS, SPACE_LABELS, spaceLabelMinArea } from './spaces.js';
 import type { DItem, DrawingModel } from './model.js';
 
 /** Fill colours per unit type, in the order of the unit mix (T1 … T5, 1-Zi … 5-Zi). */
@@ -119,6 +122,8 @@ export const OUTDOOR_LABELS: Record<OutdoorType, string> = {
 
 /** Colour of a unit type (by its position in the mix). */
 export function unitColor(typeId: string, mix: readonly UnitType[]): string {
+  const own = RESIDENCE_COLORS[typeId];
+  if (own) return own;
   const i = mix.findIndex((t) => t.id === typeId);
   return UNIT_COLORS[(i < 0 ? UNIT_COLORS.length - 1 : i) % UNIT_COLORS.length]!;
 }
@@ -134,6 +139,10 @@ export interface FloorPlanOptions extends CommonOptions {
   facadeText?: (facade: number, required: number) => string;
   /** Main rooms (séjour, chambre PMR, chambres) as rectangles, default true. */
   rooms?: boolean;
+  /** Names of residence / office spaces (default French short labels). */
+  spaceText?: (k: SpaceKind) => string;
+  /** Word after the workstation count ("postes"). */
+  desksText?: string;
   /** Short room labels inside the rectangles, default true. */
   roomLabels?: boolean;
   /** Outdoor spaces (balcons, loggias, terrasses), default true. */
@@ -427,6 +436,52 @@ export function floorPlan(
           items.push(line([r[1]!, r[3]!], 1, 'solid', FLOOR_PLAN_COLORS.coreLine));
         }
       } else items.push(fill(c.polygon, FLOOR_PLAN_COLORS.circulation));
+    // spaces of residences / offices (common rooms, shafts, plateau)
+    const spaceName = opts.spaceText ?? ((k: SpaceKind) => SPACE_LABELS[k]);
+    const spaceItems = (sp: LayoutSpace, owner?: string) => {
+      if (sp.overlay) {
+        for (const r of rings(sp.polygon)) items.push(line(r, 1, 'solid', '#6f6c66', true));
+        return;
+      }
+      items.push({
+        kind: 'fill',
+        rings: rings(sp.polygon),
+        fill: SPACE_COLORS[sp.kind],
+        pen: sp.kind === 'gaine' ? 2 : 1,
+        stroke: '#55534e',
+        title: `${owner ? `${owner} · ` : ''}${spaceName(sp.kind)} · ${fmtArea(sp.area)}${sp.desks ? ` · ${sp.desks} ${opts.desksText ?? 'postes'}` : ''}`,
+      });
+      if (
+        !owner &&
+        opts.labels !== false &&
+        opts.roomLabels !== false &&
+        sp.area >= spaceLabelMinArea(sp)
+      ) {
+        const big = sp.area >= 40;
+        labels.push({
+          kind: 'text',
+          at: labelPoint(sp.polygon),
+          text: spaceName(sp.kind),
+          sizeMm: big ? 2 : 1.3,
+          anchor: 'middle',
+          baseline: big ? 'bottom' : 'middle',
+          weight: big ? 'bold' : 'normal',
+          color: '#3d3b37',
+        });
+        if (big)
+          labels.push({
+            kind: 'text',
+            at: labelPoint(sp.polygon),
+            text: `${fmtArea(sp.area)}${sp.desks ? ` · ${sp.desks} ${opts.desksText ?? 'postes'}` : ''}`,
+            sizeMm: 1.5,
+            anchor: 'middle',
+            baseline: 'top',
+            color: '#3d3b37',
+            offsetMm: [0, -0.5],
+          });
+      }
+    };
+    for (const sp of st.spaces ?? []) if (sp.kind !== 'gaine') spaceItems(sp);
     for (const u of st.units)
       items.push({
         ...fill(
@@ -485,6 +540,9 @@ export function floorPlan(
             });
         }
       }
+    if (opts.rooms !== false)
+      for (const u of st.units) for (const sp of u.spaces ?? []) spaceItems(sp, u.label);
+    for (const sp of st.spaces ?? []) if (sp.kind === 'gaine') spaceItems(sp);
     for (const u of st.units)
       if (u.duplex?.stair)
         items.push(...duplexStairSymbol(u.duplex.stair, u.duplex.part === 'upper'));
@@ -501,6 +559,10 @@ export function floorPlan(
         items.push(line(r, 3, 'solid', FLOOR_PLAN_COLORS.wall, true));
     for (const o of st.open)
       for (const r of rings(o.polygon)) items.push(line(r, 1, 'solid', COLORS.grey, true));
+    for (const sp of st.spaces ?? [])
+      if (sp.kind !== 'gaine')
+        for (const r of rings(sp.polygon))
+          items.push(line(r, 2, 'solid', FLOOR_PLAN_COLORS.wall, true));
     if (opts.labels !== false)
       for (const u of st.units) {
         const at = unitLabelPoint(
@@ -618,7 +680,7 @@ export function distinctStoreyGroups(
 /** Default storey of the floor plan view: the first storey of the largest group of identical
  *  residential storeys (the typical upper floor), else the first above-ground storey. */
 export function typicalStorey(layouts: readonly MassLayout[]): number {
-  const groups = distinctStoreyGroups(layouts, (s) => s.units.length > 0);
+  const groups = distinctStoreyGroups(layouts, (s) => s.units.length > 0 || !!s.office);
   if (groups.length) {
     const best = [...groups].sort(
       (a, b) => b.storeys.length - a.storeys.length || a.storeys[0]! - b.storeys[0]!,

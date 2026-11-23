@@ -12,22 +12,13 @@ import {
   Sun,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { VisualStyle } from '../store/tools';
+import { STYLES } from '../store/tools';
 import { useUiStore } from '../store/uiStore';
 import { useViewportStore } from './viewportStore';
 import { LIT_STYLES } from './scene/looks';
 import { useProjectStore } from '../store/projectStore';
 import { useAnalysis } from '../store/useAnalysis';
 import { defaultCutLevel } from './scene/storeyCut';
-
-const STYLES: VisualStyle[] = [
-  'wireframe',
-  'hiddenLine',
-  'shaded',
-  'consistentColors',
-  'granulometry',
-  'realistic',
-];
 
 /** 3D ↔ plan switch: both are editable working views of the same scene. */
 function ModeSwitch({ plan }: { plan: boolean }) {
@@ -123,7 +114,7 @@ export function ViewControlBar({ plan = false }: { plan?: boolean }) {
         aria-pressed={sunActive}
         onClick={() => {
           if (!LIT_STYLES.has(style)) {
-            setStyle('shaded');
+            setStyle('realistic');
             setSun(true);
           } else setSun(!sun);
         }}

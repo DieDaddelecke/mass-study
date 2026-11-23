@@ -30,8 +30,10 @@ export type ToolState =
 
 export type ToolKind = ToolState['kind'];
 
-export type VisualStyle =
-  'wireframe' | 'hiddenLine' | 'shaded' | 'consistentColors' | 'granulometry' | 'realistic';
+/** Visual styles of the 3D view (filaire, lignes cachées and ombré were dropped in favour of these). */
+export type VisualStyle = 'realistic' | 'consistentColors' | 'granulometry';
+
+export const STYLES: readonly VisualStyle[] = ['realistic', 'consistentColors', 'granulometry'];
 
 /**
  * Views. `3d` and `plan` are the editable working views (same scene and tools; `plan` looks

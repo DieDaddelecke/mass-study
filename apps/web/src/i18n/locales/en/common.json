@@ -8,6 +8,7 @@
   },
   "usage": {
     "wohnen": "Residential",
+    "wohnheim": "Residence",
     "buero": "Office",
     "gewerbe": "Retail",
     "gemeinbedarf": "Public facility",

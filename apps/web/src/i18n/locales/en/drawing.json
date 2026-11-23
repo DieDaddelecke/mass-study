@@ -94,7 +94,34 @@
     "areaFail": "{{count}} room(s) below the minimum area",
     "galleryRoom": "{{count}} bedroom(s) facing the gallery (hatched)",
     "orientFail": "{{count}} dwelling(s) without two orientations (from T3) or facing north only",
-    "ratioFail": "{{count}} dwelling(s) with a façade below {{pct}} % of the area"
+    "ratioFail": "{{count}} dwelling(s) with a façade below {{pct}} % of the area",
+    "accessFail": "{{count}} dwelling(s) without access from the stair or corridor",
+    "oversizeFail": "{{count}} dwelling(s) outside the area range of their type (*)",
+    "uses": {
+      "residenceTotal": "Residence",
+      "beds": "{{count}} beds",
+      "office": "{{desks}} desks · usable {{usable}} m² · {{meetings}} meeting rooms",
+      "layout": {
+        "openSpace": "Open space",
+        "cellulaire": "Cellular",
+        "mixte": "Mixed"
+      },
+      "deep": "Plateau {{distance}} m from the façade: too deep for daylight",
+      "space": {
+        "sde": "Shower room (with WC)",
+        "entree": "Entrance",
+        "kitchenette": "Kitchenette",
+        "gaine": "Shaft (shared by two studios)",
+        "accueil": "Reception",
+        "laverie": "Laundry",
+        "salleCommune": "Common room",
+        "openSpace": "Open space",
+        "bureau": "Cellular office",
+        "reunion": "Meeting room",
+        "sanitaires": "Toilets",
+        "hall": "Entrance hall"
+      }
+    }
   },
   "ridge": "ridge"
 }

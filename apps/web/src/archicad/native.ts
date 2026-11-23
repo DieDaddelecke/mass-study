@@ -66,7 +66,7 @@ interface Line {
  * and a unit edge coincide the thicker (core) wall wins.
  */
 export function interiorWalls(
-  st: Pick<StoreyLayout, 'footprints' | 'units' | 'cores' | 'circulation' | 'open'>,
+  st: Pick<StoreyLayout, 'footprints' | 'units' | 'cores' | 'circulation' | 'open' | 'spaces'>,
   thickness: { interior: number; core: number },
 ): WallSegment[] {
   const lines: Line[] = [];
@@ -95,6 +95,10 @@ export function interiorWalls(
   for (const u of st.units) add(normalizePolygon(u.polygon).outer, thickness.interior, 'interior');
   for (const c of st.circulation)
     add(normalizePolygon(c.polygon).outer, thickness.interior, 'interior');
+  // rooms of residences / offices (common rooms, offices, meeting rooms, sanitary blocks)
+  for (const s of st.spaces ?? [])
+    if (!s.overlay && s.kind !== 'openSpace' && s.kind !== 'gaine')
+      add(normalizePolygon(s.polygon).outer, thickness.interior, 'interior');
 
   const onFacade = (p: Vec2) =>
     st.footprints.some((f) =>

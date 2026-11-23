@@ -246,6 +246,7 @@ export function analyzeMasses(masses: readonly Mass[], settings: Settings): Vari
   );
   const usageNuf: Record<Usage, number> = {
     wohnen: 0,
+    wohnheim: 0,
     buero: 0,
     gewerbe: 0,
     gemeinbedarf: 0,

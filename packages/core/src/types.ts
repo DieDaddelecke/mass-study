@@ -14,9 +14,11 @@ export interface Polygon {
 export type RuleProfileId = 'FR' | 'DE';
 export type StoreyNotation = 'fr' | 'de' | 'roman';
 
-export type Usage = 'wohnen' | 'buero' | 'gewerbe' | 'gemeinbedarf' | 'parken' | 'technik';
+export type Usage =
+  'wohnen' | 'wohnheim' | 'buero' | 'gewerbe' | 'gemeinbedarf' | 'parken' | 'technik';
 export const USAGES: readonly Usage[] = [
   'wohnen',
+  'wohnheim',
   'buero',
   'gewerbe',
   'gemeinbedarf',
@@ -149,6 +151,10 @@ export interface Mass {
   roof?: RoofConfig;
   /** Duplex dwellings on the upper storeys; default: settings (off). */
   duplex?: DuplexConfig;
+  /** Residence (Wohnheim) rules of this mass; default: settings. */
+  residence?: Partial<ResidenceRules>;
+  /** Office (Büro) rules of this mass; default: settings. */
+  office?: Partial<OfficeRules>;
 }
 
 /**
@@ -510,6 +516,10 @@ export interface Settings {
   outdoor?: OutdoorConfig;
   /** Duplex dwellings: default configuration of new buildings. */
   duplex?: DuplexConfig;
+  /** Residences (résidence étudiante / seniors), defaults when missing. */
+  residenceRules?: Partial<ResidenceRules>;
+  /** Office floors (bureaux), defaults when missing. */
+  officeRules?: Partial<OfficeRules>;
   workplaceArea: number;
   parking: {
     perDwelling: number;
@@ -569,4 +579,72 @@ export interface Project {
   sheets: unknown[];
   settings: Settings;
   constraints: Constraints;
+}
+
+// ---------------------------------------------------------------------------
+// Residences (Wohnheim) and offices (Büro)
+// ---------------------------------------------------------------------------
+
+/** Student residence or senior residence. */
+export type ResidenceVariant = 'etudiant' | 'senior';
+
+/**
+ * Rules of a residence storey (résidence étudiante / résidence seniors): many small repetitive
+ * studios along a corridor, PMR studios near the cores, larger units at the building ends
+ * (corners), common rooms on the ground floor. Two mirrored studios share one shaft.
+ */
+export interface ResidenceRules {
+  variant: ResidenceVariant;
+  /** Façade width of a standard studio (axis), m. */
+  studioWidth: number;
+  /** Façade width of a PMR studio, m. */
+  pmrWidth: number;
+  /** Share of PMR studios (0..1) and minimum per storey. */
+  pmrShare: number;
+  pmrMinPerStorey: number;
+  /** Façade width of the corner / end units (T1bis, duo, T2), m. */
+  cornerWidth: number;
+  /** Central corridor width, m. */
+  corridorWidth: number;
+  /** Depth of the entrance band (entrée + salle d'eau) behind the corridor, m. */
+  wetDepth: number;
+  /** Width of the salle d'eau (shower + WC + basin), m. */
+  sdeWidth: number;
+  /** Shared shaft of two mirrored studios: along the party wall × depth, m. */
+  shaft: [number, number];
+  /** Length of the kitchenette along the party wall, m. */
+  kitchenetteLength: number;
+  /** Common rooms on the ground floor: m² per unit, minimum m². */
+  commonPerUnit: number;
+  commonMin: number;
+}
+
+export type OfficeLayoutKind = 'openSpace' | 'cellulaire' | 'mixte';
+
+/** Rules of an office storey (plateau de bureaux). */
+export interface OfficeRules {
+  layout: OfficeLayoutKind;
+  /** Façade grid (trame), m (1.35). */
+  grid: number;
+  /** Maximum distance of a workstation from the façade (daylight), m. */
+  maxFacadeDistance: number;
+  /** Workstations: m² of usable area per desk, open space and cellular offices. */
+  areaPerDeskOpen: number;
+  areaPerDeskCell: number;
+  /** Width of a cellular office in grid modules (2 = 2.70 m). */
+  cellModules: number;
+  /** One meeting room per n desks; meeting room width in grid modules. */
+  desksPerMeeting: number;
+  meetingModules: number;
+  /** Corridor of cellular / mixed layouts, m. */
+  corridorWidth: number;
+  /** Core (stair + lift) width along the bar and depth, m. */
+  coreWidth: number;
+  coreDepth: number;
+  /** Sanitary block beside each core, width along the bar, m. */
+  sanitaryWidth: number;
+  /** Floor area served by one lift, m². */
+  areaPerLift: number;
+  /** Ground floor entrance hall (hall d'accueil), width in grid modules. */
+  lobbyModules: number;
 }

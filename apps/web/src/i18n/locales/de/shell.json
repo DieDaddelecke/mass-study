@@ -242,9 +242,6 @@
     "perspective": "Perspektive",
     "orthographic": "Orthogonal",
     "styles": {
-      "wireframe": "Drahtmodell",
-      "hiddenLine": "Verdeckte Linien",
-      "shaded": "Schattiert",
       "consistentColors": "Einheitliche Farben",
       "granulometry": "Granulometrie",
       "realistic": "Realistisch"
@@ -266,7 +263,11 @@
   "kpi": {
     "title": "Kennzahlen",
     "target": "{{status}} (Vorgabe ≤ {{target}})",
-    "open": "Regelprüfung öffnen"
+    "open": "Regelprüfung öffnen",
+    "residence": "Wohnheim",
+    "residenceTip": "{{units}} Einheiten · {{beds}} Betten · {{pmr}} PMR (schematischer Grundriss)",
+    "desks": "Arbeitsplätze",
+    "desksTip": "Arbeitsplätze laut schematischem Grundriss · NF {{usable}} m²"
   },
   "start": {
     "subtitle": "Kubaturen auf dem realen Grundstück skizzieren, vergleichen und prüfen – in Minuten.",
@@ -524,5 +525,33 @@
     "note": "Zwei übereinanderliegende Geschosse ab {{storey}}. Eingang immer auf der Ebene des Wohnraums; Wohnraum und PMR-Zimmer auf der Wohnebene, weitere Zimmer auf der Schlafebene. Fassadenregeln je Ebene.",
     "none": "Keine Maisonette: Die Wohnungen dieses Grundrisses sind für eine Maisonette-Ebene zu groß.",
     "count": "{{count}} Maisonetten"
+  },
+  "uses": {
+    "residence": {
+      "title": "Wohnheim",
+      "variant": "Art",
+      "etudiant": "Studierende",
+      "senior": "Senioren",
+      "studioWidth": "Breite Apartment",
+      "pmrWidth": "Breite Apartment PMR",
+      "cornerWidth": "Breite Eckeinheit",
+      "corridorWidth": "Flur",
+      "pmrShare": "Anteil PMR",
+      "commonPerUnit": "Gemeinschaftsfläche je Einheit",
+      "result": "{{units}} Einheiten · {{beds}} Betten · {{pmr}} PMR · Ø {{avg}} m² · Gemeinschaftsräume {{common}} m²",
+      "note": "Gleiche Apartments am Mittelflur, PMR-Apartments an den Treppenhäusern, größere Einheiten in den Ecken (Duo / T2). Zwei gespiegelte Apartments teilen sich einen Schacht 60 × 80 cm. Gemeinschaftsräume (Empfang, Waschraum, Gemeinschaftsraum) im EG."
+    },
+    "office": {
+      "title": "Büro",
+      "layout": "Layout",
+      "openSpace": "Open Space",
+      "cellulaire": "Einzelbüros",
+      "mixte": "Gemischt",
+      "grid": "Raster",
+      "areaPerDesk": "Fläche je Arbeitsplatz",
+      "maxDepth": "Max. Abstand zur Fassade",
+      "result": "{{desks}} Arbeitsplätze · NF {{usable}} m² ({{ratio}} % der Bruttofläche) · {{perDesk}} m²/Platz · {{meetings}} Besprechungsräume",
+      "deep": "{{count}} Geschoss(e) zu tief für Tageslicht"
+    }
   }
 }

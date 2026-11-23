@@ -7,7 +7,9 @@ import {
   resolveStairRules,
   normalizePolygon,
   union,
+  RESIDENCE_COMMON,
   type CoreStair,
+  type SpaceKind,
   type Mass,
   type Polygon,
   type Project,
@@ -53,6 +55,7 @@ export const LAYER_NAME = 'MS - Massenstudie';
 /** Zone category per usage: "MS - Logement" etc. Colours follow the app's usage colours loosely. */
 export const USAGE_COLORS: Record<Usage, [number, number, number]> = {
   wohnen: [0.96, 0.8, 0.45],
+  wohnheim: [0.92, 0.68, 0.36],
   buero: [0.55, 0.72, 0.92],
   gewerbe: [0.92, 0.55, 0.55],
   gemeinbedarf: [0.7, 0.6, 0.88],
@@ -183,6 +186,37 @@ export interface TransferPlan {
   warnings: PlanWarning[];
   counts: PlanCounts;
 }
+
+/** Zone names of the residence / office rooms (French, as the plans). */
+export const SPACE_ZONE_NAMES: Record<SpaceKind, string> = {
+  sde: "Salle d'eau",
+  entree: 'Entrée',
+  kitchenette: 'Kitchenette',
+  gaine: 'Gaine',
+  accueil: 'Accueil',
+  laverie: 'Laverie',
+  salleCommune: 'Salle commune',
+  openSpace: 'Open space',
+  bureau: 'Bureau',
+  reunion: 'Salle de réunion',
+  sanitaires: 'Sanitaires',
+  hall: "Hall d'accueil",
+};
+const SPACE_ZONE_CODES: Record<SpaceKind, string> = {
+  sde: 'SDE',
+  entree: 'E',
+  kitchenette: 'K',
+  gaine: 'G',
+  accueil: 'ACC',
+  laverie: 'LAV',
+  salleCommune: 'SC',
+  openSpace: 'OS',
+  bureau: 'B',
+  reunion: 'R',
+  sanitaires: 'WC',
+  hall: 'HALL',
+};
+const COMMON_COLOR: [number, number, number] = [0.8, 0.72, 0.9];
 
 /** Names of the non-dwelling zones, localised by the caller. */
 export interface ZoneLabels {
@@ -539,6 +573,20 @@ export function buildPlan(input: PlanInput): TransferPlan {
         st.cores.forEach((c, i) =>
           zone(`k${i}`, c.polygon, labels.core, `${prefix}-ESC${i + 1}`, 'core', circ),
         );
+        // residence / office rooms (shafts and kitchenettes lie inside the units: no zone)
+        const common = category(SPACE_ZONE_NAMES.salleCommune, 'MS-commun', COMMON_COLOR);
+        (st.spaces ?? [])
+          .filter((sp) => !sp.overlay && sp.kind !== 'gaine')
+          .forEach((sp, i) =>
+            zone(
+              `s${i}`,
+              sp.polygon,
+              SPACE_ZONE_NAMES[sp.kind],
+              `${prefix}-${SPACE_ZONE_CODES[sp.kind]}${i + 1}`,
+              'open',
+              RESIDENCE_COMMON.includes(sp.kind) ? common : usageCategory(st.usage),
+            ),
+          );
         st.circulation.forEach((c, i) =>
           zone(`c${i}`, c.polygon, labels.circulation, `${prefix}-C${i + 1}`, 'circulation', circ),
         );
