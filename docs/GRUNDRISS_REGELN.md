@@ -128,6 +128,14 @@ Die Laubengang-Seite zählt als Fassade (umschaltbar).
   Dreispänner bleiben bei 2 bzw. 3.
 - Wohnungen ab T3 mit nur einer Ausrichtung und reine Nordwohnungen werden gemeldet.
 
+## Ergänzungen 23.11.2026 (Rückmeldung zum Plan)
+
+- Jeder Raum ist **ein einfaches Rechteck**, keine L-Formen.
+- Räume sind nicht lang gezogen: Tiefe höchstens 1,6 × Breite (Séjour, Zimmer), Zimmer
+  höchstens 4,20 m breit (PMR 4,40 m), Séjour höchstens 7 m.
+- **Treppenhaus:** der Kern enthält nur die Treppe; der Aufzug liegt gegenüber der Treppe
+  auf der anderen Seite des Podests (Dreispänner; Einstellung `cores.liftOpposite`).
+
 ## Offene Punkte
 
 - Maximale Länge eines Innenflurs (couloir) ist noch nicht festgelegt.

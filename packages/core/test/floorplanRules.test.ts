@@ -30,7 +30,11 @@ const cx = (r: LayoutRoom) => ringCentroid(r.polygon.outer)[0];
 
 describe('floor-plan guide', () => {
   it('chain along the façade: séjour, PMR, chambres; wet core next to the PMR bedroom', () => {
-    const rooms = unitRoomLayout(rect(0, 0, 12, 10), [S], 4, rules);
+    const S14: Seg = [
+      [0, 0],
+      [14, 0],
+    ];
+    const rooms = unitRoomLayout(rect(0, 0, 14, 10), [S14], 4, rules);
     const main = rooms.filter(isFacadeRoom);
     expect(kinds(main)).toEqual(['sejour', 'chambrePmr', 'chambre', 'chambre']);
     // séjour at one end, then the PMR bedroom next to it, the other bedrooms further on

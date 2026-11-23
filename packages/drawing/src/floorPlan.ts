@@ -416,7 +416,17 @@ export function floorPlan(
   const dpx = opts.duplexText ?? DUPLEX_LABELS;
   for (const st of storeys) {
     for (const o of st.open) items.push(fill(o.polygon, FLOOR_PLAN_COLORS.open));
-    for (const c of st.circulation) items.push(fill(c.polygon, FLOOR_PLAN_COLORS.circulation));
+    for (const c of st.circulation)
+      if (c.kind === 'lift') {
+        // lift shaft opposite the stair: core fill with the shaft cross
+        items.push(fill(c.polygon, FLOOR_PLAN_COLORS.core));
+        const r = c.polygon.outer;
+        items.push(line(r, 1, 'solid', FLOOR_PLAN_COLORS.coreLine, true));
+        if (r.length === 4) {
+          items.push(line([r[0]!, r[2]!], 1, 'solid', FLOOR_PLAN_COLORS.coreLine));
+          items.push(line([r[1]!, r[3]!], 1, 'solid', FLOOR_PLAN_COLORS.coreLine));
+        }
+      } else items.push(fill(c.polygon, FLOOR_PLAN_COLORS.circulation));
     for (const u of st.units)
       items.push({
         ...fill(

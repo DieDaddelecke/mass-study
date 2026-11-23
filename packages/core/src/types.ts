@@ -492,6 +492,11 @@ export interface Settings {
     landingDepth?: number;
     /** Stair and lift inside the cores (defaults: DEFAULT_STAIR_RULES). */
     stair?: Partial<StairRules>;
+    /**
+     * Lift across the landing, opposite the stair (narrow core: the core holds the stair
+     * only), instead of beside the stair. Default true (office rule 23.11.2026).
+     */
+    liftOpposite?: boolean;
   };
   unitMix: UnitType[];
   /** Office façade rules for dwellings (defaults when missing). */

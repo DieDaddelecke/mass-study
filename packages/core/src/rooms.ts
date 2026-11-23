@@ -120,6 +120,20 @@ const DEPTH: Record<FacadeRoomKind, [number, number, number]> = {
   chambrePmr: [0.5, 3.2, 4.6],
   chambre: [0.5, 3.0, 4.4],
 };
+/** Widest room along the façade (the séjour: SEJOUR_MAX), m. */
+const MAX_WIDTH: Record<FacadeRoomKind, number> = {
+  sejour: 7,
+  cuisine: 3.2,
+  chambrePmr: 4.4,
+  chambre: 4.2,
+};
+/** Longest room depth as a multiple of its width (no long, narrow rooms). */
+const RATIO: Record<FacadeRoomKind, number> = {
+  sejour: 1.6,
+  cuisine: 1.8,
+  chambrePmr: 1.6,
+  chambre: 1.6,
+};
 /** A through séjour (façade on both sides) when the dwelling is at most this deep, m. */
 const THROUGH_MAX = 10.5;
 /** Width of the wet rooms along the façade direction, m (depth from the minimum area). */
@@ -430,6 +444,51 @@ export function unitRoomLayout(
     };
   };
 
+  /**
+   * Largest free rectangle [s0, s1, t0, t1] inside [s0, s1] × [t0, t1] of a façade piece (inside
+   * the dwelling, clear of `taken`): shallower, or narrower from either side. Rooms are always
+   * single rectangles (office rule 23.11.2026). `narrowFirst`: prefer keeping the depth.
+   */
+  function fitRect(
+    run: Run,
+    s0: number,
+    s1: number,
+    t0: number,
+    t1: number,
+    taken: readonly Polygon[],
+    narrowFirst: boolean,
+  ): [number, number, number, number] | undefined {
+    const free = (a0: number, a1: number, b0: number, b1: number) => {
+      if (a1 - a0 < 0.3 || b1 - b0 < 0.3) return false;
+      const bx = box(run, a0, a1, b0, b1);
+      let ps = intersection([unit], [bx]);
+      if (taken.length) ps = difference(ps, taken);
+      return ps.reduce((x, p) => x + polygonArea(p), 0) >= (a1 - a0) * (b1 - b0) - 0.01;
+    };
+    if (free(s0, s1, t0, t1)) return [s0, s1, t0, t1];
+    const search = (ok: (x: number) => boolean, lo: number, hi: number) => {
+      // largest x in [lo, hi] with ok(x) (ok monotone, true at lo)
+      if (!ok(lo)) return undefined;
+      for (let k = 0; k < 18; k++) {
+        const m = (lo + hi) / 2;
+        if (ok(m)) lo = m;
+        else hi = m;
+      }
+      return lo;
+    };
+    const cands: [number, number, number, number][] = [];
+    const dd = search((x) => free(s0, s1, t0, t0 + x), 0.3, t1 - t0);
+    if (dd !== undefined) cands.push([s0, s1, t0, t0 + dd]);
+    const wa = search((x) => free(s0, s0 + x, t0, t1), 0.3, s1 - s0);
+    if (wa !== undefined) cands.push([s0, s0 + wa, t0, t1]);
+    const wb = search((x) => free(s1 - x, s1, t0, t1), 0.3, s1 - s0);
+    if (wb !== undefined) cands.push([s1 - wb, s1, t0, t1]);
+    if (!cands.length) return undefined;
+    const area = (c: (typeof cands)[number]) =>
+      (c[1] - c[0]) * (c[3] - c[2]) * (narrowFirst || c[1] - c[0] >= s1 - s0 - 1e-6 ? 1 : 0.85);
+    return cands.reduce((x, y) => (area(y) > area(x) + 1e-6 ? y : x));
+  }
+
   /** Places room `i` with width `w` at the free start of run `ri` (chain direction `dir`). */
   const put = (
     a: Attempt,
@@ -442,13 +501,17 @@ export function unitRoomLayout(
     const run = runs[ri]!;
     const room = a.program[i]!;
     const need = areaMin(room.kind, a.program);
-    const d = depthOf(room.kind, w, run, a.through && i === 0, need, cap);
-    const [s0, s1] =
+    const d0 = Math.min(
+      depthOf(room.kind, w, run, a.through && i === 0, need, cap),
+      a.through && i === 0 ? Infinity : RATIO[room.kind] * w,
+    );
+    const [w0, w1] =
       a.dir > 0 ? [cursor, cursor + w] : [run.length - cursor - w, run.length - cursor];
-    let ps = intersection([unit], [box(run, s0, s1, 0, d)]);
-    if (a.taken.length) ps = difference(ps, a.taken);
-    const polygon = largest(ps);
-    if (!polygon) return undefined;
+    // rooms are single rectangles: shrink until nothing of other rooms or outside is in it
+    const r = fitRect(run, w0, w1, 0, d0, a.taken, false);
+    if (!r) return undefined;
+    const [s0, s1, , d] = r;
+    const polygon = box(run, s0, s1, 0, d);
     const p: Placed = {
       i,
       run: ri,
@@ -545,9 +608,19 @@ export function unitRoomLayout(
             slack -= add;
           }
         }
+        // then the other rooms, up to a sensible width (no long, shallow rooms); what is
+        // left stays with the passage
         const rest = on.filter((p) => a.program[p.i]!.kind !== 'sejour');
-        const share = rest.length ? slack / rest.length : sej ? slack : 0;
-        for (const p of rest.length ? rest : sej ? [sej] : []) w[p.i]! += share;
+        for (let k = 0; k < 3 && slack > 1e-3; k++) {
+          const open = rest.filter((p) => w[p.i]! < MAX_WIDTH[a.program[p.i]!.kind] - 1e-6);
+          if (!open.length) break;
+          const share = slack / open.length;
+          for (const p of open) {
+            const add = Math.min(share, MAX_WIDTH[a.program[p.i]!.kind] - w[p.i]!);
+            w[p.i]! += add;
+            slack -= add;
+          }
+        }
       }
     }
     return w;
@@ -732,16 +805,17 @@ export function unitRoomLayout(
       const blocks: Polygon[] = [];
       const taken = [...a.taken];
       let c = 0;
+      const rects: [number, number, number, number][] = [];
       const item = (kind: RoomKind, w: number, d: number, need: number, gap: number) => {
         const s0 = an.g > 0 ? an.s + c : an.s - c - w;
         const s1 = s0 + w;
         c += w + gap;
-        let ps = intersection([unit], [box(run, s0, s1, t0, t0 + d)]);
-        ps = difference(ps, taken);
-        const poly = largest(ps);
-        if (!poly) return;
+        const r = fitRect(run, s0, s1, t0, t0 + d, taken, true);
+        if (!r) return;
+        const poly = box(run, r[0], r[1], r[2], r[3]);
         rooms.push(makeRoom(kind, poly, 0, need));
-        const b = box(run, s0 - gap, s1 + gap, t0 - gap, t0 + d + gap);
+        rects.push(r);
+        const b = box(run, r[0] - gap, r[1] + gap, r[2] - gap, r[3] + gap);
         blocks.push(b);
         taken.push(b);
       };
@@ -756,6 +830,35 @@ export function unitRoomLayout(
           w = need / d;
         }
         item(kind, w, d, need, wall);
+      }
+      // no room for the shaft at the junction: next to the first wet room
+      if (!rooms.some((r) => r.kind === 'gaine') && rects.length) {
+        const [a0, a1, b0, b1] = rects[0]!;
+        for (const [x0, y0] of [
+          [a1 + wall, b0],
+          [a0 - wall - g, b0],
+          [a0, b1 + wall],
+          [a0, b0 - wall - g],
+          [a1 + wall, b1 - g],
+          [a0 - wall - g, b1 - g],
+        ] as const) {
+          const bx = box(run, x0, x0 + g, y0, y0 + g);
+          let ps = intersection([unit], [bx]);
+          ps = difference(ps, taken);
+          if (ps.reduce((x, p) => x + polygonArea(p), 0) < g * g - 0.01) continue;
+          rooms.push(makeRoom('gaine', bx, 0, 0));
+          const b = box(run, x0 - wall, x0 + g + wall, y0 - wall, y0 + g + wall);
+          blocks.push(b);
+          taken.push(b);
+          break;
+        }
+        if (!rooms.some((r) => r.kind === 'gaine') && a1 - a0 > g + wall + 0.9) {
+          // last resort: the bathroom gives up one end for the shaft (both stay rectangles)
+          const first = rooms.find((r) => r.kind !== 'gaine')!;
+          const nb = box(run, a0, a1 - g - wall, b0, b1);
+          Object.assign(first, makeRoom(first.kind, nb, 0, first.areaRequired));
+          rooms.push(makeRoom('gaine', box(run, a1 - g, a1, b0, b0 + g), 0, 0));
+        }
       }
       const ok = rooms.filter((r) => r.areaOk).length;
       const nextToPmr =

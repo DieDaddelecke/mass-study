@@ -104,6 +104,18 @@ describe('rooms of a dwelling', () => {
         if (n >= 2) expect(u.rooms.filter((r) => r.kind === 'chambrePmr').length).toBe(1);
         expect(u.rooms.filter(isFacadeRoom).length).toBe(n);
         expect(u.rooms.filter((r) => r.kind === 'gaine').length).toBe(1);
+        // every room is one rectangle (no L shapes), not long and narrow
+        for (const r of u.rooms) {
+          if (r.kind === 'degagement') continue;
+          expect(r.polygon.outer).toHaveLength(4);
+          expect(r.polygon.holes ?? []).toHaveLength(0);
+          if (r.kind === 'chambre' || r.kind === 'chambrePmr') {
+            const [a, b, c] = r.polygon.outer;
+            const e1 = Math.hypot(b![0] - a![0], b![1] - a![1]);
+            const e2 = Math.hypot(c![0] - b![0], c![1] - b![1]);
+            expect(Math.max(e1, e2) / Math.min(e1, e2)).toBeLessThan(1.65);
+          }
+        }
         // inside the dwelling and disjoint
         const inside = intersection(
           u.rooms.map((r) => r.polygon),

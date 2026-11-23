@@ -26,6 +26,7 @@ import {
   union,
 } from './geometry.js';
 import { requiredCores, resolveAccess } from './typologies.js';
+import { resolveStairRules } from './stairs.js';
 import {
   coreRange,
   facadeOf,
@@ -60,7 +61,7 @@ import type {
   Vec2,
 } from './types.js';
 
-export type LayoutAreaKind = 'core' | 'landing' | 'gallery' | 'corridor' | 'open';
+export type LayoutAreaKind = 'core' | 'landing' | 'gallery' | 'corridor' | 'lift' | 'open';
 
 export interface LayoutArea {
   kind: LayoutAreaKind;
@@ -196,6 +197,12 @@ export interface MassLayout {
 
 export interface LayoutDimensions {
   coreWidth: number;
+  /** Lift opposite the stair across the landing (Dreispänner). */
+  liftOpposite: boolean;
+  /** Width of a core holding the stair only (two flights, walls), m. */
+  stairCoreWidth: number;
+  /** Lift shaft with walls, along the bar / across, m. */
+  liftBox: [number, number];
   coreDepth: number;
   galleryWidth: number;
   corridorWidth: number;
@@ -204,8 +211,12 @@ export interface LayoutDimensions {
 
 export function layoutDimensions(settings: Pick<Settings, 'cores'>): LayoutDimensions {
   const c = settings.cores;
+  const st = resolveStairRules(settings);
   return {
     coreWidth: c.coreWidth ?? 5.5,
+    liftOpposite: (c.liftOpposite ?? true) && st.liftWidth > 0,
+    stairCoreWidth: 2 * st.flightWidth + st.gap + 2 * st.wall,
+    liftBox: [st.liftWidth + st.wall, st.liftDepth + st.wall],
     coreDepth: c.coreDepth ?? 6,
     galleryWidth: c.galleryWidth ?? 1.6,
     corridorWidth: c.corridorWidth ?? 1.8,
@@ -599,7 +610,8 @@ function planBar(
   const L = bar.length;
   const D = bar.depth;
   const plan: BarPlan = { cores: [], circulation: [], fixed: [], rows: [], open: !residential };
-  const cw = Math.min(dim.coreWidth, L);
+  const cw0 = Math.min(dim.coreWidth, L);
+  const cw = cw0;
   const cd = Math.min(dim.coreDepth, D);
   if (access === 'reihenhaus') {
     if (residential) plan.fixed.push({ rects: [[0, 0, L, D]], core: -1 });
@@ -630,6 +642,10 @@ function planBar(
         const s0 = i * S;
         const s1 = (i + 1) * S;
         const td = D - cd - dim.landingDepth;
+        // narrow core with the stair only; the lift opposite across the landing
+        const [lw, lt] = dim.liftBox;
+        const opp = dim.liftOpposite && td >= lt + 3;
+        const cw = opp ? Math.min(cw0, dim.stairCoreWidth) : cw0;
         if (access === 'dreispaenner' && td >= 3 && S - cw >= 8) {
           const est = S * D - cw * cd - S * 0.4 * dim.landingDepth;
           // façades: big/mid units = north + south strip (2 w + side), small unit = south (wm)
@@ -638,7 +654,7 @@ function planBar(
             const tot = (big?.areaTarget ?? 1) + (mid?.areaTarget ?? 1) + (small?.areaTarget ?? 1);
             // third unit (behind the landing) = the smallest type
             let wm = (est * (small?.areaTarget ?? 1)) / tot / td;
-            wm = Math.min(Math.max(wm, cw), S - 6);
+            wm = Math.min(Math.max(wm, cw, opp ? lw : 0), S - 6);
             // no wider than the type allows (its area), but at least its façade requirement
             if (small) wm = Math.min(wm, small.areaMax / td);
             wm = Math.max(wm, small ? fc.req(small) : 0);
@@ -665,7 +681,14 @@ function planBar(
           plan.cores.push([k0, 0, k1, cd]);
           plan.circulation.push({ kind: 'landing', rect: [m0, cd, m1, cd + dim.landingDepth] });
           plan.fixed.push({ rects: keep([s0, 0, m0, D], [m0, 0, k0, cd]), core: i, type: big });
-          plan.fixed.push({ rects: [[m0, cd + dim.landingDepth, m1, D]], core: i, type: small });
+          const behind: Rect = [m0, cd + dim.landingDepth, m1, D];
+          if (opp) {
+            // lift across the landing, opposite the stair (within the landing's width)
+            const kc = Math.min(Math.max((k0 + k1) / 2, m0 + lw / 2), m1 - lw / 2);
+            const lift: Rect = [kc - lw / 2, behind[1], kc + lw / 2, behind[1] + lt];
+            plan.circulation.push({ kind: 'lift', rect: lift });
+            plan.fixed.push({ rects: subtractRect(behind, lift), core: i, type: small });
+          } else plan.fixed.push({ rects: [behind], core: i, type: small });
           plan.fixed.push({ rects: keep([m1, 0, s1, D], [k1, 0, m1, cd]), core: i, type: mid });
         } else {
           const kb0 = D - cd < 1 ? 0 : (D - cd) / 2;
@@ -1659,7 +1682,14 @@ export function stackCores(storeys: StoreyLayout[]): StoreyLayout[] {
             ...(c.box ? { box: c.box } : {}),
           });
     if (!cores.length) return st;
-    const taken = union([...cores.map((c) => c.polygon), ...st.circulation.map((c) => c.polygon)]);
+    // the lift opposite the stair runs down too
+    const lifts: LayoutArea[] = [];
+    for (const c of ref.circulation)
+      if (c.kind === 'lift')
+        for (const p of intersection(st.footprints, [c.polygon]))
+          if (polygonArea(p) > 1e-3) lifts.push({ kind: 'lift', polygon: p, area: polygonArea(p) });
+    const circulation = [...st.circulation, ...lifts];
+    const taken = union([...cores.map((c) => c.polygon), ...circulation.map((c) => c.polygon)]);
     const open: LayoutArea[] = difference(st.footprints, taken)
       .filter((p) => polygonArea(p) > 1e-3)
       .map((p) => ({ kind: 'open', polygon: p, area: polygonArea(p) }));
@@ -1667,6 +1697,7 @@ export function stackCores(storeys: StoreyLayout[]): StoreyLayout[] {
     return {
       ...st,
       cores,
+      circulation,
       open,
       summary: { ...st.summary, coreArea: sum(cores), openArea: sum(open) },
     };
