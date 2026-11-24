@@ -68,6 +68,36 @@ export interface LibraryOptions {
   used?: readonly string[];
   /** Preference of a façade piece for the séjour (higher first), e.g. where the balcony goes. */
   preferSejour?: (seg: Seg) => number;
+  /** Façade width the bedrooms must reach (office rules; plans are widened to it), m. */
+  bedroomWidths?: { chambre: number; chambrePmr: number };
+}
+
+/**
+ * Width a plan needs so that its bedrooms reach the required façade width (the library draws
+ * them ~2.40 m): per long side, the plan's width with its bedroom row at the required widths.
+ */
+export function planMinWidth(
+  t: PlanTemplate,
+  req: { chambre: number; chambrePmr: number } = { chambre: 2.5, chambrePmr: 2.8 },
+): number {
+  let need = 0;
+  for (const side of ['front', 'back'] as const) {
+    if (!t.facades.includes(side)) continue;
+    let drawn = 0;
+    let wanted = 0;
+    for (const sp of t.spaces) {
+      if (sp.kind !== 'chambre' && sp.kind !== 'chambrePmr') continue;
+      const ys = sp.polygon.map((p) => p[1]);
+      const on = side === 'front' ? Math.min(...ys) <= 0.6 : Math.max(...ys) >= t.depth - 0.6;
+      if (!on) continue;
+      const xs = sp.polygon.map((p) => p[0]);
+      const w = Math.max(...xs) - Math.min(...xs);
+      drawn += w;
+      wanted += Math.max(w, req[sp.kind]);
+    }
+    need = Math.max(need, t.width - drawn + wanted);
+  }
+  return need;
 }
 
 type Seg = [Vec2, Vec2];
@@ -82,7 +112,29 @@ const NORMAL: Record<TemplateSide, Vec2> = {
   left: [-1, 0],
 };
 
-export const planTemplates = (): readonly PlanTemplate[] => PLAN_TEMPLATES;
+/**
+ * Plans whose séjour and bedrooms all lie on a façade of the plan (within 2 m, e.g. behind a
+ * loggia). A few extracted plans have a room on a side the drawing gives no façade; they stay
+ * out until checked.
+ */
+const USABLE: readonly PlanTemplate[] = PLAN_TEMPLATES.filter((t) =>
+  t.spaces
+    .filter((x) => x.kind !== 'cuisine')
+    .every((x) => {
+      const xs = x.polygon.map((p) => p[0]);
+      const ys = x.polygon.map((p) => p[1]);
+      const d = 2;
+      return (
+        (t.facades.includes('front') && Math.min(...ys) <= d) ||
+        (t.facades.includes('back') && Math.max(...ys) >= t.depth - d) ||
+        (t.facades.includes('left') && Math.min(...xs) <= d) ||
+        (t.facades.includes('right') && Math.max(...xs) >= t.width - d)
+      );
+    }),
+);
+
+/** The library plans the generator uses. */
+export const planTemplates = (): readonly PlanTemplate[] => USABLE;
 
 /** The 8 symmetries of the square: rotation by k × 90° after an optional mirror (x → −x). */
 interface Sym {
@@ -245,7 +297,7 @@ export function matchTemplate(
   const used = new Set(opts.used ?? []);
 
   const cands: { t: PlanTemplate; s: Sym; score: number; sx: number; dd: number }[] = [];
-  for (const t of PLAN_TEMPLATES) {
+  for (const t of USABLE) {
     if (t.rooms !== mainRooms || exclude.has(t.id)) continue;
     for (const s of SYMS) {
       const fac = t.facades.map((x) => mapSide(s, x));
@@ -290,15 +342,21 @@ export function matchTemplate(
       Math.max(...corners.map((p) => p[0])) - minX,
       Math.max(...corners.map((p) => p[1])) - minY,
     ];
-    const map = (p: [number, number]): Vec2 => {
+    const local = (p: [number, number]): Vec2 => {
       const q = applyVec(s, p);
       const u = f.u0 + ((q[0] - minX) / ext[0]) * W;
       const v = f.v0 + ((q[1] - minY) / ext[1]) * D;
       // the plans are drawn to the inner face of the walls: rooms reach the dwelling's outline
       const snap = (x: number, lo: number, hi: number) =>
         x - lo < WALL_SNAP ? lo : hi - x < WALL_SNAP ? hi : x;
-      return toWorld(f, snap(u, f.u0, f.u1), snap(v, f.v0, f.v1));
+      return [snap(u, f.u0, f.u1), snap(v, f.v0, f.v1)];
     };
+    const spaces = t.spaces.map((sp) => ({ kind: sp.kind, ring: sp.polygon.map(local) }));
+    reachFacades(spaces, f, facadeSides);
+    widenBedrooms(spaces, f, facadeSides, {
+      chambre: rules.bedroomMinFacade,
+      chambrePmr: rules.pmrBedroomMinFacade,
+    });
     const hasKitchen = t.spaces.some((x) => x.kind === 'cuisine');
     const required = (k: TemplateRoomKind): [number, number] => {
       switch (k) {
@@ -316,8 +374,8 @@ export function matchTemplate(
       }
     };
     const rooms: LayoutRoom[] = [];
-    for (const sp of t.spaces) {
-      const raw: Polygon = { outer: sp.polygon.map(map) };
+    for (const sp of spaces) {
+      const raw: Polygon = { outer: sp.ring.map(([u, v]) => toWorld(f, u, v)) };
       const clipped = intersection([raw], [unit]).sort(
         (a, b) => polygonArea(b) - polygonArea(a),
       )[0];
@@ -367,6 +425,149 @@ export function matchTemplate(
   };
 }
 
+/**
+ * Rooms drawn behind a loggia or a deep wall recess (up to 2 m) reach the façade when nothing
+ * lies between them and it: the room's side facing the façade moves onto the dwelling outline.
+ * Rings are in frame coordinates (u, v) and changed in place.
+ */
+function reachFacades(
+  spaces: { kind: TemplateRoomKind; ring: Vec2[] }[],
+  f: Frame,
+  facades: ReadonlySet<TemplateSide>,
+  maxGap = 2,
+): void {
+  const box = (r: Vec2[]) => {
+    const us = r.map((p) => p[0]);
+    const vs = r.map((p) => p[1]);
+    return [Math.min(...us), Math.min(...vs), Math.max(...us), Math.max(...vs)] as const;
+  };
+  for (const side of facades) {
+    for (const sp of spaces) {
+      const [u0, v0, u1, v1] = box(sp.ring);
+      // the strip between the room and this side of the dwelling
+      const strip =
+        side === 'front'
+          ? [u0, f.v0, u1, v0]
+          : side === 'back'
+            ? [u0, v1, u1, f.v1]
+            : side === 'left'
+              ? [f.u0, v0, u0, v1]
+              : [u1, v0, f.u1, v1];
+      const gap =
+        side === 'front' || side === 'back' ? strip[3]! - strip[1]! : strip[2]! - strip[0]!;
+      if (gap < 0.01 || gap > maxGap) continue;
+      const blocked = spaces.some((o) => {
+        if (o === sp) return false;
+        const [a0, b0, a1, b1] = box(o.ring);
+        return (
+          Math.min(a1, strip[2]!) - Math.max(a0, strip[0]!) > 0.05 &&
+          Math.min(b1, strip[3]!) - Math.max(b0, strip[1]!) > 0.05
+        );
+      });
+      if (blocked) continue;
+      sp.ring = sp.ring.map(([u, v]) => {
+        if (side === 'front' && Math.abs(v - v0) < 1e-6) return [u, f.v0];
+        if (side === 'back' && Math.abs(v - v1) < 1e-6) return [u, f.v1];
+        if (side === 'left' && Math.abs(u - u0) < 1e-6) return [f.u0, v];
+        if (side === 'right' && Math.abs(u - u1) < 1e-6) return [f.u1, v];
+        return [u, v];
+      });
+    }
+  }
+}
+
+/**
+ * Bedrooms of a placed plan at least as wide on the façade as the office rules ask (Soheyl
+ * 24.11.2026: the library's 2.40 m rooms become 2.50 m, PMR 2.80 m): along each axis the
+ * plan is re-spaced piecewise linearly, the extra width taken from the parts of the dwelling
+ * that hold no such bedroom (séjour, wet rooms, hall). Rings are in frame coordinates (u, v)
+ * and changed in place.
+ */
+function widenBedrooms(
+  spaces: { kind: TemplateRoomKind; ring: Vec2[] }[],
+  f: Frame,
+  facades: ReadonlySet<TemplateSide>,
+  minWidth: { chambre: number; chambrePmr: number },
+): void {
+  const TOL = 0.15;
+  for (const axis of [0, 1] as const) {
+    const lo = axis === 0 ? f.u0 : f.v0;
+    const hi = axis === 0 ? f.u1 : f.v1;
+    // bedrooms whose façade runs along this axis: [from, to, required width]
+    const need: [number, number, number][] = [];
+    for (const sp of spaces) {
+      if (sp.kind !== 'chambre' && sp.kind !== 'chambrePmr') continue;
+      const a = sp.ring.map((p) => p[axis]);
+      const b = sp.ring.map((p) => (axis === 0 ? p[1] : p[0]));
+      const [b0, b1] = [Math.min(...b), Math.max(...b)];
+      const [s0, s1]: TemplateSide[] = axis === 0 ? ['front', 'back'] : ['left', 'right'];
+      const [c0, c1] = axis === 0 ? [f.v0, f.v1] : [f.u0, f.u1];
+      const onFacade =
+        (facades.has(s0!) && Math.abs(b0 - c0) < TOL) ||
+        (facades.has(s1!) && Math.abs(b1 - c1) < TOL);
+      if (onFacade) need.push([Math.min(...a), Math.max(...a), minWidth[sp.kind]]);
+    }
+    if (!need.some(([a, b, r]) => b - a < r - 0.005)) continue;
+    const cuts = [
+      ...new Set(
+        [lo, hi, ...spaces.flatMap((sp) => sp.ring.map((p) => p[axis]))].map(
+          (x) => Math.round(x * 1000) / 1000,
+        ),
+      ),
+    ].sort((x, y) => x - y);
+    const len = cuts.slice(1).map((x, i) => x - cuts[i]!);
+    const mid = len.map((l, i) => cuts[i]! + l / 2);
+    const covers = need.map(([a, b]) =>
+      mid.map((m, i) => (m > a && m < b ? i : -1)).filter((i) => i >= 0),
+    );
+    const out = [...len];
+    const width = (k: number) => covers[k]!.reduce((acc, i) => acc + out[i]!, 0);
+    let changed = false;
+    for (let it = 0; it < 6; it++) {
+      const deficit = need.map(([, , r], k) => Math.max(0, r - width(k)));
+      const take = deficit.reduce((x, y) => x + y, 0);
+      if (take < 0.005) break;
+      // what each part can give: free parts 40 % of their width, parts of a wide enough bedroom
+      // their share of its spare width, parts of a bedroom short of width nothing
+      const cap = out.map((l, i) => {
+        let c = 0.4 * len[i]! - (len[i]! - l);
+        for (let k = 0; k < need.length; k++) {
+          if (!covers[k]!.includes(i)) continue;
+          if (deficit[k]! > 0) return 0;
+          c = Math.min(c, ((width(k) - need[k]![2]) * l) / width(k));
+        }
+        return Math.max(0, c);
+      });
+      const capSum = cap.reduce((x, y) => x + y, 0);
+      if (capSum < 1e-3) break;
+      const give = Math.min(take, capSum);
+      out.forEach((l, i) => (out[i] = l - (give * cap[i]!) / capSum));
+      need.forEach((_, k) => {
+        const w = width(k);
+        const d = (deficit[k]! / take) * give;
+        if (d > 0 && w > 0) covers[k]!.forEach((i) => (out[i] = out[i]! * (1 + d / w)));
+      });
+      changed = true;
+    }
+    if (!changed) continue;
+    // a bedroom grown twice (sharing a cut) may overshoot: scale back to the frame length
+    const total = out.reduce((x, y) => x + y, 0);
+    const k = (hi - lo) / total;
+    const pos = [lo];
+    out.forEach((l) => pos.push(pos[pos.length - 1]! + l * k));
+    const remap = (x: number) => {
+      const i = cuts.findIndex((c) => c >= x - 1e-9);
+      if (i <= 0) return pos[0]!;
+      const t = (x - cuts[i - 1]!) / (cuts[i]! - cuts[i - 1]!);
+      return pos[i - 1]! + t * (pos[i]! - pos[i - 1]!);
+    };
+    for (const sp of spaces)
+      sp.ring = sp.ring.map((p) =>
+        axis === 0 ? ([remap(p[0]), p[1]] as Vec2) : ([p[0], remap(p[1])] as Vec2),
+      );
+  }
+}
+
 const OPPOSITE: Record<TemplateSide, TemplateSide> = {
   front: 'back',
   back: 'front',
@@ -403,11 +604,14 @@ export function libraryWidths(
     if (sides >= 2) avail.add('back');
     if (i === 0 && atStart) avail.add('left');
     if (i === n - 1 && atEnd) avail.add('right');
-    const out: { id: string; w: number; score: number }[] = [];
-    for (const t of PLAN_TEMPLATES) {
+    const out: { id: string; w: number; max: number; min: number; score: number }[] = [];
+    for (const t of USABLE) {
       if (t.rooms !== r || Math.abs(t.depth - depth) > dt + 1e-9) continue;
       // the office's minimum façade of the type still holds (séjour 3.60 m, …)
       if (t.width * (1 + st) < (mins[i] ?? 0) - 1e-9) continue;
+      // wide enough for its bedrooms at the office's widths (2.50 m, PMR 2.80 m)
+      const need = planMinWidth(t, opts.bedroomWidths);
+      if (need > t.width * (1 + st) + 1e-9) continue;
       const variants: TemplateSide[][] = [
         t.facades,
         t.facades.map((s) => (s === 'left' || s === 'right' ? OPPOSITE[s] : s)),
@@ -423,7 +627,9 @@ export function libraryWidths(
       const used = Math.max(...ok.map((v) => v.length));
       out.push({
         id: t.id,
-        w: t.width,
+        w: Math.max(t.width, need),
+        max: t.width * (1 + st),
+        min: Math.max(need, t.width * (1 - st)),
         score: Math.abs(t.depth - depth) + 1.5 * (avail.size - used),
       });
     }
@@ -467,6 +673,13 @@ export function libraryWidths(
     }
     if (Math.abs(lambda - 1) > st + 1e-9) continue;
     if (s.pick.some((k, i) => k >= 0 && cands[i]![k]!.w * lambda < mins[i]! - 1e-6)) continue;
+    if (
+      s.pick.some((k, i) => {
+        const c = k >= 0 ? cands[i]![k]! : undefined;
+        return !!c && (c.w * lambda > c.max + 1e-6 || c.w * lambda < c.min - 1e-6);
+      })
+    )
+      continue;
     const cost = s.cost + 10 * Math.abs(Math.log(lambda));
     if (!best || cost < best.cost) best = { s, lambda, cost };
   }

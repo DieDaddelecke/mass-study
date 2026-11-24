@@ -83,7 +83,9 @@ describe('storeyLayout', () => {
     expect(l.units).toHaveLength(2 * l.cores.length);
     expect(l.unitsPerCore).toBe(2);
     for (const u of l.units) expect(polygonArea(u.polygon)).toBeCloseTo(boxArea(u.polygon), 1);
-    expect(l.units.filter((u) => u.template).length).toBeGreaterThanOrEqual(l.units.length / 2);
+    // 44 m: room for library plans with 2.50 m bedrooms (40 m only fits T5 without a plan)
+    const w = layoutOf({ kind: 'solitaer', length: 44, depth: 12 }, 'zweispaenner');
+    expect(w.units.filter((u) => u.template).length).toBeGreaterThanOrEqual(w.units.length / 2);
     checkPartition(l);
   });
 

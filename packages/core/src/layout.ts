@@ -964,7 +964,11 @@ function planSpaenner(
   // stair-only core with the lift opposite (office rule F); else the core holds the lift
   const opp = dim.liftOpposite && lw > 0;
   const sw = opp ? Math.max(dim.stairCoreWidth, lw) : dim.coreWidth;
-  const libOpts = { stretch: rules.libraryStretch, depthTolerance: rules.libraryDepthTolerance };
+  const libOpts = {
+    stretch: rules.libraryStretch,
+    depthTolerance: rules.libraryDepthTolerance,
+    bedroomWidths: { chambre: rules.bedroomMinFacade, chambrePmr: rules.pmrBedroomMinFacade },
+  };
   const useLib = rules.planLibrary !== false;
   const st = rules.libraryStretch;
 
@@ -1658,7 +1662,14 @@ function layoutStorey(
                 row.atStart,
                 row.atEnd,
                 ordered.map(minWidth),
-                { stretch: rules.libraryStretch, depthTolerance: rules.libraryDepthTolerance },
+                {
+                  stretch: rules.libraryStretch,
+                  depthTolerance: rules.libraryDepthTolerance,
+                  bedroomWidths: {
+                    chambre: rules.bedroomMinFacade,
+                    chambrePmr: rules.pmrBedroomMinFacade,
+                  },
+                },
               )
             : undefined;
         if (lib) widths = lib.widths;

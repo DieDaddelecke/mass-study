@@ -92,9 +92,10 @@ describe('office plan library', () => {
   });
 
   it('sizes a row so that its dwellings take library plans and fill it exactly', () => {
-    const r = libraryWidths([2, 3, 2], 24, 7.1, 1, false, false, [6.5, 9.1, 6.5])!;
+    // bedrooms widened to 2.50 m / 2.80 m: the plans need a little more width than drawn
+    const r = libraryWidths([2, 3, 2], 26, 7.1, 1, false, false, [6.5, 9.1, 6.5])!;
     expect(r).toBeDefined();
-    expect(r.widths.reduce((a, b) => a + b, 0)).toBeCloseTo(24, 6);
+    expect(r.widths.reduce((a, b) => a + b, 0)).toBeCloseTo(26, 6);
     expect(r.templates.every((x) => !!x)).toBe(true);
   });
 
@@ -115,6 +116,9 @@ describe('office plan library', () => {
       ).reduce((s, p) => s + polygonArea(p), 0);
       expect(inside).toBeCloseTo(area(u.rooms), 1);
       expect(u.rooms.find((r) => r.kind === 'sejour')!.facade).toBeGreaterThan(2);
+      // the library's ~2.40 m bedrooms are widened to the office's 2.50 m (PMR 2.80 m)
+      for (const r of u.rooms.filter((x) => x.kind === 'chambre' || x.kind === 'chambrePmr'))
+        expect(r.facade).toBeGreaterThanOrEqual(r.facadeRequired - 0.02);
     }
     // switched off: the parametric layout only
     const off = defaultSettings('FR');
