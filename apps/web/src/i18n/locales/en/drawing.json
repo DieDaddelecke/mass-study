@@ -94,6 +94,7 @@
     "areaFail": "{{count}} room(s) below the minimum area",
     "galleryRoom": "{{count}} bedroom(s) facing the gallery (hatched)",
     "orientFail": "{{count}} dwelling(s) without two orientations (from T3) or facing north only",
+    "library": "{{n}} of {{total}} dwellings from the office plan library, ° = no template",
     "ratioFail": "{{count}} dwelling(s) with a façade below {{pct}} % of the area",
     "accessFail": "{{count}} dwelling(s) without access from the stair or corridor",
     "oversizeFail": "{{count}} dwelling(s) outside the area range of their type (*)",

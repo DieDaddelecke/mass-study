@@ -94,6 +94,7 @@
     "areaFail": "{{count}} pièce(s) sous la surface minimale",
     "galleryRoom": "{{count}} chambre(s) côté coursive (hachurées)",
     "orientFail": "{{count}} logement(s) sans double orientation (dès T3) ou orientés nord seulement",
+    "library": "{{n}} logements sur {{total}} selon la bibliothèque de plans de l’agence, ° = sans modèle",
     "ratioFail": "{{count}} logement(s) avec une façade inférieure à {{pct}} % de la surface",
     "accessFail": "{{count}} logement(s) sans accès depuis la cage d’escalier ou le couloir",
     "oversizeFail": "{{count}} logement(s) hors de la fourchette de surface de leur type (*)",

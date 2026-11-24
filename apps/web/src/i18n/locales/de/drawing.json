@@ -94,6 +94,7 @@
     "areaFail": "{{count}} Raum/Räume unter der Mindestfläche",
     "galleryRoom": "{{count}} Zimmer zum Laubengang (schraffiert)",
     "orientFail": "{{count}} Wohnung(en) ohne zwei Ausrichtungen (ab T3) oder nur nach Norden",
+    "library": "{{n}} von {{total}} Wohnungen nach der Planbibliothek des Büros, ° = ohne Vorlage",
     "ratioFail": "{{count}} Wohnung(en) mit Fassade unter {{pct}} % der Fläche",
     "accessFail": "{{count}} Wohnung(en) ohne Zugang vom Treppenhaus oder Flur",
     "oversizeFail": "{{count}} Wohnung(en) außerhalb der Flächenspanne ihres Typs (*)",

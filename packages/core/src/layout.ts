@@ -52,6 +52,7 @@ import {
   resolveUnitRules,
   unitRooms,
 } from './unitRules.js';
+import { libraryWidths, matchTemplate, type UnitTemplate } from './planLibrary.js';
 import { duplexProgram, duplexWet, unitRoomLayout, wetProgram, type LayoutRoom } from './rooms.js';
 import type { LayoutSpace, OfficeSummary, ResidenceSummary } from './spaces.js';
 import { residenceStoreyLayout } from './residence.js';
@@ -142,6 +143,8 @@ export interface LayoutUnit {
   duplex?: LayoutDuplex;
   /** Interior spaces of a residence unit (entrée, salle d'eau, kitchenette). */
   spaces?: LayoutSpace[];
+  /** Plan of the office library the dwelling follows (rooms from the template). */
+  template?: UnitTemplate;
 }
 
 /** Level of a duplex dwelling. */
@@ -180,6 +183,8 @@ export interface StoreyLayoutSummary {
   footprintArea: number;
   /** Units below the minimum façade length of their type. */
   facadeViolations: number;
+  /** Dwellings following a plan of the office library. */
+  libraryUnits?: number;
 }
 
 export interface StoreyLayout {
@@ -1202,11 +1207,33 @@ function layoutStorey(
         }
         // large dwellings (T4, T5) at the building corners, small ones in the middle
         ordered = cornerOrder(ordered, row.atStart, row.atEnd);
-        const widths = allocate(
+        let widths = allocate(
           len,
           ordered.map((t) => Math.max(t.areaTarget, minWidth(t) * (b1 - b0))),
           ordered.map(minWidth),
         );
+        // office plan library first: widths that let each dwelling take a library plan
+        const lib =
+          rules.planLibrary !== false
+            ? libraryWidths(
+                ordered.map((t) => unitRooms(t)),
+                len,
+                b1 - b0,
+                row.sides,
+                row.atStart,
+                row.atEnd,
+                ordered.map(minWidth),
+                { stretch: rules.libraryStretch, depthTolerance: rules.libraryDepthTolerance },
+              )
+            : undefined;
+        if (lib) widths = lib.widths;
+        // a library dwelling keeps its width within the stretch of its plan
+        const libRange = (k: number): [number, number] => {
+          const w = widths[k]!;
+          if (!lib?.templates[k]) return [0, Infinity];
+          const tol = rules.libraryStretch * 0.5;
+          return [w * (1 - tol), w * (1 + tol)];
+        };
         // party walls on the façade grid (office rule E, default 1.25 m): each boundary moves
         // to the nearest grid line that keeps both neighbours at their minimum width
         const grid = rules.facadeGrid;
@@ -1214,8 +1241,18 @@ function layoutStorey(
           let x = a0;
           const bounds = widths.slice(0, -1).map((w) => (x += w));
           for (let k = 0; k < bounds.length; k++) {
-            const lo = (k ? bounds[k - 1]! : a0) + minWidth(ordered[k]!);
-            const hi = (k + 1 < bounds.length ? bounds[k + 1]! : a1) - minWidth(ordered[k + 1]!);
+            const left = k ? bounds[k - 1]! : a0;
+            const right = k + 1 < bounds.length ? bounds[k + 1]! : a1;
+            const [l0, l1] = libRange(k);
+            const [r0, r1] = libRange(k + 1);
+            const lo = Math.max(
+              left + (lib?.templates[k] ? l0 : minWidth(ordered[k]!)),
+              right - (lib?.templates[k + 1] ? r1 : Infinity),
+            );
+            const hi = Math.min(
+              right - (lib?.templates[k + 1] ? r0 : minWidth(ordered[k + 1]!)),
+              left + (lib?.templates[k] ? l1 : Infinity),
+            );
             const g = a0 + Math.round((bounds[k]! - a0) / grid) * grid;
             const cands = [g, g - grid, g + grid].filter((v) => v >= lo - 1e-6 && v <= hi + 1e-6);
             if (cands.length)
@@ -1611,6 +1648,24 @@ function layoutStorey(
     }
     const accessNow = [...cores, ...circulation].map((c) => c.polygon);
     const accessNowEdges = polygonEdges(accessNow);
+    const libraryUsed: string[] = [];
+    /** Rooms from the office plan library, when a plan fits the dwelling. */
+    const libraryMatch = (polygon: Polygon, segs: [Vec2, Vec2][], type: UnitType) => {
+      if (rules.planLibrary === false || pass.duplex || type.duplex) return undefined;
+      const m = matchTemplate(polygon, segs, accessNowEdges, unitRooms(type), rules, {
+        stretch: rules.libraryStretch,
+        depthTolerance: rules.libraryDepthTolerance,
+        used: libraryUsed.slice(-2),
+        preferSejour: (seg) => {
+          const outer = onLine(seg, outlineSegs);
+          if (!outer) return 0;
+          return sideConfig(outdoorCfg, facadeSide(seg, polygon)).kind === 'none' ? 1 : 2;
+        },
+      });
+      if (!m) return undefined;
+      libraryUsed.push(m.template.id);
+      return { rooms: m.rooms, template: m.template };
+    };
     raw.forEach((u, i) => {
       if (!alive[i]) return;
       const polygon = polys[i]!;
@@ -1628,6 +1683,26 @@ function layoutStorey(
         // a wide unit with little façade: the largest type the façade allows
         if (allowed.length && !allowed.includes(choice.type))
           choice = typeByArea(area, allowed, new Map());
+      }
+      // office plan library first: the type whose library plan fits the dwelling
+      let lm = choice.type.duplex ? undefined : libraryMatch(polygon, facade.segments, choice.type);
+      if (!lm && rules.planLibrary !== false && !pass.duplex && !choice.type.duplex) {
+        const alt = (allowed.length ? allowed : mix)
+          .filter(
+            (t) =>
+              t !== choice.type &&
+              !t.duplex &&
+              area >= t.areaMin * 0.9 - 1e-6 &&
+              area <= t.areaMax * 1.1 + 1e-6,
+          )
+          .sort((a, b) => Math.abs(a.areaTarget - area) - Math.abs(b.areaTarget - area));
+        for (const t of alt) {
+          lm = libraryMatch(polygon, facade.segments, t);
+          if (lm) {
+            choice = { type: t, outOfRange: area < t.areaMin - 1e-6 || area > t.areaMax + 1e-6 };
+            break;
+          }
+        }
       }
       const need = fc.req(choice.type);
       units.push({
@@ -1652,19 +1727,21 @@ function layoutStorey(
               },
             }
           : {}),
-        rooms: unitRoomLayout(polygon, facade.segments, roomsOf(choice.type), rules, {
-          preferSejour: (seg) => {
-            // séjour preferably on the outer façade, where the outdoor space can go
-            const outer = onLine(seg, outlineSegs);
-            if (!outer) return 0;
-            return sideConfig(outdoorCfg, facadeSide(seg, polygon)).kind === 'none' ? 1 : 2;
-          },
-          exterior: outlineSegs,
-          access: accessNow,
-          ...(pass.below ? { below: pass.below } : {}),
-          neighbours: units.flatMap((x) => x.rooms),
-          wet: wetOf(choice.type),
-          mainRooms: unitRooms(choice.type),
+        ...(lm ?? {
+          rooms: unitRoomLayout(polygon, facade.segments, roomsOf(choice.type), rules, {
+            preferSejour: (seg) => {
+              // séjour preferably on the outer façade, where the outdoor space can go
+              const outer = onLine(seg, outlineSegs);
+              if (!outer) return 0;
+              return sideConfig(outdoorCfg, facadeSide(seg, polygon)).kind === 'none' ? 1 : 2;
+            },
+            exterior: outlineSegs,
+            access: accessNow,
+            ...(pass.below ? { below: pass.below } : {}),
+            neighbours: units.flatMap((x) => x.rooms),
+            wet: wetOf(choice.type),
+            mainRooms: unitRooms(choice.type),
+          }),
         }),
         ...orientationCheck(facade.segments, polygon, unitRooms(choice.type)),
         facadeRatioOk: facade.length >= rules.facadeAreaRatio * area - 1e-6,
@@ -1732,6 +1809,7 @@ function layoutStorey(
     openArea: sum(open),
     footprintArea: footprints.reduce((s, p) => s + polygonArea(p), 0),
     facadeViolations: units.filter((u) => !u.facadeOk && countsHere(u)).length,
+    libraryUnits: units.filter((u) => !!u.template && countsHere(u)).length,
   };
   const r1 = (x: number) => Math.round(x * 10) / 10;
   const signature = [

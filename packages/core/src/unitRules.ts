@@ -34,6 +34,10 @@ export const DEFAULT_UNIT_RULES: Required<UnitRules> = {
   unitsPerCoreMax: 8,
   facadeAreaRatio: 0.12,
   facadeGrid: 1.25,
+  // office decision 2026-11-24: plans of the office library first, ±10 % / ±0.50 m
+  planLibrary: true,
+  libraryStretch: 0.1,
+  libraryDepthTolerance: 0.5,
 };
 
 /** Fully resolved unit rules (all optional values filled in). */

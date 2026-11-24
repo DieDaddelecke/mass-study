@@ -467,6 +467,12 @@ export interface UnitRules {
   facadeAreaRatio?: number;
   /** Party walls on this façade grid, m (1.25; 0 = off). */
   facadeGrid?: number;
+  /** Dwellings take a plan of the office plan library first (true). */
+  planLibrary?: boolean;
+  /** Allowed stretch of a library plan along its main façade (0.10 = ±10 %). */
+  libraryStretch?: number;
+  /** Allowed depth change of a library plan, m (0.50). */
+  libraryDepthTolerance?: number;
 }
 
 /** Minimum room areas of the office rules, m². */
