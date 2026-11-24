@@ -52,7 +52,7 @@ import {
   resolveUnitRules,
   unitRooms,
 } from './unitRules.js';
-import { libraryWidths, matchTemplate, type UnitTemplate } from './planLibrary.js';
+import { libraryWidths, matchTemplate, planTemplates, type UnitTemplate } from './planLibrary.js';
 import { duplexProgram, duplexWet, unitRoomLayout, wetProgram, type LayoutRoom } from './rooms.js';
 import type { LayoutSpace, OfficeSummary, ResidenceSummary } from './spaces.js';
 import { residenceStoreyLayout } from './residence.js';
@@ -521,7 +521,14 @@ export function mixCores(
   /** Gallery, corridor, point block: most dwellings per core and storey (office rule, 8). */
   maxPerCore?: number,
 ): number {
-  const perCore = access === 'zweispaenner' ? 2 : access === 'dreispaenner' ? 3 : 0;
+  const perCore =
+    access === 'zweispaenner'
+      ? 2
+      : access === 'dreispaenner'
+        ? 3
+        : access === 'vierspaenner'
+          ? 4
+          : 0;
   if (!perCore && maxPerCore && maxPerCore > 0 && avgTarget > 0 && access !== 'reihenhaus') {
     // enough cores that none serves more than maxPerCore dwellings per storey
     const units = bars.reduce(
@@ -682,6 +689,11 @@ function planBar(
   fc: FacadeCtx,
   /** Core centres (along the bar) to keep, e.g. those of the storey below. */
   pins?: readonly number[],
+  /** Picks without taking from the pool, and taking the types of the chosen plan. */
+  trial?: {
+    peek: (area: number, count: number) => UnitType[];
+    consume: (ts: readonly UnitType[]) => void;
+  },
 ): BarPlan {
   const L = bar.length;
   const D = bar.depth;
@@ -706,9 +718,29 @@ function planBar(
     return plan;
   }
 
+  // spänner sections of rectangular dwellings that take the plans of the office library
+  if (
+    (access === 'zweispaenner' || access === 'dreispaenner' || access === 'vierspaenner') &&
+    (access === 'vierspaenner' || resolveUnitRules(settings).planLibrary !== false) &&
+    planSpaenner(
+      plan,
+      L,
+      D,
+      n,
+      access,
+      dim,
+      settings,
+      trial ?? { peek: pick, consume: () => {} },
+      fc,
+      pins,
+    )
+  )
+    return plan;
+
   switch (access) {
     case 'zweispaenner':
-    case 'dreispaenner': {
+    case 'dreispaenner':
+    case 'vierspaenner': {
       // per core section: types chosen from the mix for the section's area, the core (and the
       // middle band of a Dreispänner) shifted so that each unit gets its type's share
       const S = L / n;
@@ -891,6 +923,392 @@ function planBar(
       return plan;
     }
   }
+}
+
+/**
+ * Spänner sections built from rectangular dwellings (office plan library, Soheyl 24.11.2026):
+ * the core is a narrow strip across the building (stair on the access façade, landing behind it
+ * up to the other façade, lift opposite the stair) and the dwellings beside it are plain
+ * rectangles whose widths come from the library plans.
+ * - Zweispänner: [A | strip | B] per core, A and B through the depth (traversant).
+ * - Dreispänner: [A | middle | B], the middle band holds stair, lift and landing on the access
+ *   side and a small mono-oriented dwelling C behind the landing.
+ * - Vierspänner: [A | strip | B] on the access side and [A' | strip | B'] on the other, all
+ *   mono-oriented; the landing reaches both rows.
+ * Without pinned cores the number of cores may move by one from `n0` (never below the escape
+ * distance minimum) and the types towards those with a library plan for the depth, when that
+ * lets more dwellings take a library plan.
+ * Returns false when the bar is too short or too shallow (the caller falls back).
+ */
+function planSpaenner(
+  plan: BarPlan,
+  L: number,
+  D: number,
+  n0: number,
+  access: 'zweispaenner' | 'dreispaenner' | 'vierspaenner',
+  dim: LayoutDimensions,
+  settings: Settings,
+  types: {
+    peek: (area: number, count: number) => UnitType[];
+    consume: (ts: readonly UnitType[]) => void;
+  },
+  fc: FacadeCtx,
+  pins?: readonly number[],
+): boolean {
+  const pick = types.peek;
+  const rules = resolveUnitRules(settings);
+  const mix = settings.unitMix.filter((t) => t.share > 0 && t.areaTarget > 0);
+  const cd = Math.min(dim.coreDepth, D);
+  const [lw, lt] = dim.liftBox;
+  const ld = dim.landingDepth;
+  // stair-only core with the lift opposite (office rule F); else the core holds the lift
+  const opp = dim.liftOpposite && lw > 0;
+  const sw = opp ? Math.max(dim.stairCoreWidth, lw) : dim.coreWidth;
+  const libOpts = { stretch: rules.libraryStretch, depthTolerance: rules.libraryDepthTolerance };
+  const useLib = rules.planLibrary !== false;
+  const st = rules.libraryStretch;
+
+  /** Widths of the library plans for a type at this depth (façades on 1 or 2 long sides). */
+  const planWidths = (t: UnitType, depth: number, sides: number): number[] =>
+    useLib
+      ? planTemplates()
+          .filter(
+            (p) =>
+              p.rooms === unitRooms(t) &&
+              Math.abs(p.depth - depth) <= rules.libraryDepthTolerance + 1e-9 &&
+              p.facades.every((f) => f === 'front' || (sides >= 2 && f === 'back')) &&
+              p.width * (1 + st) >= fc.width(t, sides) - 1e-9,
+          )
+          .map((p) => p.width)
+      : [];
+
+  /** Widths of a row of dwellings: library plans first, else by area with the minimum widths. */
+  const solve = (
+    ts: readonly UnitType[],
+    len: number,
+    depth: number,
+    sides: number,
+    atStart: boolean,
+    atEnd: boolean,
+  ): { w: number[]; hits: number } => {
+    const mins = ts.map((t) => fc.width(t, sides));
+    const lib = useLib
+      ? libraryWidths(ts.map(unitRooms), len, depth, sides, atStart, atEnd, mins, libOpts)
+      : undefined;
+    if (lib) return { w: lib.widths, hits: lib.templates.filter(Boolean).length };
+    // by area target, each within its type's area range where the row allows
+    const lo = ts.map((t, i) => Math.max(mins[i]!, t.areaMin / depth));
+    const hi = ts.map((t, i) => Math.max(lo[i]!, t.areaMax / depth));
+    const w = allocate(
+      len,
+      ts.map((t, i) => Math.max(t.areaTarget, mins[i]! * depth)),
+      lo,
+    );
+    const over = w.map((x, i) => Math.max(0, x - hi[i]!));
+    let spare = over.reduce((a, b) => a + b, 0);
+    if (spare > 1e-6) {
+      w.forEach((x, i) => (w[i] = x - over[i]!));
+      // the surplus goes to those below their maximum
+      for (let it = 0; it < 4 && spare > 1e-6; it++) {
+        const room = w.map((x, i) => Math.max(0, hi[i]! - x));
+        const total = room.reduce((a, b) => a + b, 0);
+        if (total < 1e-6) break;
+        const give = Math.min(spare, total);
+        w.forEach((x, i) => (w[i] = x + (give * room[i]!) / total));
+        spare -= give;
+      }
+      // what no type can take widens all evenly (out of range, the layout trims it)
+      if (spare > 1e-6) w.forEach((x, i) => (w[i] = x + spare / w.length));
+    }
+    return { w, hits: 0 };
+  };
+
+  /**
+   * Types of a row: as the mix picks them ('mix'), moved to types with a library plan for the
+   * depth ('library'), or all of the type whose range holds the average slot area ('area').
+   */
+  const rowOf = (
+    len: number,
+    depth: number,
+    count: number,
+    sides: number,
+    variant: 'mix' | 'library' | 'area',
+  ): UnitType[] => {
+    let ts = pick(len * depth, count);
+    if (ts.length !== count) return [];
+    // a type that cannot be narrow enough for its area at this depth: the nearest that can
+    const feasible = mix.filter((t) => fc.width(t, sides) * depth <= t.areaMax + 1e-6);
+    if (!feasible.length) return [];
+    const nearest = (t: UnitType, pool: readonly UnitType[]) =>
+      pool.includes(t)
+        ? t
+        : [...pool].sort(
+            (a, b) => Math.abs(a.areaTarget - t.areaTarget) - Math.abs(b.areaTarget - t.areaTarget),
+          )[0]!;
+    ts = ts.map((t) => nearest(t, feasible));
+    const withPlan = feasible.filter((t) => !t.duplex && planWidths(t, depth, sides).length);
+    if (variant === 'library') {
+      if (!withPlan.length) return [];
+      ts = ts.map((t) => nearest(t, withPlan));
+    } else if (variant === 'area') {
+      const a = (len * depth) / count;
+      const inRange = (pool: readonly UnitType[]) =>
+        pool.filter((t) => a >= t.areaMin - 1e-6 && a <= t.areaMax + 1e-6);
+      const near = (pool: readonly UnitType[]) =>
+        [...pool].sort(
+          (x, y) =>
+            Math.max(0, x.areaMin - a, a - x.areaMax) - Math.max(0, y.areaMin - a, a - y.areaMax),
+        );
+      const pool = inRange(withPlan).length
+        ? inRange(withPlan)
+        : inRange(feasible).length
+          ? inRange(feasible)
+          : near(feasible).slice(0, 1);
+      if (!pool.length) return [];
+      const t = [...pool].sort(
+        (x, y) => Math.abs(x.areaTarget - a) - Math.abs(y.areaTarget - a),
+      )[0]!;
+      ts = ts.map(() => t);
+    }
+    ts = fitTypes(
+      ts,
+      fc,
+      (x) => x.reduce((s2, t) => s2 + (t ? fc.width(t, sides) : 0), 0) <= len,
+    ).filter((t): t is UnitType => !!t);
+    return cornerOrder(ts, true, true);
+  };
+
+  /**
+   * Places a row: dwellings 2i and 2i + 1 flank middle band i. Without centres the widths fill
+   * the bar; with centres the middle bands stay there and each gap is solved.
+   */
+  const placeRow = (
+    ts: readonly UnitType[],
+    mids: readonly number[],
+    depth: number,
+    sides: number,
+    centres?: readonly number[],
+  ): { units: [number, number][]; mids: [number, number][]; hits: number } | undefined => {
+    const units: [number, number][] = [];
+    const bands: [number, number][] = [];
+    if (ts.length !== 2 * mids.length) return undefined;
+    if (!centres) {
+      const len = L - mids.reduce((x, y) => x + y, 0);
+      if (len <= 0) return undefined;
+      const { w, hits } = solve(ts, len, depth, sides, true, true);
+      let x = 0;
+      for (let i = 0; i < mids.length; i++) {
+        units.push([x, (x += w[2 * i]!)]);
+        bands.push([x, (x += mids[i]!)]);
+        units.push([x, (x += w[2 * i + 1]!)]);
+      }
+      units[units.length - 1]![1] = L;
+      return { units, mids: bands, hits };
+    }
+    centres.forEach((c, i) => bands.push([c - mids[i]! / 2, c + mids[i]! / 2]));
+    const edges = [0, ...bands.flat(), L];
+    let hits = 0;
+    for (let k = 0; k <= bands.length; k++) {
+      const a = edges[2 * k]!;
+      const b = edges[2 * k + 1]!;
+      const idx = k === 0 ? [0] : k === bands.length ? [ts.length - 1] : [2 * k - 1, 2 * k];
+      if (b - a < 2) return undefined;
+      const r = solve(
+        idx.map((i) => ts[i]!),
+        b - a,
+        depth,
+        sides,
+        k === 0,
+        k === bands.length,
+      );
+      hits += r.hits;
+      let x = a;
+      idx.forEach((i, j) => (units[i] = [x, (x = j === idx.length - 1 ? b : x + r.w[j]!)]));
+    }
+    return { units, mids: bands, hits };
+  };
+
+  /** Stair on the access side, landing behind it, the lift opposite the stair at the far end. */
+  const strip = (m0: number, m1: number, front: number, back: number) => {
+    plan.cores.push([m0, 0, m0 + Math.min(sw, m1 - m0), cd]);
+    if (m1 - m0 - sw > 0.05) plan.circulation.push({ kind: 'landing', rect: [m0 + sw, 0, m1, cd] });
+    if (opp && back - front - lt >= 1) {
+      plan.circulation.push({ kind: 'lift', rect: [m0, back - lt, m0 + lw, back] });
+      plan.circulation.push({ kind: 'landing', rect: [m0, front, m1, back - lt] });
+      if (m1 - m0 - lw > 0.05)
+        plan.circulation.push({ kind: 'landing', rect: [m0 + lw, back - lt, m1, back] });
+    } else plan.circulation.push({ kind: 'landing', rect: [m0, front, m1, back] });
+  };
+
+  const pinned = pins?.length === n0 ? pins : undefined;
+  const nMin = Math.max(1, Math.ceil(L / (2 * settings.cores.maxEscapeDistance) - 1e-9));
+  const ns = pinned ? [n0] : [n0, n0 - 1, n0 + 1].filter((k) => k >= nMin);
+  // a trial: library dwellings it reaches, and the plan it writes when chosen
+  type Trial = { score: number; apply: () => void };
+  let best: Trial | undefined;
+  const consider = (t: Trial | undefined) => {
+    if (t && (!best || t.score > best.score + 1e-9)) best = t;
+  };
+  /**
+   * How far the dwellings of a row leave the area range of their type (relative, summed) plus
+   * those narrower than their façade rules allow: the layout has to cut or merge them.
+   */
+  const misfits = (
+    ts: readonly UnitType[],
+    units: readonly [number, number][],
+    depth: number,
+    sides: number,
+  ) =>
+    ts.reduce((sum, t, k) => {
+      const w = units[k]![1] - units[k]![0];
+      const a = w * depth;
+      const off = Math.max(0, a - t.areaMax, t.areaMin - a) / t.areaTarget;
+      return sum + 4 * off + (off > 0 ? 0.3 : 0) + (w < fc.width(t, sides) - 0.05 ? 1 : 0);
+    }, 0);
+  /** Distance of the dwellings' types from the shares of the unit mix (in dwellings). */
+  const shareSum = mix.reduce((x, t) => x + t.share, 0) || 1;
+  const mixDev = (ts: readonly UnitType[]) =>
+    0.5 *
+    mix.reduce(
+      (x, t) =>
+        x + Math.abs(ts.filter((u) => u.id === t.id).length - (t.share / shareSum) * ts.length),
+      0,
+    );
+
+  const variants: ('mix' | 'area' | 'library')[] = useLib
+    ? ['mix', 'area', 'library']
+    : ['mix', 'area'];
+  for (const n of ns) {
+    const off = Math.abs(n - n0) * 4;
+    for (const variant of variants) {
+      if (access === 'zweispaenner') {
+        if (D - cd < 1.2) continue;
+        const mids = Array.from({ length: n }, () => sw);
+        const ts = rowOf(L - n * sw, D, 2 * n, 2, variant);
+        const row = placeRow(ts, mids, D, 2, pinned);
+        if (!row) continue;
+        consider({
+          score: row.hits - off - mixDev(ts) - misfits(ts, row.units, D, 2),
+          apply: () => {
+            row.mids.forEach(([m0, m1]) => strip(m0, m1, cd, D));
+            row.units.forEach(([a, b], k) =>
+              plan.fixed.push({ rects: [[a, 0, b, D]], core: Math.floor(k / 2), type: ts[k] }),
+            );
+          },
+        });
+      } else if (access === 'dreispaenner') {
+        // dwelling C behind the landing: mono-oriented, at least as wide as stair + lift
+        const td = D - cd - ld;
+        if (td < 5) continue;
+        const minMid = opp ? sw + lw : dim.coreWidth;
+        // the small type whose library plan wastes least beside the core, else the smallest
+        const small = mix
+          .filter((t) => unitRooms(t) <= 2 && !t.duplex)
+          .map((t) => {
+            const ws = planWidths(t, td, 1).filter((w) => w * (1 + st) >= minMid);
+            const w = ws.length ? Math.min(...ws.map((x) => Math.max(x, minMid))) : undefined;
+            return { t, w };
+          })
+          .sort(
+            (a, b) =>
+              (a.w === undefined ? 1 : 0) - (b.w === undefined ? 1 : 0) ||
+              (a.w ?? 0) - (b.w ?? 0) ||
+              a.t.areaTarget - b.t.areaTarget,
+          );
+        const c = small[0];
+        if (!c) continue;
+        let wm = c.w ?? Math.max(minMid, fc.width(c.t, 1), c.t.areaTarget / td);
+        wm = Math.max(Math.min(wm, c.t.areaMax / td), minMid);
+        const mids = Array.from({ length: n }, () => wm);
+        const ts = rowOf(L - n * wm, D, 2 * n, 2, variant);
+        const row = placeRow(ts, mids, D, 2, pinned);
+        if (!row) continue;
+        consider({
+          score:
+            row.hits +
+            (c.w !== undefined ? n : 0) -
+            off -
+            mixDev([...ts, ...Array.from({ length: n }, () => c.t)]) -
+            misfits(ts, row.units, D, 2),
+          apply: () => {
+            row.mids.forEach(([m0, m1], i) => {
+              const kw = Math.min(opp ? sw : dim.coreWidth, m1 - m0);
+              plan.cores.push([m0, 0, m0 + kw, cd]);
+              const k = m0 + kw;
+              if (opp && k + lw <= m1 + 1e-6) {
+                plan.circulation.push({ kind: 'lift', rect: [k, cd - lt, k + lw, cd] });
+                if (cd - lt > 0.05)
+                  plan.circulation.push({ kind: 'landing', rect: [k, 0, k + lw, cd - lt] });
+                if (m1 - k - lw > 0.05)
+                  plan.circulation.push({ kind: 'landing', rect: [k + lw, 0, m1, cd] });
+              } else if (m1 - k > 0.05)
+                plan.circulation.push({ kind: 'landing', rect: [k, 0, m1, cd] });
+              plan.circulation.push({ kind: 'landing', rect: [m0, cd, m1, cd + ld] });
+              plan.fixed.push({ rects: [[m0, cd + ld, m1, D]], core: i, type: c.t });
+            });
+            row.units.forEach(([a, b], k) =>
+              plan.fixed.push({ rects: [[a, 0, b, D]], core: Math.floor(k / 2), type: ts[k] }),
+            );
+          },
+        });
+      } else {
+        // Vierspänner: two mono-oriented rows; the landing reaches both (the front row deeper
+        // than the stair, the back row in front of the lift)
+        const lo = cd + 1;
+        const hi = D - (opp ? lt : 0) - 1;
+        if (hi < lo || D < 11) continue;
+        const depths = [
+          ...new Set(
+            [D / 2, lo, hi, 6.7, 7.4, D - 6.7, D - 7.4].map(
+              (x) => Math.round(Math.min(Math.max(x, lo), hi) * 100) / 100,
+            ),
+          ),
+        ];
+        const mids = Array.from({ length: n }, () => sw);
+        const len = L - n * sw;
+        for (const yl of depths) {
+          const front = rowOf(len, yl, 2 * n, 1, variant);
+          const back = rowOf(len, D - yl, 2 * n, 1, variant);
+          const f = placeRow(front, mids, yl, 1, pinned);
+          if (!f) continue;
+          const b = placeRow(
+            back,
+            mids,
+            D - yl,
+            1,
+            f.mids.map(([m0, m1]) => (m0 + m1) / 2),
+          );
+          if (!b) continue;
+          consider({
+            score:
+              f.hits +
+              b.hits -
+              off -
+              mixDev([...front, ...back]) -
+              (misfits(front, f.units, yl, 1) + misfits(back, b.units, D - yl, 1)) -
+              0.05 * Math.abs(yl - D / 2),
+            apply: () => {
+              f.mids.forEach(([m0, m1]) => strip(m0, m1, cd, D));
+              f.units.forEach(([a, x], k) =>
+                plan.fixed.push({
+                  rects: [[a, 0, x, yl]],
+                  core: Math.floor(k / 2),
+                  type: front[k],
+                }),
+              );
+              b.units.forEach(([a, x], k) =>
+                plan.fixed.push({ rects: [[a, yl, x, D]], core: Math.floor(k / 2), type: back[k] }),
+              );
+            },
+          });
+        }
+      }
+    }
+  }
+  if (!best) return false;
+  (best as Trial).apply();
+  types.consume(plan.fixed.flatMap((f) => (f.type ? [f.type] : [])));
+  return true;
 }
 
 /** r − h as up to four rectangles. */
@@ -1092,6 +1510,16 @@ function layoutStorey(
     : [];
   const pick = (area: number, count: number): UnitType[] =>
     mix.length ? rowTypes(area, typePool, mix, avgTarget, count) : [];
+  /** The same without taking the types from the storey's pool (for trials). */
+  const peek = (area: number, count: number): UnitType[] =>
+    mix.length ? rowTypes(area, [...typePool], mix, avgTarget, count) : [];
+  /** Takes the types a plan uses from the storey's pool. */
+  const consume = (ts: readonly UnitType[]) => {
+    for (const t of ts) {
+      const i = typePool.indexOf(t);
+      if (i >= 0) typePool.splice(i, 1);
+    }
+  };
   const pinned = pass.pins && pass.pins.length === bars.length ? pass.pins : undefined;
   const coresPerBar = pinned
     ? pinned.map((p) => p.length)
@@ -1111,6 +1539,7 @@ function layoutStorey(
         pick,
         fc,
         pinned?.[bi],
+        { peek, consume },
       );
       pins.push(plan.cores.map((r) => (r[0] + r[2]) / 2));
       const coreBase = cores.length;

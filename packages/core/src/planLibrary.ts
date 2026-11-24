@@ -244,7 +244,7 @@ export function matchTemplate(
   const exclude = new Set(opts.exclude ?? []);
   const used = new Set(opts.used ?? []);
 
-  let best: { t: PlanTemplate; s: Sym; score: number; sx: number; dd: number } | undefined;
+  const cands: { t: PlanTemplate; s: Sym; score: number; sx: number; dd: number }[] = [];
   for (const t of PLAN_TEMPLATES) {
     if (t.rooms !== mainRooms || exclude.has(t.id)) continue;
     for (const s of SYMS) {
@@ -270,69 +270,91 @@ export function matchTemplate(
         1.5 * lostFacades +
         accessPenalty +
         (used.has(t.id) ? 0.3 : 0);
-      if (!best || score < best.score) best = { t, s, score, sx, dd };
+      cands.push({ t, s, score, sx, dd });
     }
+  }
+  if (!cands.length) return undefined;
+  cands.sort((a, b) => a.score - b.score);
+  const rules = resolveUnitRules({ unitRules: rulesIn });
+  /** Rooms of a template placed into the dwelling (symmetry, then scaled onto it). */
+  const place = (t: PlanTemplate, s: Sym): LayoutRoom[] => {
+    const corners = [
+      [0, 0],
+      [t.width, 0],
+      [t.width, t.depth],
+      [0, t.depth],
+    ].map((p) => applyVec(s, p as Vec2));
+    const minX = Math.min(...corners.map((p) => p[0]));
+    const minY = Math.min(...corners.map((p) => p[1]));
+    const ext: Vec2 = [
+      Math.max(...corners.map((p) => p[0])) - minX,
+      Math.max(...corners.map((p) => p[1])) - minY,
+    ];
+    const map = (p: [number, number]): Vec2 => {
+      const q = applyVec(s, p);
+      const u = f.u0 + ((q[0] - minX) / ext[0]) * W;
+      const v = f.v0 + ((q[1] - minY) / ext[1]) * D;
+      // the plans are drawn to the inner face of the walls: rooms reach the dwelling's outline
+      const snap = (x: number, lo: number, hi: number) =>
+        x - lo < WALL_SNAP ? lo : hi - x < WALL_SNAP ? hi : x;
+      return toWorld(f, snap(u, f.u0, f.u1), snap(v, f.v0, f.v1));
+    };
+    const hasKitchen = t.spaces.some((x) => x.kind === 'cuisine');
+    const required = (k: TemplateRoomKind): [number, number] => {
+      switch (k) {
+        case 'sejour':
+          return [
+            rules.livingMinFacade,
+            hasKitchen ? rules.minAreas.sejour : rules.minAreas.sejourCuisine,
+          ];
+        case 'chambrePmr':
+          return [rules.pmrBedroomMinFacade, rules.minAreas.chambrePmr];
+        case 'chambre':
+          return [rules.bedroomMinFacade, rules.minAreas.chambre];
+        case 'cuisine':
+          return [rules.kitchenMinFacade, rules.minAreas.cuisine];
+      }
+    };
+    const rooms: LayoutRoom[] = [];
+    for (const sp of t.spaces) {
+      const raw: Polygon = { outer: sp.polygon.map(map) };
+      const clipped = intersection([raw], [unit]).sort(
+        (a, b) => polygonArea(b) - polygonArea(a),
+      )[0];
+      if (!clipped || polygonArea(clipped) < 1) continue;
+      const [facadeRequired, areaRequired] = required(sp.kind);
+      const facade = facadeOf(clipped, facadeSegments).length;
+      const area = polygonArea(clipped);
+      rooms.push({
+        kind: sp.kind,
+        polygon: clipped,
+        area,
+        facade,
+        facadeRequired,
+        facadeOk: facade >= facadeRequired - 0.02,
+        areaRequired,
+        areaOk: area >= areaRequired - 0.05,
+      });
+    }
+    return rooms;
+  };
+  // among the closest plans, the one whose rooms keep the office rules (façade, area)
+  let best: (typeof cands)[number] | undefined;
+  let rooms: LayoutRoom[] = [];
+  let bestCost = Infinity;
+  for (const c of cands.slice(0, 8)) {
+    const rs = place(c.t, c.s);
+    const fails = rs.filter((r) => !r.facadeOk || !r.areaOk).length;
+    const cost = c.score + 3 * fails;
+    if (cost < bestCost) {
+      bestCost = cost;
+      best = c;
+      rooms = rs;
+    }
+    if (!fails) break;
   }
   if (!best) return undefined;
-  const { t, s } = best;
-  // template point → dwelling: symmetry, then scale the result onto the dwelling rectangle
-  const corners = [
-    [0, 0],
-    [t.width, 0],
-    [t.width, t.depth],
-    [0, t.depth],
-  ].map((p) => applyVec(s, p as Vec2));
-  const minX = Math.min(...corners.map((p) => p[0]));
-  const minY = Math.min(...corners.map((p) => p[1]));
-  const ext: Vec2 = [
-    Math.max(...corners.map((p) => p[0])) - minX,
-    Math.max(...corners.map((p) => p[1])) - minY,
-  ];
-  const map = (p: [number, number]): Vec2 => {
-    const q = applyVec(s, p);
-    const u = f.u0 + ((q[0] - minX) / ext[0]) * W;
-    const v = f.v0 + ((q[1] - minY) / ext[1]) * D;
-    // the plans are drawn to the inner face of the walls: rooms reach the dwelling's outline
-    const snap = (x: number, lo: number, hi: number) =>
-      x - lo < WALL_SNAP ? lo : hi - x < WALL_SNAP ? hi : x;
-    return toWorld(f, snap(u, f.u0, f.u1), snap(v, f.v0, f.v1));
-  };
-  const rules = resolveUnitRules({ unitRules: rulesIn });
-  const hasKitchen = t.spaces.some((x) => x.kind === 'cuisine');
-  const required = (k: TemplateRoomKind): [number, number] => {
-    switch (k) {
-      case 'sejour':
-        return [
-          rules.livingMinFacade,
-          hasKitchen ? rules.minAreas.sejour : rules.minAreas.sejourCuisine,
-        ];
-      case 'chambrePmr':
-        return [rules.pmrBedroomMinFacade, rules.minAreas.chambrePmr];
-      case 'chambre':
-        return [rules.bedroomMinFacade, rules.minAreas.chambre];
-      case 'cuisine':
-        return [rules.kitchenMinFacade, rules.minAreas.cuisine];
-    }
-  };
-  const rooms: LayoutRoom[] = [];
-  for (const sp of t.spaces) {
-    const raw: Polygon = { outer: sp.polygon.map(map) };
-    const clipped = intersection([raw], [unit]).sort((a, b) => polygonArea(b) - polygonArea(a))[0];
-    if (!clipped || polygonArea(clipped) < 1) continue;
-    const [facadeRequired, areaRequired] = required(sp.kind);
-    const facade = facadeOf(clipped, facadeSegments).length;
-    const area = polygonArea(clipped);
-    rooms.push({
-      kind: sp.kind,
-      polygon: clipped,
-      area,
-      facade,
-      facadeRequired,
-      facadeOk: facade >= facadeRequired - 0.02,
-      areaRequired,
-      areaOk: area >= areaRequired - 0.05,
-    });
-  }
+  const { t } = best;
   return {
     template: {
       id: t.id,

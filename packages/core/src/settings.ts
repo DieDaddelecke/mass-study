@@ -33,6 +33,7 @@ export function defaultSettings(profile: RuleProfileId = 'FR'): Settings {
       circulationShare: {
         zweispaenner: 0.08,
         dreispaenner: 0.09,
+        vierspaenner: 0.09,
         laubengang: 0.1,
         punkthaus: 0.1,
         mittelflur: 0.15,
@@ -45,6 +46,7 @@ export function defaultSettings(profile: RuleProfileId = 'FR'): Settings {
         laubengang: [8, 12],
         zweispaenner: [10, 13],
         dreispaenner: [12, 15],
+        vierspaenner: [13, 15],
         mittelflur: [15, 20],
         punkthaus: [18, 30],
       },
@@ -54,7 +56,7 @@ export function defaultSettings(profile: RuleProfileId = 'FR'): Settings {
     },
     cores: {
       maxEscapeDistance: 35,
-      sectionLength: { zweispaenner: 22, dreispaenner: 28 },
+      sectionLength: { zweispaenner: 22, dreispaenner: 28, vierspaenner: 32 },
       coreWidth: 5.5,
       coreDepth: 6,
       galleryWidth: 1.6,

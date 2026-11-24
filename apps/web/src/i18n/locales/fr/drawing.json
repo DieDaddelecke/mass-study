@@ -44,6 +44,7 @@
     "access": {
       "zweispaenner": "Distribution double",
       "dreispaenner": "Distribution triple",
+      "vierspaenner": "Distribution quadruple",
       "laubengang": "Coursive",
       "mittelflur": "Couloir central",
       "punkthaus": "Plot à cage centrale",

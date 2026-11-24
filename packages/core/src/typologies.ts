@@ -1,3 +1,4 @@
+import { residentialDepthRange } from './areas.js';
 import { unitsPerCoreRange } from './mix.js';
 import { typologySegments } from './generators.js';
 import type { AccessType, Mass, Settings, Typology, Usage } from './types.js';
@@ -45,8 +46,11 @@ export function suitability(t: Typology, usage: Usage, settings: Settings): Typo
   if (usage === 'wohnen') {
     if (t.kind === 'reihe') return [{ type: 'reihenhaus', status: 'ok' }];
     const list: TypologySuitability[] = (
-      ['laubengang', 'zweispaenner', 'dreispaenner', 'mittelflur'] as const
-    ).map((type) => ({ type, range: r.wohnen[type], status: inRange(depth, r.wohnen[type]) }));
+      ['laubengang', 'zweispaenner', 'dreispaenner', 'vierspaenner', 'mittelflur'] as const
+    ).map((type) => {
+      const range = residentialDepthRange(r.wohnen, type);
+      return { type, range, status: inRange(depth, range) };
+    });
     const isPoint = t.kind === 'solitaer' && Math.min(t.length, t.depth) >= r.punkthausMinSide;
     list.push({ type: 'punkthaus', range: r.wohnen.punkthaus, status: isPoint ? 'ok' : 'error' });
     return list;
@@ -73,7 +77,8 @@ export function lightWarning(t: Typology, usage: Usage, settings: Settings): boo
 export function resolveAccess(mass: Mass, settings: Settings): AccessType {
   const n = mass.unitsPerCore;
   const usage = mass.usage ?? 'wohnen';
-  const spaenner = n === 2 ? 'zweispaenner' : n === 3 ? 'dreispaenner' : undefined;
+  const spaenner =
+    n === 2 ? 'zweispaenner' : n === 3 ? 'dreispaenner' : n === 4 ? 'vierspaenner' : undefined;
   // dwellings per landing given: 2 / 3 make the spänner type (also over the other spänner)
   if (
     spaenner &&
@@ -82,7 +87,8 @@ export function resolveAccess(mass: Mass, settings: Settings): AccessType {
     (!mass.access ||
       mass.access === 'auto' ||
       mass.access === 'zweispaenner' ||
-      mass.access === 'dreispaenner')
+      mass.access === 'dreispaenner' ||
+      mass.access === 'vierspaenner')
   )
     return spaenner;
   if (mass.access && mass.access !== 'auto') return mass.access;
@@ -93,13 +99,13 @@ export function resolveAccess(mass: Mass, settings: Settings): AccessType {
   if (t.kind === 'solitaer' && Math.min(t.length, t.depth) >= settings.depthRanges.punkthausMinSide)
     return 'punkthaus';
   const depth = massDepth(t);
-  // 4 or more per landing: no spänner (they serve 2 or 3)
+  // 5 or more per landing: no spänner (they serve 2 to 4)
   const types =
-    n && n >= 4
+    n && n >= 5
       ? (['laubengang', 'mittelflur'] as const)
       : (['zweispaenner', 'dreispaenner', 'laubengang', 'mittelflur'] as const);
   const candidates = types.map((type) => {
-    const [a, b] = settings.depthRanges.wohnen[type];
+    const [a, b] = residentialDepthRange(settings.depthRanges.wohnen, type);
     const mid = (a + b) / 2;
     const outside = depth < a ? a - depth : depth > b ? depth - b : 0;
     return { type, score: outside * 10 + Math.abs(depth - mid) };
@@ -118,7 +124,7 @@ export function requiredCores(mass: Mass, access: AccessType, settings: Settings
   const length = massLength(mass.typology);
   const byEscape = Math.max(1, Math.ceil(length / (2 * settings.cores.maxEscapeDistance)));
   // with the dwellings per core given, those set the cores (not the typical section length)
-  if (access === 'punkthaus' || (mass.unitsPerCore && mass.unitsPerCore >= 4)) return byEscape;
+  if (access === 'punkthaus' || (mass.unitsPerCore && mass.unitsPerCore >= 5)) return byEscape;
   const section = settings.cores.sectionLength[access];
   const byAccess = section ? Math.max(1, Math.ceil(length / section - 1e-9)) : 1;
   return Math.max(byEscape, byAccess);

@@ -29,6 +29,8 @@ export const USAGES: readonly Usage[] = [
 export type AccessType =
   | 'zweispaenner'
   | 'dreispaenner'
+  /** Four dwellings per landing: two on each façade, mono-oriented (FR « 4 logements par palier »). */
+  | 'vierspaenner'
   | 'laubengang'
   | 'mittelflur'
   | 'punkthaus'
@@ -505,10 +507,17 @@ export interface Settings {
     technicalShare: number;
     livingAreaFactor: number;
     /** VF share of NRF per access type. */
-    circulationShare: Record<AccessType, number>;
+    circulationShare: Record<Exclude<AccessType, 'vierspaenner'>, number> & {
+      vierspaenner?: number;
+    };
   };
   depthRanges: {
-    wohnen: Record<Exclude<AccessType, 'buero' | 'reihenhaus'>, [number, number]>;
+    wohnen: Record<
+      Exclude<AccessType, 'buero' | 'reihenhaus' | 'vierspaenner'>,
+      [number, number]
+    > & {
+      vierspaenner?: [number, number];
+    };
     buero: {
       zellenbuero: [number, number];
       kombibuero: [number, number];

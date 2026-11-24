@@ -30,6 +30,7 @@ import { Group, NumField, Row, Segmented, TrafficDot } from './ui';
 export const ACCESS_TYPES: AccessType[] = [
   'zweispaenner',
   'dreispaenner',
+  'vierspaenner',
   'laubengang',
   'mittelflur',
   'punkthaus',

@@ -57,6 +57,8 @@ export function unitsPerCoreRange(
       return [2, 2];
     case 'dreispaenner':
       return [3, 3];
+    case 'vierspaenner':
+      return [4, 4];
     case 'punkthaus':
       // point block: 4 to 7 dwellings around the central core (within the office range)
       return [Math.max(4, range[0]), Math.max(Math.max(4, range[0]), Math.min(7, range[1]))];

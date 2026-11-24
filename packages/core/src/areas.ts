@@ -48,7 +48,7 @@ export function solidAreas(
     vf = 0;
     tf = nrf * a.technicalShare;
   } else {
-    vf = nrf * a.circulationShare[access];
+    vf = nrf * circulationShare(a.circulationShare, access);
     tf = nrf * a.technicalShare;
   }
   const nuf = nrf - vf - tf;
@@ -80,4 +80,20 @@ export function sumAreas(list: readonly AreaFigures[]): AreaFigures {
     out.exteriorWalls += f.exteriorWalls;
   }
   return out;
+}
+
+/** VF share of an access type (files from before the Vierspänner take the Dreispänner share). */
+export function circulationShare(
+  shares: Settings['areas']['circulationShare'],
+  access: AccessType,
+): number {
+  return access === 'vierspaenner' ? (shares.vierspaenner ?? shares.dreispaenner) : shares[access];
+}
+
+/** Depth range of a residential access type ([13, 15] m for a Vierspänner if not set). */
+export function residentialDepthRange(
+  ranges: Settings['depthRanges']['wohnen'],
+  access: Exclude<AccessType, 'buero' | 'reihenhaus'>,
+): [number, number] {
+  return access === 'vierspaenner' ? (ranges.vierspaenner ?? [13, 15]) : ranges[access];
 }

@@ -18,6 +18,13 @@ import {
 } from '../src/index.js';
 import { mass, referenceProject } from './helpers.js';
 
+/** Area of the axis-aligned box around a polygon. */
+const boxArea = (p: { outer: [number, number][] }) => {
+  const xs = p.outer.map((q) => q[0]);
+  const ys = p.outer.map((q) => q[1]);
+  return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
+};
+
 const settings = defaultSettings('FR');
 
 function layoutOf(
@@ -68,11 +75,15 @@ function mixDeviation(l: StoreyLayout, rowDepth: number, sides = 1): number {
 }
 
 describe('storeyLayout', () => {
-  it('Zweispänner bar 40 × 12 m with 2 cores → 4 units', () => {
+  it('Zweispänner bar 40 × 12 m: 2 units per core, rectangles of the plan library', () => {
     const l = layoutOf({ kind: 'solitaer', length: 40, depth: 12 }, 'zweispaenner');
-    expect(l.cores).toHaveLength(2);
-    expect(l.units).toHaveLength(4);
+    // 2 cores by the regulations, a third when the mix and the library plans fit better
+    expect(l.cores.length).toBeGreaterThanOrEqual(2);
+    expect(l.cores.length).toBeLessThanOrEqual(3);
+    expect(l.units).toHaveLength(2 * l.cores.length);
     expect(l.unitsPerCore).toBe(2);
+    for (const u of l.units) expect(polygonArea(u.polygon)).toBeCloseTo(boxArea(u.polygon), 1);
+    expect(l.units.filter((u) => u.template).length).toBeGreaterThanOrEqual(l.units.length / 2);
     checkPartition(l);
   });
 

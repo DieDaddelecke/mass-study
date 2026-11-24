@@ -182,6 +182,7 @@
     "suitability": {
       "zweispaenner": "2 units/core",
       "dreispaenner": "3 units/core",
+      "vierspaenner": "4 units/core",
       "laubengang": "Gallery",
       "mittelflur": "Central corridor",
       "punkthaus": "Point block",
