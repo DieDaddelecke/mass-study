@@ -76,3 +76,29 @@ describe('spänner sections of library dwellings', () => {
     for (const u of st.units) expect(rectangular(u.polygon)).toBe(true);
   });
 });
+
+describe('orientation rule in the generator', () => {
+  it('from T3 every dwelling has two orientations (one-sided places take T1 / T2)', () => {
+    const cases: [number, number, 'vierspaenner' | 'dreispaenner' | 'mittelflur'][] = [
+      [50, 14, 'vierspaenner'],
+      [70, 15, 'vierspaenner'],
+      [55, 15, 'dreispaenner'],
+      [60, 17, 'mittelflur'],
+      [42, 19, 'mittelflur'],
+    ];
+    for (const [length, depth, access] of cases) {
+      const m = mass({ kind: 'solitaer', length, depth }, { access });
+      const st = massLayout(m, massToSolids(m, settings), settings).storeys.find(
+        (s) => s.storeyIndex === 2,
+      )!;
+      for (const u of st.units) {
+        const rooms = Number(u.typeId.replace(/\D/g, ''));
+        if (rooms >= 3)
+          expect(
+            u.orientations?.length ?? 0,
+            `${access} ${length}×${depth} ${u.label}`,
+          ).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+});

@@ -1079,7 +1079,17 @@ function planSpaenner(
       fc,
       (x) => x.reduce((s2, t) => s2 + (t ? fc.width(t, sides) : 0), 0) <= len,
     ).filter((t): t is UnitType => !!t);
-    return cornerOrder(ts, true, true);
+    ts = cornerOrder(ts, true, true);
+    // one façade only (Vierspänner rows): T3 and larger only at the gables (office rule:
+    // from T3 two orientations), the places in between take T1 / T2
+    if (sides === 1) {
+      const small = feasible.filter((t) => unitRooms(t) <= 2);
+      if (small.length)
+        ts = ts.map((t, i) =>
+          i === 0 || i === ts.length - 1 || unitRooms(t) <= 2 ? t : nearest(t, small),
+        );
+    }
+    return ts;
   };
 
   /**
@@ -1646,6 +1656,15 @@ function layoutStorey(
         }
         // large dwellings (T4, T5) at the building corners, small ones in the middle
         ordered = cornerOrder(ordered, row.atStart, row.atEnd);
+        // one façade only: T3 and larger only at a gable (two orientations), else T1 / T2
+        if (row.sides === 1) {
+          ordered = oneSided(ordered, row.atStart, row.atEnd, mix, rowAreas[ri]!);
+          while (ordered.length > 1 && !fitsRow(ordered)) {
+            let si = ordered.length >> 1;
+            ordered.forEach((t, i) => (t.areaTarget < ordered[si]!.areaTarget ? (si = i) : 0));
+            ordered.splice(si, 1);
+          }
+        }
         let widths = allocate(
           len,
           ordered.map((t) => Math.max(t.areaTarget, minWidth(t) * (b1 - b0))),
@@ -1832,7 +1851,13 @@ function layoutStorey(
       const allowedFor = (p: Polygon) => {
         const f = facOf(p);
         const pieces = f.segments.map(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]));
-        return mix.filter((t) => fc.req(t) <= f.length + 1e-6 && roomsFit(t, pieces, rules));
+        const twoSides = orientationCheck(f.segments, p, 3).orientationOk;
+        return mix.filter(
+          (t) =>
+            fc.req(t) <= f.length + 1e-6 &&
+            roomsFit(t, pieces, rules) &&
+            (twoSides || unitRooms(t) < 3),
+        );
       };
       const maxArea = (p: Polygon) => {
         const ok = allowedFor(p);
@@ -1952,6 +1977,34 @@ function layoutStorey(
           }
           return false;
         };
+        // far too large (e.g. a one-sided piece, which takes no T3): two dwellings side by side
+        // rather than one cut down to a shallow strip
+        if (area > cap * 1.25) {
+          let self: { a: Polygon; b: Polygon; score: number } | undefined;
+          for (const [a, b] of slabSplits(p)) {
+            const ok = (q: Polygon) => {
+              const ar = polygonArea(q);
+              return (
+                !!single([q]) &&
+                door(q) >= DOOR &&
+                !dark(q) &&
+                allowedFor(q).some((t) => ar >= t.areaMin - 1e-6 && ar <= t.areaMax + 1e-6)
+              );
+            };
+            if (!ok(a) || !ok(b)) continue;
+            const score = Math.abs(polygonArea(a) - polygonArea(b));
+            if (!self || score < self.score) self = { a, b, score };
+          }
+          if (self) {
+            polys[i] = simplify(self.a);
+            delete raw[i]!.type;
+            raw.push({ polys: [self.b], core: raw[i]!.core });
+            polys.push(simplify(self.b));
+            fac.push(facadeOf(self.b, facadeSegs).length);
+            alive.push(true);
+            continue;
+          }
+        }
         if (apply(false)) continue;
         // still too large: share the pair (this unit + a neighbour) out again with one straight
         // party wall, so that both parts are in range of a type their façade allows
@@ -2118,8 +2171,13 @@ function layoutStorey(
       const area = polygonArea(polygon);
       const facade = facadeOf(polygon, facadeSegs);
       const pieces = facade.segments.map(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]));
+      // from T3 two orientations (office rule): a one-sided dwelling is a T1 or T2
+      const twoSides = orientationCheck(facade.segments, polygon, 3).orientationOk;
       const allowed = mix.filter(
-        (t) => fc.req(t) <= facade.length + 1e-6 && roomsFit(t, pieces, rules),
+        (t) =>
+          fc.req(t) <= facade.length + 1e-6 &&
+          roomsFit(t, pieces, rules) &&
+          (twoSides || unitRooms(t) < 3),
       );
       const pool = allowed.length ? allowed : mix;
       let choice = u.type ?? typeByArea(area, pool, new Map());
@@ -2581,6 +2639,49 @@ const countsHere = (u: LayoutUnit): boolean => u.duplex?.level !== 'nuit';
  * Order of the dwellings of a row: the largest at the row ends that are building corners
  * (docs/GRUNDRISS_REGELN.md §11), the smallest in the middle.
  */
+/**
+ * Types of a row with one façade side: T3 and larger keep only the places at a gable (two
+ * orientations); the others become T1 / T2, as many as their area asks for.
+ */
+function oneSided(
+  types: UnitType[],
+  atStart: boolean,
+  atEnd: boolean,
+  mix: readonly UnitType[],
+  rowArea: number,
+): UnitType[] {
+  const small = mix.filter((t) => unitRooms(t) <= 2).sort((a, b) => b.areaTarget - a.areaTarget);
+  if (!small.length) return types;
+  const n = types.length;
+  const head: UnitType[] = [];
+  const tail: UnitType[] = [];
+  let mid: UnitType[] = [];
+  let area = 0;
+  types.forEach((t, i) => {
+    if (unitRooms(t) <= 2) mid.push(t);
+    else if (i === 0 && atStart) head.push(t);
+    else if (i === n - 1 && atEnd) tail.push(t);
+    else area += t.areaTarget;
+  });
+  // the area of the large types goes to T2 (else T1), filled up to the nearest count
+  const big = small[0]!;
+  while (area > big.areaTarget * 0.5) {
+    const t =
+      small.find((x) => x.areaTarget <= area + x.areaTarget * 0.25) ?? small[small.length - 1]!;
+    mid.push(t);
+    area -= t.areaTarget;
+  }
+  // the row keeps its area: more small dwellings rather than oversized ones
+  const sum = () => [...head, ...mid, ...tail].reduce((x, t) => x + t.areaTarget, 0);
+  const least = small[small.length - 1]!;
+  for (let k = 0; k < 20 && sum() + least.areaTarget * 0.6 < rowArea; k++) {
+    const rest = rowArea - sum();
+    mid.push(small.find((x) => x.areaTarget <= rest * 1.1) ?? least);
+  }
+  mid = mid.sort((a, b) => b.areaTarget - a.areaTarget);
+  return [...head, ...mid, ...tail];
+}
+
 function cornerOrder(types: UnitType[], atStart: boolean, atEnd: boolean): UnitType[] {
   const big = [...types].sort((a, b) => unitRooms(b) - unitRooms(a) || b.areaTarget - a.areaTarget);
   if (!atStart && !atEnd) return big;
