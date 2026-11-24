@@ -149,7 +149,9 @@ describe('floor-plan guide', () => {
         for (const u of st.units) {
           expect(u.accessOk).toBe(true);
           const type = settings.unitMix.find((t) => t.id === u.typeId)!;
-          if (u.area > type.areaMax + 1) over.push(`${u.label} ${u.area.toFixed(0)}`);
+          // traversant T3+ may run 10 % over (a deep bar gives no narrower one; flagged)
+          const tol = (u.orientations?.length ?? 0) >= 2 && (type.rooms ?? 0) >= 3 ? 1.1 : 1;
+          if (u.area > type.areaMax * tol + 1) over.push(`${u.label} ${u.area.toFixed(0)}`);
         }
         // oversize only where nothing else fits (flagged with *), at most one per storey
         expect(over.length).toBeLessThanOrEqual(1);

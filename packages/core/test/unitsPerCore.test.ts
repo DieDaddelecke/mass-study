@@ -45,8 +45,8 @@ describe('dwellings per core set on the mass', () => {
 });
 
 describe('spänner sections of library dwellings', () => {
-  const layoutOf = (depth: number, unitsPerCore: number) => {
-    const m = mass({ kind: 'solitaer', length: 50, depth }, { unitsPerCore });
+  const layoutOf = (depth: number, unitsPerCore: number, length = 50) => {
+    const m = mass({ kind: 'solitaer', length, depth }, { unitsPerCore });
     const ml = massLayout(m, massToSolids(m, settings), settings);
     return { ml, st: ml.storeys.find((s) => s.storeyIndex === 2)! };
   };
@@ -57,16 +57,33 @@ describe('spänner sections of library dwellings', () => {
     return Math.abs(polygonArea(p) - box) < 0.05;
   };
 
-  it('Vierspänner: 4 rectangular dwellings per landing, most of them library plans', () => {
-    const { ml, st } = layoutOf(14, 4);
+  it('Mittelflur: a short corridor per core with a traversant dwelling at both ends', () => {
+    const m = mass({ kind: 'solitaer', length: 67.5, depth: 15 }, { access: 'mittelflur' });
+    const st = massLayout(m, massToSolids(m, settings), settings).storeys.find(
+      (s) => s.storeyIndex === 2,
+    )!;
+    const corridors = st.circulation.filter((c) => c.kind === 'corridor');
+    expect(corridors.length).toBe(st.cores.length);
+    const trav = st.units.filter((u) => (u.orientations?.length ?? 0) >= 2);
+    expect(trav.length).toBe(2 * st.cores.length);
+    for (const u of trav) {
+      expect(rectangular(u.polygon)).toBe(true);
+      expect(u.accessOk).toBe(true);
+    }
+  });
+
+  it('Vierspänner: core in the middle, 2 traversant and 2 small dwellings per landing', () => {
+    const { ml, st } = layoutOf(14, 4, 67.5);
     expect(ml.access).toBe('vierspaenner');
     expect(st.units.length).toBe(4 * st.cores.length);
     for (const u of st.units) expect(rectangular(u.polygon)).toBe(true);
-    // every dwelling reaches the landing of its core
     expect(st.circulation.some((c) => c.kind === 'lift')).toBe(true);
-    expect(st.units.filter((u) => u.template).length).toBeGreaterThanOrEqual(
-      st.units.length * 0.75,
-    );
+    // half of them traversant (T3+), the others small (T1/T2) in front of and behind the core
+    const trav = st.units.filter((u) => (u.orientations?.length ?? 0) >= 2);
+    expect(trav.length).toBe(2 * st.cores.length);
+    for (const u of trav) expect(Number(u.typeId.replace(/\D/g, ''))).toBeGreaterThanOrEqual(3);
+    for (const u of st.units.filter((x) => !trav.includes(x)))
+      expect(Number(u.typeId.replace(/\D/g, ''))).toBeLessThanOrEqual(2);
     expect(ml.expectedUnitsPerCore).toEqual([4, 4]);
   });
 
