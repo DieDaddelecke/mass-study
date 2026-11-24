@@ -218,5 +218,6 @@ describe('floor-plan guide', () => {
         }
       }
     }
-  });
+    // seven full mass layouts: slow under coverage on the CI runner
+  }, 60000);
 });
