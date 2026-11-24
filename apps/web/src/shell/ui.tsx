@@ -25,6 +25,8 @@ export interface NumFieldProps {
   placeholder?: string;
   ariaLabel?: string;
   suffix?: string;
+  /** Called when the field is emptied (back to the default); without it the old value returns. */
+  onClear?: () => void;
 }
 
 /** Numeric input that commits on Enter / blur only (one undo step per edit). */
@@ -43,6 +45,10 @@ export function NumField(props: NumFieldProps) {
     setEditing(false);
     let v = parseLocaleNumber(text);
     if (v == null) {
+      if (props.onClear && text.trim() === '') {
+        if (value != null) props.onClear();
+        return;
+      }
       setText(fmt(value));
       return;
     }

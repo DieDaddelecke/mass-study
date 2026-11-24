@@ -178,6 +178,7 @@
     "bgf": "Gross floor area",
     "depth": "Depth",
     "resolvedAccess": "Resolved access",
+    "unitsPerCore": "Dwellings per core and storey",
     "suitability": {
       "zweispaenner": "2 units/core",
       "dreispaenner": "3 units/core",

@@ -325,6 +325,20 @@ function MassProperties({ mass }: { mass: Mass }) {
             ))}
           </select>
         </Row>
+        {(mass.usage ?? 'wohnen') === 'wohnen' && mass.typology.kind !== 'reihe' && (
+          <Row label={t('props.unitsPerCore')}>
+            <NumField
+              ariaLabel={t('props.unitsPerCore')}
+              value={mass.unitsPerCore}
+              integer
+              min={2}
+              max={12}
+              placeholder={t('common:access.auto')}
+              onCommit={(v) => update((m) => void (m.unitsPerCore = v))}
+              onClear={() => update((m) => void delete m.unitsPerCore)}
+            />
+          </Row>
+        )}
       </Group>
       {(mass.usage ?? 'wohnen') === 'wohnen' && (
         <>

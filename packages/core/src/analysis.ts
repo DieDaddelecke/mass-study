@@ -2,14 +2,7 @@ import { coreRange } from './unitRules.js';
 import { solidAreas, sumAreas, type AreaFigures } from './areas.js';
 import { polygonArea, union, polygonsArea } from './geometry.js';
 import { typologySegments } from './generators.js';
-import {
-  parking,
-  unitMix,
-  unitsPerCoreRange,
-  workplaces,
-  type ParkingResult,
-  type UnitMixResult,
-} from './mix.js';
+import { parking, unitMix, workplaces, type ParkingResult, type UnitMixResult } from './mix.js';
 import {
   massToSolids,
   mergeStack,
@@ -20,6 +13,7 @@ import {
 import {
   lightWarning,
   massDepth,
+  massUnitsPerCoreRange,
   requiredCores,
   resolveAccess,
   suitability,
@@ -197,7 +191,7 @@ function computeMass(mass: Mass, settings: Settings): MassResult {
   }
 
   let mixHint: MassResult['mixHint'];
-  const expected = unitsPerCoreRange(access, coreRange(settings));
+  const expected = massUnitsPerCoreRange(mass, access, coreRange(settings));
   const resStoreys = new Set(
     results.filter((r) => r.solid.usage === 'wohnen').map((r) => r.solid.storeyIndex),
   ).size;

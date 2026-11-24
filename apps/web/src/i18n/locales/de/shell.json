@@ -178,6 +178,7 @@
     "bgf": "BGF",
     "depth": "Bautiefe",
     "resolvedAccess": "Erschließung (ermittelt)",
+    "unitsPerCore": "Wohnungen je Treppenhaus und Geschoss",
     "suitability": {
       "zweispaenner": "Zweispänner",
       "dreispaenner": "Dreispänner",

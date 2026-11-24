@@ -23,7 +23,7 @@ import {
   type MassResult,
   type VariantResult,
 } from './analysis.js';
-import { largestRemainder, unitMix, unitsPerCoreRange } from './mix.js';
+import { largestRemainder, unitMix } from './mix.js';
 import {
   difference,
   intersection,
@@ -40,7 +40,7 @@ import {
   ringCentroid,
   union,
 } from './geometry.js';
-import { requiredCores, resolveAccess } from './typologies.js';
+import { massUnitsPerCoreRange, requiredCores, resolveAccess } from './typologies.js';
 import { resolveStairRules } from './stairs.js';
 import {
   coreRange,
@@ -483,7 +483,13 @@ function distributeCores(
   if (access === 'reihenhaus' || !bars.length) return bars.map(() => 0);
   const total = Math.max(
     requiredCores(mass, access, settings),
-    mixCores(bars, access, dim, avgTarget, coreRange(settings)[1]),
+    mixCores(
+      bars,
+      access,
+      dim,
+      avgTarget,
+      massUnitsPerCoreRange(mass, access, coreRange(settings))?.[1] ?? coreRange(settings)[1],
+    ),
   );
   const fits = bars.map((b) => b.length >= dim.coreWidth + 4);
   const weights = bars.map((b, i) => (fits[i] ? b.length : 0));
@@ -2595,7 +2601,7 @@ export function massLayout(
     totals: { units, byType: [...counts.values()], unitArea },
     areaBasedDwellings: areaBasedDwellings ?? 0,
   };
-  const expected = unitsPerCoreRange(access, coreRange(settings));
+  const expected = massUnitsPerCoreRange(mass, access, coreRange(settings));
   if (expected) out.expectedUnitsPerCore = expected;
   return out;
 }

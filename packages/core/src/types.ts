@@ -145,6 +145,12 @@ export interface Mass {
   usage?: Usage;
   usageByStorey?: Record<number, Usage>;
   access?: AccessType | 'auto';
+  /**
+   * Dwellings per core and storey (logements par palier), set by the user. 2 / 3 pick the
+   * Zweispänner / Dreispänner (unless another access is chosen explicitly); from 4 on it is the
+   * most dwellings a gallery, corridor or point-block core serves. Default: settings range.
+   */
+  unitsPerCore?: number;
   /** Outdoor spaces of the dwellings (balcons, loggias, terrasses); default: settings. */
   outdoor?: OutdoorConfig;
   /** Roof on the top storey (default: flat with parapet). */
