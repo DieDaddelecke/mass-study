@@ -1,4 +1,5 @@
 import {
+  circulationShare,
   requiredFacade,
   resolveOutdoorRules,
   resolveUnitRules,
@@ -237,7 +238,7 @@ function SettingsDialog({ project }: { project: Project }) {
           {ACCESS_TYPES.map((a: AccessType) =>
             num(
               t(`common:access.${a}`),
-              pct(s.areas.circulationShare[a]),
+              pct(circulationShare(s.areas.circulationShare, a)),
               (v) =>
                 patch((d) => ({
                   ...d,

@@ -1,3 +1,5 @@
+import { residentialDepthRange } from './areas.js';
+import { unitsPerCoreRange } from './mix.js';
 import { typologySegments } from './generators.js';
 import type { AccessType, Mass, Settings, Typology, Usage } from './types.js';
 
@@ -44,8 +46,11 @@ export function suitability(t: Typology, usage: Usage, settings: Settings): Typo
   if (usage === 'wohnen') {
     if (t.kind === 'reihe') return [{ type: 'reihenhaus', status: 'ok' }];
     const list: TypologySuitability[] = (
-      ['laubengang', 'zweispaenner', 'dreispaenner', 'mittelflur'] as const
-    ).map((type) => ({ type, range: r.wohnen[type], status: inRange(depth, r.wohnen[type]) }));
+      ['laubengang', 'zweispaenner', 'dreispaenner', 'vierspaenner', 'mittelflur'] as const
+    ).map((type) => {
+      const range = residentialDepthRange(r.wohnen, type);
+      return { type, range, status: inRange(depth, range) };
+    });
     const isPoint = t.kind === 'solitaer' && Math.min(t.length, t.depth) >= r.punkthausMinSide;
     list.push({ type: 'punkthaus', range: r.wohnen.punkthaus, status: isPoint ? 'ok' : 'error' });
     return list;
@@ -70,8 +75,23 @@ export function lightWarning(t: Typology, usage: Usage, settings: Settings): boo
 
 /** Resolve the access type: explicit, or the best match for depth and typology. */
 export function resolveAccess(mass: Mass, settings: Settings): AccessType {
-  if (mass.access && mass.access !== 'auto') return mass.access;
+  const n = mass.unitsPerCore;
   const usage = mass.usage ?? 'wohnen';
+  const spaenner =
+    n === 2 ? 'zweispaenner' : n === 3 ? 'dreispaenner' : n === 4 ? 'vierspaenner' : undefined;
+  // dwellings per landing given: 2 / 3 make the spänner type (also over the other spänner)
+  if (
+    spaenner &&
+    usage === 'wohnen' &&
+    mass.typology.kind !== 'reihe' &&
+    (!mass.access ||
+      mass.access === 'auto' ||
+      mass.access === 'zweispaenner' ||
+      mass.access === 'dreispaenner' ||
+      mass.access === 'vierspaenner')
+  )
+    return spaenner;
+  if (mass.access && mass.access !== 'auto') return mass.access;
   if (usage === 'wohnheim') return 'mittelflur';
   if (usage !== 'wohnen') return 'buero';
   const t = mass.typology;
@@ -79,14 +99,17 @@ export function resolveAccess(mass: Mass, settings: Settings): AccessType {
   if (t.kind === 'solitaer' && Math.min(t.length, t.depth) >= settings.depthRanges.punkthausMinSide)
     return 'punkthaus';
   const depth = massDepth(t);
-  const candidates = (['zweispaenner', 'dreispaenner', 'laubengang', 'mittelflur'] as const).map(
-    (type) => {
-      const [a, b] = settings.depthRanges.wohnen[type];
-      const mid = (a + b) / 2;
-      const outside = depth < a ? a - depth : depth > b ? depth - b : 0;
-      return { type, score: outside * 10 + Math.abs(depth - mid) };
-    },
-  );
+  // 5 or more per landing: no spänner (they serve 2 to 4)
+  const types =
+    n && n >= 5
+      ? (['laubengang', 'mittelflur'] as const)
+      : (['zweispaenner', 'dreispaenner', 'laubengang', 'mittelflur'] as const);
+  const candidates = types.map((type) => {
+    const [a, b] = residentialDepthRange(settings.depthRanges.wohnen, type);
+    const mid = (a + b) / 2;
+    const outside = depth < a ? a - depth : depth > b ? depth - b : 0;
+    return { type, score: outside * 10 + Math.abs(depth - mid) };
+  });
   candidates.sort((x, y) => x.score - y.score);
   return candidates[0]!.type;
 }
@@ -100,8 +123,24 @@ export function requiredCores(mass: Mass, access: AccessType, settings: Settings
   if (access === 'reihenhaus') return 0;
   const length = massLength(mass.typology);
   const byEscape = Math.max(1, Math.ceil(length / (2 * settings.cores.maxEscapeDistance)));
-  if (access === 'punkthaus') return byEscape;
+  // with the dwellings per core given, those set the cores (not the typical section length)
+  if (access === 'punkthaus' || (mass.unitsPerCore && mass.unitsPerCore >= 5)) return byEscape;
   const section = settings.cores.sectionLength[access];
   const byAccess = section ? Math.max(1, Math.ceil(length / section - 1e-9)) : 1;
   return Math.max(byEscape, byAccess);
+}
+
+/**
+ * Dwellings per core and storey expected for this mass: the user's number (`unitsPerCore`) for
+ * gallery, corridor and point block, else the access type's range (settings).
+ */
+export function massUnitsPerCoreRange(
+  mass: Mass,
+  access: AccessType,
+  range: [number, number],
+): [number, number] | undefined {
+  const n = mass.unitsPerCore;
+  if (n && n >= 1 && (access === 'laubengang' || access === 'mittelflur' || access === 'punkthaus'))
+    return [n, n];
+  return unitsPerCoreRange(access, range);
 }

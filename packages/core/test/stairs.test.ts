@@ -74,8 +74,9 @@ describe('stairs in the cores', () => {
         const sum = parts.reduce((a, p) => a + polygonArea(p), 0);
         const uni = union(parts).reduce((a, p) => a + polygonArea(p), 0);
         expect(sum - uni).toBeLessThan(1e-4);
-        // default 5.5 × 6 m core holds the lift too
-        expect(s.lift).toBeDefined();
+        // the lift: in the core, or opposite the stair across the landing (narrow stair core of
+        // the spänner sections built from library dwellings)
+        expect(!!s.lift || st.circulation.some((c) => c.kind === 'lift')).toBe(true);
       }
     }
   });

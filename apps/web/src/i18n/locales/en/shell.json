@@ -178,9 +178,11 @@
     "bgf": "Gross floor area",
     "depth": "Depth",
     "resolvedAccess": "Resolved access",
+    "unitsPerCore": "Dwellings per core and storey",
     "suitability": {
       "zweispaenner": "2 units/core",
       "dreispaenner": "3 units/core",
+      "vierspaenner": "4 units/core",
       "laubengang": "Gallery",
       "mittelflur": "Central corridor",
       "punkthaus": "Point block",
