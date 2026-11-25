@@ -1,0 +1,79 @@
+{
+  "title": "Rendu IA de la vue 3D",
+  "button": "Rendu IA (rendu photoréaliste de la vue)",
+  "run": "Générer le rendu",
+  "runAgain": "Générer un autre rendu",
+  "running": "Calcul du rendu… (10–60 s)",
+  "cancel": "Annuler",
+  "close": "Fermer",
+  "recapture": "Reprendre la vue",
+  "compare": "Avant / après",
+  "download": "Télécharger",
+  "before": "Vue 3D",
+  "after": "Rendu IA",
+  "history": "Rendus de la session",
+  "resultAlt": "Rendu IA",
+  "captureAlt": "Vue 3D capturée",
+  "noCapture": "Aucune vue capturée. Fermez la fenêtre et cadrez la vue 3D.",
+  "captureNote": "Cadrez la vue 3D avant d'ouvrir cette fenêtre ; la sélection est masquée pour la capture. Les rendus ne sont pas enregistrés dans le projet : téléchargez ceux à conserver.",
+  "style": "Style",
+  "material": "Façades",
+  "animate": "Arbres, passants",
+  "fidelity": "Fidélité à la géométrie",
+  "prompt": "Prompt (anglais)",
+  "resetPrompt": "Prompt automatique",
+  "promptNote": "Généré à partir du projet (usages, niveaux, toitures, extérieurs, site) ; modifiable librement.",
+  "negative": "À éviter (prompt négatif)",
+  "provider": "Fournisseur",
+  "apiKey": "Clé API",
+  "keyPlaceholder": "Coller la clé du fournisseur",
+  "serverKey": "Clé du serveur utilisée",
+  "getKey": "Obtenir une clé",
+  "keyNote": "La clé reste sur ce poste et n'est jamais enregistrée dans le projet.",
+  "rememberKey": "Mémoriser la clé",
+  "model": "Modèle",
+  "defaultModel": "par défaut",
+  "paidOk": "J'ai compris que chaque rendu est facturé par le fournisseur sur mon compte.",
+  "needKey": "Saisissez une clé API pour ce fournisseur.",
+  "providers": {
+    "gemini": "Google Gemini (Nano Banana)",
+    "stability": "Stability AI – Structure",
+    "openai": "OpenAI – GPT Image"
+  },
+  "providerHints": {
+    "gemini": "Recommandé : rendus très réalistes, bonne tenue de la volumétrie.",
+    "stability": "Géométrie la plus stricte (contrôle par les contours, type ControlNet) ; rendu un peu moins naturel.",
+    "openai": "Très bonne qualité d'image ; peut s'écarter un peu de la géométrie."
+  },
+  "cost": {
+    "gemini": "≈ 0,04 $ par rendu (tarif Google)",
+    "stability": "≈ 0,03 $ par rendu (tarif Stability)",
+    "openai": "≈ 0,05–0,10 $ par rendu (tarif OpenAI)"
+  },
+  "styles": {
+    "photo": "Photo – jour ensoleillé",
+    "golden": "Photo – fin de journée",
+    "overcast": "Photo – ciel couvert",
+    "dusk": "Photo – heure bleue",
+    "aquarelle": "Esquisse aquarellée",
+    "maquette": "Maquette physique"
+  },
+  "materials": {
+    "auto": "Selon l'usage",
+    "enduit": "Enduit clair",
+    "brique": "Brique",
+    "bois": "Bardage bois",
+    "beton": "Béton architectonique",
+    "pierre": "Pierre claire",
+    "metal": "Métal et verre"
+  },
+  "errors": {
+    "no_key": "Aucune clé API",
+    "invalid_key": "Clé API refusée par le fournisseur",
+    "payment_required": "Crédit insuffisant chez le fournisseur",
+    "rate_limited": "Trop de requêtes, réessayez dans un instant",
+    "blocked": "Le fournisseur a refusé la demande",
+    "network": "Le serveur ne répond pas"
+  },
+  "short": "Rendu IA"
+}

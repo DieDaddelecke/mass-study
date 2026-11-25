@@ -22,6 +22,12 @@ import { OverpassContextProvider } from './geo/overpass.js';
 import { ProviderRegistry } from './geo/providers.js';
 import { TileProxy, isBasemap, tileCovered, validateTile } from './geo/tiles.js';
 import { WfsParcelProvider } from './geo/wfs-parcel.js';
+import {
+  RENDER_PROVIDERS,
+  type RenderProvidersResponse,
+  type RenderRequest,
+} from './render/contract.js';
+import { DEFAULT_MODELS, RenderError, render } from './render/providers.js';
 
 export const VERSION = '0.1.0';
 /** Maximum bbox side for /api/context (m). */
@@ -180,7 +186,43 @@ export function createApi(config: ServerConfig, deps: ApiDeps = {}): Hono {
     }
   });
 
+  app.get('/api/render/providers', (c) => {
+    const body: RenderProvidersResponse = {
+      providers: RENDER_PROVIDERS.map((id) => ({
+        id,
+        serverKey: !!config.renderKeys[id],
+        defaultModel: DEFAULT_MODELS[id],
+      })),
+    };
+    return c.json(body);
+  });
+
+  // AI rendering: forwards one screenshot + prompt to the chosen provider. Nothing is stored or
+  // logged; the user's key (X-Render-Key) wins over the server key.
+  app.post('/api/render', async (c) => {
+    let req: RenderRequest;
+    try {
+      req = await c.req.json<RenderRequest>();
+    } catch {
+      throw new BadRequest('body must be JSON');
+    }
+    const key =
+      c.req.header('x-render-key')?.trim() ||
+      (req && typeof req === 'object' ? config.renderKeys[req.provider] : undefined);
+    return c.json(await render(req, key, deps.fetch ?? ((u, i) => fetch(u, i))));
+  });
+
   app.onError((err, c) => {
+    if (err instanceof RenderError) {
+      return c.json(
+        { error: err.code, message: err.message },
+        err.status as 400 | 401 | 402 | 422 | 429 | 502,
+      );
+    }
+    if (err instanceof TypeError || (err instanceof Error && err.name === 'TimeoutError')) {
+      if (c.req.path.startsWith('/api/render'))
+        return c.json({ error: 'upstream_error', message: err.message }, 502);
+    }
     if (err instanceof BadRequest) {
       return c.json<ApiError>({ error: 'bad_request', message: err.message }, 400);
     }

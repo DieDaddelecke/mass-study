@@ -12,6 +12,7 @@ import {
   Save,
   SaveAll,
   Search,
+  Sparkles,
   Settings,
   Sun,
   Undo2,
@@ -27,6 +28,8 @@ import { closeProject, newProject, openFromFile, redo, save, saveAs, undo } from
 import { useShellStore } from './shellStore';
 import { IconButton, Tip } from './ui';
 import { exportActiveCsv, exportAllXlsx } from '../tables/tablesStore';
+import { openRenderDialog } from '../render/capture';
+import i18n from '../i18n';
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iP(hone|ad)/.test(navigator.platform);
 export const MOD_KEY = isMac ? '⌘' : 'Ctrl';
@@ -181,6 +184,11 @@ function FileMenu() {
               }
             />
           ))}
+          <MenuItem
+            icon={Sparkles}
+            label={i18n.t('render:short')}
+            onSelect={() => void openRenderDialog()}
+          />
           <Menu.Separator className="menu-sep" />
           <MenuItem
             icon={Info}

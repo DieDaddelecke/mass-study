@@ -22,6 +22,7 @@ import { ACCESS_TYPES } from './PropertiesPalette';
 import { useShellStore } from './shellStore';
 import { IfcExportDialog } from '../exports/IfcExportDialog';
 import { DossierDialog } from '../dossier/DossierDialog';
+import { RenderDialog } from '../render/RenderDialog';
 import { Dialog, NumField, Row } from './ui';
 
 export function Dialogs() {
@@ -41,6 +42,8 @@ export function Dialogs() {
       return <IfcExportDialog project={project} />;
     case 'dossier':
       return <DossierDialog project={project} />;
+    case 'render':
+      return <RenderDialog project={project} />;
   }
 }
 

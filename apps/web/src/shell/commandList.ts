@@ -34,6 +34,7 @@ import {
   Scale,
   ScanLine,
   Settings,
+  Sparkles,
   Spline,
   SquareDashed,
   SquareSplitHorizontal,
@@ -70,6 +71,7 @@ import {
   togglePlan,
 } from './commands';
 import { useShellStore } from './shellStore';
+import { openRenderDialog } from '../render/capture';
 import { exportActiveCsv, exportAllXlsx, openSchedule } from '../tables/tablesStore';
 
 export type CommandGroup =
@@ -447,6 +449,13 @@ export function getCommands(): Command[] {
       label: t('ribbon.dossier'),
       icon: FileText,
       run: () => shell.setDialog('dossier'),
+    }),
+    proj({
+      id: 'output.render',
+      group: 'output',
+      label: i18n.t('render:title'),
+      icon: Sparkles,
+      run: () => void openRenderDialog(),
     }),
     proj({
       id: 'output.pdf',

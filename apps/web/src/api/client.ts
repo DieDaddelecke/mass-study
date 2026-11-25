@@ -5,6 +5,10 @@ import {
   type ContextResponse,
   type GeocodeResponse,
   type ParcelsResponse,
+  type RenderApiError,
+  type RenderProvidersResponse,
+  type RenderRequest,
+  type RenderResponse,
 } from './contract';
 
 export class ApiRequestError extends Error {
@@ -44,4 +48,43 @@ export const api = {
     getJson<ContextResponse>(`${API.context}?${qs({ bbox: bbox.join(',') })}`, signal),
   contextLayers: (bbox: [number, number, number, number], signal?: AbortSignal) =>
     getJson<ContextLayersResponse>(`${API.contextLayers}?${qs({ bbox: bbox.join(',') })}`, signal),
+};
+
+export class RenderRequestError extends Error {
+  constructor(
+    public status: number,
+    public body: RenderApiError | null,
+  ) {
+    super(body?.message ?? `HTTP ${status}`);
+  }
+}
+
+export const renderApi = {
+  providers: (signal?: AbortSignal) =>
+    getJson<RenderProvidersResponse>(API.renderProviders, signal),
+  /** Paid call: only on an explicit user action. */
+  render: async (
+    req: RenderRequest,
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<RenderResponse> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (key.trim()) headers['X-Render-Key'] = key.trim();
+    const res = await fetch(API.render, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(req),
+      ...(signal ? { signal } : {}),
+    });
+    if (!res.ok) {
+      let body: RenderApiError | null = null;
+      try {
+        body = (await res.json()) as RenderApiError;
+      } catch {
+        /* not json */
+      }
+      throw new RenderRequestError(res.status, body);
+    }
+    return (await res.json()) as RenderResponse;
+  },
 };
