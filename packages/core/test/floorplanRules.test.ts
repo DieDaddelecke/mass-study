@@ -218,5 +218,5 @@ describe('floor-plan guide', () => {
         }
       }
     }
-  });
+  }, 60_000); // ~17 s locally under coverage (same on main), slower on CI runners
 });
