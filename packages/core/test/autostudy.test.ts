@@ -82,14 +82,15 @@ describe('automatic massing study', () => {
       settings,
     });
     const families = res.scenarios.map((s) => s.family).sort();
-    expect(families).toEqual(['punkthaus', 'uForm', 'winkel', 'zeile', 'zeilen']);
+    expect(families).toEqual(['doppelplot', 'punkthaus', 'uForm', 'winkel', 'zeile', 'zeilen']);
     for (const s of res.scenarios) {
       expect(s.ces).toBeLessThanOrEqual(0.4 + 1e-3);
       expect(s.height).toBeLessThanOrEqual(16 + 1e-6);
       expect(s.surfaceDePlancher).toBeGreaterThan(0);
       for (const m of s.masses) {
         expect(outsideArea(massFootprints(m), s.envelope)).toBeLessThan(0.5);
-        if (m.typology.kind !== 'solitaer') expect(massDepth(m.typology)).toBeLessThanOrEqual(15);
+        if (s.family !== 'punkthaus' && s.family !== 'doppelplot')
+          expect(massDepth(m.typology)).toBeLessThanOrEqual(15);
       }
       // distance between buildings: max(8, H/2)
       for (let i = 0; i < s.masses.length; i++)
@@ -188,5 +189,43 @@ describe('automatic massing study', () => {
       { ...a, id: 'copy', position: [a.position[0], a.position[1] - 3 + 18] as [number, number] },
     ];
     expect(distanceWarnings(analyzeMasses(moved, settings), e, {})).toEqual([]);
+  });
+
+  it('offset office blocks are one building: the overlap counts once', () => {
+    const site = rect(0, 0, 90, 80);
+    const res = runAutoStudy({
+      boundary: site,
+      edges: edgesOf(site, ['road', 'neighbour', 'neighbour', 'neighbour']),
+      rules: rules({ hauteurMax: 12 }),
+      options: { ...defaultAutoOptions('buero'), families: ['doppelplot'] },
+      settings,
+    });
+    const s = res.scenarios[0]!;
+    expect(s.masses).toHaveLength(1);
+    const fp = massFootprints(s.masses[0]!)[0]!;
+    expect(fp.outer).toHaveLength(8);
+    // two squares minus their overlap, and the emprise is exactly that outline
+    expect(s.footprintArea).toBeCloseTo(polygonArea(fp), 3);
+    const side = Math.max(...fp.outer.map((p) => p[0])) - Math.min(...fp.outer.map((p) => p[0]));
+    expect(polygonArea(fp)).toBeLessThan(side * side);
+  });
+
+  it('places buildings on the street line when that costs no floor area', () => {
+    const site = rect(0, 0, 60, 70);
+    const e = edgesOf(site, ['road', 'neighbour', 'neighbour', 'neighbour']);
+    const r = rules({ reculVoie: 0, hauteurMax: 10, empriseMax: 0.3 });
+    for (const family of ['zeile', 'punkthaus', 'doppelplot'] as const) {
+      const s = runAutoStudy({
+        boundary: site,
+        edges: e,
+        rules: r,
+        options: { ...defaultAutoOptions('wohnen'), families: [family] },
+        settings,
+      }).scenarios[0]!;
+      const minY = Math.min(
+        ...s.masses.flatMap((m) => massFootprints(m).flatMap((f) => f.outer.map((p) => p[1]))),
+      );
+      expect(minY, family).toBeLessThan(0.6);
+    }
   });
 });

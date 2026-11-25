@@ -6,6 +6,7 @@ import {
   outsideArea,
   pointInRing,
   polygonArea,
+  pointSegmentDistance,
   polygonDistance,
   polygonsArea,
   rotatePoint,
@@ -39,13 +40,14 @@ import type {
 export type AutoUsage = 'wohnen' | 'wohnheim' | 'buero';
 export const AUTO_USAGES: readonly AutoUsage[] = ['wohnen', 'wohnheim', 'buero'];
 
-export type AutoFamily = 'zeile' | 'zeilen' | 'winkel' | 'uForm' | 'punkthaus';
+export type AutoFamily = 'zeile' | 'zeilen' | 'winkel' | 'uForm' | 'punkthaus' | 'doppelplot';
 export const AUTO_FAMILIES: readonly AutoFamily[] = [
   'zeile',
   'zeilen',
   'winkel',
   'uForm',
   'punkthaus',
+  'doppelplot',
 ];
 
 /** Planning rules of the automatic study (FR: PLU, articles on implantation and height). */
@@ -355,12 +357,16 @@ function containing(iv: Interval[], lo: number, hi: number): Interval | undefine
 type Shape =
   | { kind: 'bar'; x0: number; x1: number; y0: number; d: number }
   | { kind: 'line'; pts: Vec2[]; d: number }
-  | { kind: 'point'; x0: number; y0: number; s: number };
+  | { kind: 'point'; x0: number; y0: number; s: number }
+  /** One building with a free outline (two blocks overlapping at a corner). */
+  | { kind: 'poly'; pts: Vec2[] };
 
 function shapeArea(s: Shape): number {
   switch (s.kind) {
     case 'bar':
       return (s.x1 - s.x0) * s.d;
+    case 'poly':
+      return polygonArea({ outer: s.pts });
     case 'point':
       return s.s * s.s;
     case 'line': {
@@ -387,12 +393,66 @@ function depths([a, b]: [number, number]): number[] {
   return [...new Set([r(b), r((a + b) / 2), r(a)])].filter((d) => d > 0);
 }
 
+/**
+ * Distance of an axis-aligned rectangle (rotated frame) beyond the set-back line of the nearest
+ * street: ≈ 0 when the building stands on the street set-back (alignement), Infinity without
+ * streets.
+ */
+type Near = (x0: number, y0: number, x1: number, y1: number) => number;
+
+/** A building on the street line is worth this much extra bar length when ranking positions, m. */
+const STREET_BONUS = 3;
+/** Tolerance for "on the street line", m. */
+const ON_STREET = 0.6;
+
+function streetNear(streets: { a: Vec2; b: Vec2; req: number }[]): Near {
+  if (!streets.length) return () => Infinity;
+  return (x0, y0, x1, y1) => {
+    const corners: Vec2[] = [
+      [x0, y0],
+      [x1, y0],
+      [x1, y1],
+      [x0, y1],
+    ];
+    let best = Infinity;
+    for (const st of streets) {
+      let d = Infinity;
+      for (const c of corners) d = Math.min(d, pointSegmentDistance(c, st.a, st.b));
+      for (const q of [st.a, st.b]) {
+        const dx = Math.max(x0 - q[0], 0, q[0] - x1);
+        const dy = Math.max(y0 - q[1], 0, q[1] - y1);
+        d = Math.min(d, Math.hypot(dx, dy));
+      }
+      best = Math.min(best, d - st.req);
+    }
+    return best;
+  };
+}
+
+const onStreet = (near: Near, x0: number, y0: number, x1: number, y1: number) =>
+  near(x0, y0, x1, y1) <= ON_STREET;
+
 /** Longest bar of depth d at every grid row y (index i → y = ymin + i·STEP). */
-function barRows(rings: Rings, ymin: number, ymax: number, d: number, minLength: number) {
-  const rows: { y0: number; iv?: Interval }[] = [];
-  for (let y0 = ymin; y0 + d <= ymax + 1e-9; y0 += STEP) {
+function barRows(
+  rings: Rings,
+  ymin: number,
+  ymax: number,
+  d: number,
+  minLength: number,
+  near: Near,
+) {
+  const rows: { y0: number; iv?: Interval; street?: boolean }[] = [];
+  const ys: number[] = [];
+  for (let y0 = ymin; y0 + d <= ymax + 1e-9; y0 += STEP) ys.push(y0);
+  // the last row flush with the top of the envelope (street lines on both sides)
+  if (ymax - d > ymin && ymax - d - (ys[ys.length - 1] ?? -Infinity) > 1e-6) ys.push(ymax - d);
+  for (const y0 of ys) {
     const iv = longest(bandIntervals(rings, y0, y0 + d));
-    rows.push(iv && iv[1] - iv[0] >= minLength ? { y0, iv } : { y0 });
+    rows.push(
+      iv && iv[1] - iv[0] >= minLength
+        ? { y0, iv, street: onStreet(near, iv[0], y0, iv[1], y0 + d) }
+        : { y0 },
+    );
   }
   return rows;
 }
@@ -404,12 +464,19 @@ function fitBars(
   o: AutoStudyOptions,
   gap: number,
   count: number,
+  near: Near,
 ): Shape[][] {
   const out: Shape[][] = [];
   for (const d of depths(o.depth)) {
-    const rows = barRows(rings, ymin, ymax, d, o.minLength);
-    const len = rows.map((r) => (r.iv ? r.iv[1] - r.iv[0] : 0));
-    const skip = Math.ceil((d + gap) / STEP - 1e-9);
+    const rows = barRows(rings, ymin, ymax, d, o.minLength, near);
+    // bars on the street line rank higher (same SDP → the street wins)
+    const len = rows.map((r) => (r.iv ? r.iv[1] - r.iv[0] + (r.street ? STREET_BONUS : 0) : 0));
+    // rows are 0.5 m apart except the last one: next row index at least d + gap further up
+    const next = rows.map((r, i) => {
+      let j = i + 1;
+      while (j < rows.length && rows[j]!.y0 < r.y0 + d + gap - 1e-6) j++;
+      return j;
+    });
     // best[k][i]: best total length of k bars using rows i…, choice[k][i]: row of the first bar
     const n = rows.length;
     const best: number[][] = [];
@@ -423,7 +490,7 @@ function fitBars(
         best[k]![i] = best[k]![i + 1]!;
         pick[k]![i] = pick[k]![i + 1]!;
         if (len[i]! > 0) {
-          const rest = i + skip <= n ? best[k - 1]![Math.min(n, i + skip)]! : 0;
+          const rest = best[k - 1]![next[i]!]!;
           const v = len[i]! + rest;
           if (v > best[k]![i]! + 1e-9) {
             best[k]![i] = v;
@@ -440,7 +507,7 @@ function fitBars(
         if (p < 0) break;
         const r = rows[p]!;
         shapes.push({ kind: 'bar', x0: r.iv![0], x1: r.iv![1], y0: r.y0, d });
-        i = p + skip;
+        i = next[p]!;
       }
       if (shapes.length === k) out.push(shapes);
     }
@@ -457,10 +524,11 @@ function fitWings(
   o: AutoStudyOptions,
   gap: number,
   u: boolean,
+  near: Near,
 ): Shape[][] {
   const out: Shape[][] = [];
   for (const d of depths(o.depth)) {
-    const rows = barRows(rings, ymin, ymax, d, o.minLength);
+    const rows = barRows(rings, ymin, ymax, d, o.minLength, near);
     let best: { area: number; shape: Shape } | undefined;
     for (const r of rows) {
       if (!r.iv) continue;
@@ -477,6 +545,11 @@ function fitWings(
         const tip = (iv?: Interval) => (!iv ? yc : up ? iv[1] : iv[0]);
         const eL = ext(left);
         const eR = ext(right);
+        // bonus when the bar or a wing stands on the street line
+        const wingOn = (x: number, iv?: Interval) =>
+          !!iv && onStreet(near, x, Math.min(y0, tip(iv)), x + d, Math.max(y0 + d, tip(iv)));
+        const score = (area: number, wings: [number, Interval | undefined][]) =>
+          area + (r.street || wings.some(([x, iv]) => wingOn(x, iv)) ? STREET_BONUS * d : 0);
         if (u) {
           if (eL < o.minLength || eR < o.minLength) continue;
           if (xb - xa - 2 * d < gap) continue;
@@ -487,7 +560,10 @@ function fitWings(
             [xb - d / 2, tip(right)],
           ];
           const shape: Shape = { kind: 'line', pts, d };
-          const area = shapeArea(shape);
+          const area = score(shapeArea(shape), [
+            [xa, left],
+            [xb - d, right],
+          ]);
           if (!best || area > best.area) best = { area, shape };
         } else {
           for (const atLeft of [true, false]) {
@@ -505,7 +581,7 @@ function fitWings(
                   [xb - d / 2, tip(right)],
                 ];
             const shape: Shape = { kind: 'line', pts, d };
-            const area = shapeArea(shape);
+            const area = score(shapeArea(shape), [atLeft ? [xa, left] : [xb - d, right]]);
             if (!best || area > best.area) best = { area, shape };
           }
         }
@@ -522,20 +598,34 @@ function fitPoints(
   box: { xmin: number; xmax: number; ymin: number; ymax: number },
   o: AutoStudyOptions,
   gap: number,
+  near: Near,
 ): Shape[][] {
   const out: Shape[][] = [];
   const r = (v: number) => Math.round(v * 2) / 2;
   for (const s of [
     ...new Set([r(o.pointSide[1]), r((o.pointSide[0] + o.pointSide[1]) / 2), r(o.pointSide[0])]),
   ]) {
-    const spots: { x0: number; y0: number }[] = [];
-    for (let y0 = box.ymin; y0 + s <= box.ymax + 1e-9; y0 += 1) {
+    const spots: { x0: number; y0: number; slack: number }[] = [];
+    const ys: number[] = [];
+    for (let y0 = box.ymin; y0 + s <= box.ymax + 1e-9; y0 += 1) ys.push(y0);
+    if (box.ymax - s > box.ymin) ys.push(box.ymax - s);
+    for (const y0 of ys) {
       const iv = bandIntervals(rings, y0, y0 + s);
-      for (const [a, b] of iv) for (let x0 = a; x0 + s <= b + 1e-9; x0 += 1) spots.push({ x0, y0 });
+      for (const [a, b] of iv) {
+        const xs: number[] = [];
+        for (let x0 = a; x0 + s <= b + 1e-9; x0 += 1) xs.push(x0);
+        if (b - s > a) xs.push(b - s);
+        for (const x0 of xs) spots.push({ x0, y0, slack: near(x0, y0, x0 + s, y0 + s) });
+      }
     }
     if (!spots.length) continue;
     let bestSet: Shape[] = [];
-    const orders: ((p: { x0: number; y0: number }) => number)[] = [
+    let bestStreet = -1;
+    const orders: ((p: { x0: number; y0: number; slack: number }) => number)[] = [
+      // along the street first: closest to the street line, then from one end
+      (p) => Math.round(Math.max(0, p.slack)) * 1e8 + p.y0 * 1e4 + p.x0,
+      (p) => Math.round(Math.max(0, p.slack)) * 1e8 + p.y0 * 1e4 - p.x0,
+      (p) => Math.round(Math.max(0, p.slack)) * 1e8 + p.x0 * 1e4 + p.y0,
       (p) => p.y0 * 1e4 + p.x0,
       (p) => p.y0 * 1e4 - p.x0,
       (p) => -p.y0 * 1e4 + p.x0,
@@ -545,7 +635,7 @@ function fitPoints(
     ];
     for (const ord of orders) {
       const sorted = [...spots].sort((a, b) => ord(a) - ord(b));
-      const placed: { x0: number; y0: number }[] = [];
+      const placed: { x0: number; y0: number; slack: number }[] = [];
       for (const p of sorted) {
         if (placed.length >= o.maxBuildings) break;
         const ok = placed.every((q) => {
@@ -555,11 +645,74 @@ function fitPoints(
         });
         if (ok) placed.push(p);
       }
-      if (placed.length > bestSet.length)
+      const street = placed.filter((p) => p.slack <= ON_STREET).length;
+      if (
+        placed.length > bestSet.length ||
+        (placed.length === bestSet.length && street > bestStreet)
+      ) {
+        // street blocks first, so smaller counts keep them
+        placed.sort((a, b) => a.slack - b.slack);
         bestSet = placed.map((p) => ({ kind: 'point', x0: p.x0, y0: p.y0, s }));
+        bestStreet = street;
+      }
     }
     // every count up to the best one (fewer, larger towers may win once emprise binds)
     for (let k = 1; k <= bestSet.length; k++) out.push(bestSet.slice(0, k));
+  }
+  return out;
+}
+
+/**
+ * Two square blocks overlapping at one corner (classic office form), as one building: the
+ * overlap is part of a single outline, so it counts once.
+ */
+function fitOffsetBlocks(
+  rings: Rings,
+  box: { xmin: number; xmax: number; ymin: number; ymax: number },
+  o: AutoStudyOptions,
+  near: Near,
+): Shape[][] {
+  const out: Shape[][] = [];
+  const r = (v: number) => Math.round(v * 2) / 2;
+  const sides = [
+    ...new Set([r(o.pointSide[1]), r((o.pointSide[0] + o.pointSide[1]) / 2), r(o.pointSide[0])]),
+  ];
+  const fits = (x: number, y: number, s: number) =>
+    !!containing(bandIntervals(rings, y, y + s), x, x + s);
+  for (const s of sides) {
+    for (const share of [1 / 3, 1 / 2]) {
+      const t = s - r(s * share); // offset of the second block; overlap = s − t
+      let best: { score: number; pts: Vec2[] } | undefined;
+      for (let y = box.ymin; y + s + t <= box.ymax + 1e-9; y += 1) {
+        for (let x = box.xmin; x + s <= box.xmax + 1e-9; x += 1) {
+          if (!fits(x, y, s)) continue;
+          for (const right of [true, false]) {
+            const bx = right ? x + t : x - t;
+            if (!fits(bx, y + t, s)) continue;
+            const canon: Vec2[] = [
+              [x, y],
+              [x + s, y],
+              [x + s, y + t],
+              [x + t + s, y + t],
+              [x + t + s, y + t + s],
+              [x + t, y + t + s],
+              [x + t, y + s],
+              [x, y + s],
+            ];
+            // mirror about the first block's axis for the up-left variant (keep CCW)
+            const pts = right
+              ? canon
+              : canon.map(([px, py]) => [2 * x + s - px, py] as Vec2).reverse();
+            const area = 2 * s * s - (s - t) * (s - t);
+            const street =
+              onStreet(near, x, y, x + s, y + s) || onStreet(near, bx, y + t, bx + s, y + t + s);
+            const score = area + (street ? STREET_BONUS * s : 0);
+            if (!best || score > best.score) best = { score, pts };
+          }
+        }
+      }
+      if (best) out.push([{ kind: 'poly', pts: best.pts }]);
+    }
   }
   return out;
 }
@@ -602,6 +755,8 @@ function capShapes(shapes: Shape[], cap: number, o: AutoStudyOptions): Shape[] |
     }
     return undefined;
   }
+  // smaller offset blocks are separate candidates
+  if (shapes.some((x) => x.kind === 'poly')) return undefined;
   const factor = cap / total;
   const out: Shape[] = [];
   for (const x of shapes) {
@@ -656,6 +811,17 @@ function shapeToMass(s: Shape, theta: number, usage: AutoUsage, levels: number, 
           depth: s.d,
           sections: Math.max(1, Math.round(length / 20)),
           sectionOffset: 0,
+        },
+      };
+    }
+    case 'poly': {
+      const p0 = s.pts[0]!;
+      return {
+        ...base,
+        position: rot(p0, theta),
+        typology: {
+          kind: 'freePolygon',
+          polygon: { outer: s.pts.map((p) => [p[0] - p0[0], p[1] - p0[1]] as Vec2) },
         },
       };
     }
@@ -721,6 +887,32 @@ interface Evaluated {
   result: ReturnType<typeof analyzeMasses>;
 }
 
+/** Façade length standing on a street set-back line (alignement), m. */
+function streetFacade(
+  masses: readonly Mass[],
+  edges: readonly BoundarySegment[],
+  rules: AutoStudyRules,
+  h: number,
+): number {
+  const streets = edges.filter((e) => isStreet(e.kind));
+  if (!streets.length) return 0;
+  let total = 0;
+  for (const m of masses)
+    for (const fp of massFootprints(m)) {
+      const r = fp.outer;
+      for (let i = 0; i < r.length; i++) {
+        const a = r[i]!;
+        const b = r[(i + 1) % r.length]!;
+        const mid: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+        const on = streets.some(
+          (e) => pointSegmentDistance(mid, e.a, e.b) - edgeDistance(e, rules, h) <= ON_STREET,
+        );
+        if (on) total += Math.hypot(b[0] - a[0], b[1] - a[1]);
+      }
+    }
+  return total;
+}
+
 /** Run the automatic study for one use. */
 export function runAutoStudy(input: AutoStudyInput): AutoStudyResult {
   const { boundary, edges, rules, options: o, settings } = input;
@@ -746,6 +938,15 @@ export function runAutoStudy(input: AutoStudyInput): AutoStudyResult {
     for (const theta of orientations(env.length ? env : [boundary])) {
       const local = env.map((p) => transformPolygon(p, [0, 0], -theta));
       const rings: Rings = local.flatMap((p) => [p.outer, ...(p.holes ?? [])]);
+      const near = streetNear(
+        edges
+          .filter((e) => isStreet(e.kind))
+          .map((e) => ({
+            a: rotatePoint(e.a, -theta),
+            b: rotatePoint(e.b, -theta),
+            req: edgeDistance(e, rules, h),
+          })),
+      );
       const swapped = swapRings(rings);
       let xmin = Infinity;
       let xmax = -Infinity;
@@ -768,17 +969,20 @@ export function runAutoStudy(input: AutoStudyInput): AutoStudyResult {
           byFamily.set(family, arr);
         }
       };
-      if (families.has('zeile')) add('zeile', fitBars(rings, ymin, ymax, o, gap, 1));
+      if (families.has('zeile')) add('zeile', fitBars(rings, ymin, ymax, o, gap, 1, near));
       if (families.has('zeilen') && maxB >= 2)
         add(
           'zeilen',
-          fitBars(rings, ymin, ymax, o, gap, maxB).filter((s) => s.length >= 2),
+          fitBars(rings, ymin, ymax, o, gap, maxB, near).filter((s) => s.length >= 2),
         );
       if (families.has('winkel'))
-        add('winkel', fitWings(rings, swapped, ymin, ymax, o, gap, false));
-      if (families.has('uForm')) add('uForm', fitWings(rings, swapped, ymin, ymax, o, gap, true));
+        add('winkel', fitWings(rings, swapped, ymin, ymax, o, gap, false, near));
+      if (families.has('uForm'))
+        add('uForm', fitWings(rings, swapped, ymin, ymax, o, gap, true, near));
       if (families.has('punkthaus'))
-        add('punkthaus', fitPoints(rings, { xmin, xmax, ymin, ymax }, o, gap));
+        add('punkthaus', fitPoints(rings, { xmin, xmax, ymin, ymax }, o, gap, near));
+      if (families.has('doppelplot'))
+        add('doppelplot', fitOffsetBlocks(rings, { xmin, xmax, ymin, ymax }, o, near));
     }
   }
 
@@ -787,17 +991,23 @@ export function runAutoStudy(input: AutoStudyInput): AutoStudyResult {
     const list = byFamily.get(family);
     if (!list?.length) continue;
     list.sort((a, b) => b.est - a.est);
-    let best: Evaluated | undefined;
-    for (const { cand } of list.slice(0, 6)) {
+    const evaluated: (Evaluated & { street: number })[] = [];
+    for (const { cand } of list.slice(0, 10)) {
       const masses = cand.shapes.map((s, i) => shapeToMass(s, cand.theta, o.usage, cand.levels, i));
       // safety net: everything inside the envelope of its height
       const env = envs.get(cand.levels)!;
       if (masses.some((m) => outsideArea(massFootprints(m), env) > 0.5)) continue;
       const result = analyzeMasses(masses, settings);
       const sdp = kpisFR(result, siteArea, settings).surfaceDePlancher;
-      if (!best || sdp > best.sdp + 1e-6) best = { cand, masses, sdp, result };
+      const street = streetFacade(masses, edges, rules, heights.get(cand.levels) ?? 0);
+      evaluated.push({ cand, masses, sdp, result, street });
     }
-    if (!best) continue;
+    if (!evaluated.length) continue;
+    // max SDP; within 2 % of it the variant with the longest façade on the street line wins
+    const top = Math.max(...evaluated.map((e) => e.sdp));
+    const best = evaluated
+      .filter((e) => e.sdp >= top * 0.98 - 1e-6)
+      .sort((a, b) => b.street - a.street || b.sdp - a.sdp)[0]!;
     const { cand, masses, result } = best;
     const fr = kpisFR(result, siteArea, settings);
     const env = envs.get(cand.levels)!;

@@ -617,7 +617,8 @@
       "zeilen": "Parallele Zeilen",
       "winkel": "Winkel (L)",
       "uForm": "U-Form",
-      "punkthaus": "Punkthäuser"
+      "punkthaus": "Punkthäuser",
+      "doppelplot": "Versetzte Plots"
     },
     "limit": {
       "emprise": "CES erreicht",

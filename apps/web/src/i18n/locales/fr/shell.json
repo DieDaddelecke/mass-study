@@ -617,7 +617,8 @@
       "zeilen": "Barres parallèles",
       "winkel": "Équerre (L)",
       "uForm": "En U",
-      "punkthaus": "Plots"
+      "punkthaus": "Plots",
+      "doppelplot": "Plots décalés"
     },
     "limit": {
       "emprise": "CES atteint",

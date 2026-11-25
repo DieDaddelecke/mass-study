@@ -617,7 +617,8 @@
       "zeilen": "Parallel bars",
       "winkel": "L shape",
       "uForm": "U shape",
-      "punkthaus": "Point blocks"
+      "punkthaus": "Point blocks",
+      "doppelplot": "Offset blocks"
     },
     "limit": {
       "emprise": "CES reached",
