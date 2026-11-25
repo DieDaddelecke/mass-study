@@ -420,6 +420,16 @@ export interface Constraints {
   espacesVertsMin?: number;
   /** FR: minimum share of open ground (pleine terre) of the site, 0…1. */
   pleineTerreMin?: number;
+  /** FR: maximum number of above-ground levels (R+3 → 4). */
+  niveauxMax?: number;
+  /** FR: set-back from streets / public spaces, m (0 = à l'alignement). */
+  reculVoie?: number;
+  /** FR: distance between buildings on the same parcel: L ≥ ratio × H … */
+  distanceRatio?: number;
+  /** … and at least this distance, m. */
+  distanceMin?: number;
+  /** Minimum distance per boundary edge (BoundarySegment.key), m (overrides recul / prospect min). */
+  edgeRecul?: Record<string, number>;
 }
 
 export interface UnitType {

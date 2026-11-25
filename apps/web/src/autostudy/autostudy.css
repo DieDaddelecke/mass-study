@@ -1,0 +1,184 @@
+/* "Étude automatique" dialog: rules column + scenario cards. */
+.dlg:has(.auto-grid) {
+  width: min(1280px, calc(100vw - 32px));
+}
+.auto-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) 1fr;
+  gap: 20px;
+  min-height: 0;
+}
+.auto-rules {
+  max-height: min(74vh, 800px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.auto-intro,
+.auto-note {
+  margin: 4px 8px 8px;
+  font-size: var(--fs-sm);
+}
+.auto-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 8px 6px;
+}
+.auto-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.auto-chip:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.auto-edges td {
+  padding: 3px 6px;
+  font-size: var(--fs-sm);
+  vertical-align: middle;
+}
+.auto-edges td.num {
+  text-align: right;
+  white-space: nowrap;
+}
+.auto-edges input {
+  width: 92px;
+}
+.auto-edge-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+.auto-edge-dot.street,
+.auto-plan-street {
+  background: #3b82f6;
+  stroke: #3b82f6;
+}
+.auto-edge-dot.nb,
+.auto-plan-nb {
+  background: #f59e0b;
+  stroke: #f59e0b;
+}
+.auto-run {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 8px 4px;
+  background: linear-gradient(transparent, var(--glass-strong) 30%);
+}
+.auto-results {
+  max-height: min(74vh, 800px);
+  overflow-y: auto;
+  min-width: 0;
+}
+.auto-empty {
+  margin: 40px 8px;
+  text-align: center;
+}
+.auto-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 0 8px 12px;
+}
+.auto-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-lg);
+  background: var(--field);
+}
+.auto-card.is-best {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+.auto-card header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.auto-formula {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.auto-best {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.auto-plan {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--r-md);
+  background: var(--bg-solid);
+}
+.auto-rules .auto-plan {
+  margin: 0 0 6px;
+}
+.auto-plan-site {
+  fill: var(--hover);
+}
+.auto-plan-env {
+  fill: var(--ok-soft);
+  stroke: var(--ok);
+}
+.auto-plan-fp {
+  fill: var(--accent);
+  fill-opacity: 0.85;
+  stroke: var(--accent-text);
+}
+.auto-plan-label {
+  fill: var(--text);
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--bg-solid);
+  stroke-width: 0.6;
+}
+.auto-kpis {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.auto-kpis dt {
+  color: var(--text-2);
+}
+.auto-kpis dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.auto-limits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.auto-limit {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning-text);
+  font-size: var(--fs-xs);
+}
+@media (max-width: 760px) {
+  .auto-grid {
+    grid-template-columns: 1fr;
+  }
+}
