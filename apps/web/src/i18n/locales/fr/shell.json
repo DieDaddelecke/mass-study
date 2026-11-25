@@ -127,8 +127,8 @@
   "param": {
     "length": "Longueur",
     "depth": "Épaisseur",
-    "sections": "Sections",
-    "sectionOffset": "Décalage",
+    "sections": "Tronçons",
+    "sectionOffset": "Décalage des tronçons",
     "count": "Nombre",
     "unitWidth": "Largeur de lot",
     "alternatingOffset": "Décalage alterné",
@@ -179,9 +179,11 @@
     "bgf": "Surface brute (BGF)",
     "depth": "Épaisseur",
     "resolvedAccess": "Distribution retenue",
+    "unitsPerCore": "Logements par palier",
     "suitability": {
       "zweispaenner": "2 logts/palier",
       "dreispaenner": "3 logts/palier",
+      "vierspaenner": "4 logts/palier",
       "laubengang": "Coursive",
       "mittelflur": "Couloir central",
       "punkthaus": "Plot",

@@ -29,6 +29,8 @@ export const USAGES: readonly Usage[] = [
 export type AccessType =
   | 'zweispaenner'
   | 'dreispaenner'
+  /** Four dwellings per landing: two on each façade, mono-oriented (FR « 4 logements par palier »). */
+  | 'vierspaenner'
   | 'laubengang'
   | 'mittelflur'
   | 'punkthaus'
@@ -145,6 +147,12 @@ export interface Mass {
   usage?: Usage;
   usageByStorey?: Record<number, Usage>;
   access?: AccessType | 'auto';
+  /**
+   * Dwellings per core and storey (logements par palier), set by the user. 2 / 3 pick the
+   * Zweispänner / Dreispänner (unless another access is chosen explicitly); from 4 on it is the
+   * most dwellings a gallery, corridor or point-block core serves. Default: settings range.
+   */
+  unitsPerCore?: number;
   /** Outdoor spaces of the dwellings (balcons, loggias, terrasses); default: settings. */
   outdoor?: OutdoorConfig;
   /** Roof on the top storey (default: flat with parapet). */
@@ -477,6 +485,12 @@ export interface UnitRules {
   facadeAreaRatio?: number;
   /** Party walls on this façade grid, m (1.25; 0 = off). */
   facadeGrid?: number;
+  /** Dwellings take a plan of the office plan library first (true). */
+  planLibrary?: boolean;
+  /** Allowed stretch of a library plan along its main façade (0.10 = ±10 %). */
+  libraryStretch?: number;
+  /** Allowed depth change of a library plan, m (0.50). */
+  libraryDepthTolerance?: number;
 }
 
 /** Minimum room areas of the office rules, m². */
@@ -503,10 +517,17 @@ export interface Settings {
     technicalShare: number;
     livingAreaFactor: number;
     /** VF share of NRF per access type. */
-    circulationShare: Record<AccessType, number>;
+    circulationShare: Record<Exclude<AccessType, 'vierspaenner'>, number> & {
+      vierspaenner?: number;
+    };
   };
   depthRanges: {
-    wohnen: Record<Exclude<AccessType, 'buero' | 'reihenhaus'>, [number, number]>;
+    wohnen: Record<
+      Exclude<AccessType, 'buero' | 'reihenhaus' | 'vierspaenner'>,
+      [number, number]
+    > & {
+      vierspaenner?: [number, number];
+    };
     buero: {
       zellenbuero: [number, number];
       kombibuero: [number, number];

@@ -18,7 +18,9 @@ import {
 } from '../src/index.js';
 import { mass } from './helpers.js';
 
+// the parametric room layout (the fallback when no plan of the office library fits)
 const settings = defaultSettings('FR');
+settings.unitRules = { ...settings.unitRules!, planLibrary: false };
 const rules = resolveUnitRules(settings);
 
 function layoutOf(t: Typology, access: AccessType | 'auto', storey = 2): StoreyLayout {
