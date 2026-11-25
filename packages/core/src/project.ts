@@ -1,7 +1,7 @@
 import { analyzeMasses, type VariantResult } from './analysis.js';
 import { massLayouts, type MassLayout } from './layout.js';
-import { siteEdges } from './boundaries.js';
-import { modelWarnings, type ModelWarning } from './checks.js';
+import { siteBoundaries, siteEdges } from './boundaries.js';
+import { distanceWarnings, modelWarnings, type ModelWarning } from './checks.js';
 import { greenKpis, type GreenKpis } from './green.js';
 import { defaultTypology } from './generators.js';
 import {
@@ -158,6 +158,13 @@ export function analyzeProject(
   const buildable = project.constraints.buildable ?? project.site.buildable;
   if (buildable) site.buildable = buildable;
   const warnings = modelWarnings(result, site, project.context, constraints);
+  warnings.push(
+    ...distanceWarnings(
+      result,
+      siteBoundaries(project.site, project.surroundings, project.context),
+      project.constraints,
+    ),
+  );
   // office façade rules of the schematic unit layout
   const layouts = massLayouts(
     result,

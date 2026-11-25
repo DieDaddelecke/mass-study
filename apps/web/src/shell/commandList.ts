@@ -291,6 +291,13 @@ export function getCommands(): Command[] {
       icon: Scale,
       run: () => shell.setDialog('constraints'),
     }),
+    proj({
+      id: 'site.autoStudy',
+      group: 'site',
+      label: t('ribbon.autoStudy'),
+      icon: Sparkles,
+      run: () => shell.setDialog('autoStudy'),
+    }),
     off('site.buildable', 'site', t('ribbon.buildable'), Frame),
     off('site.lines', 'site', t('ribbon.buildingLines'), ScanLine),
     proj({

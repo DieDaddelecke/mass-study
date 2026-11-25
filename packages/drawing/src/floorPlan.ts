@@ -278,12 +278,16 @@ export const DUPLEX_LABELS: { duplex: string; jour: string; nuit: string } = {
   nuit: 'niv. nuit',
 };
 
-/** Unit label: type, duplex mark, out-of-range and façade marks. */
+/**
+ * Unit label: type, duplex mark, out-of-range and façade marks; ° marks a dwelling without a
+ * plan of the office library (parametric layout).
+ */
 export function unitTitle(
-  u: Pick<LayoutUnit, 'label' | 'outOfRange' | 'facadeOk' | 'duplex'>,
+  u: Pick<LayoutUnit, 'label' | 'outOfRange' | 'facadeOk' | 'duplex' | 'template' | 'spaces'>,
   duplexText: string = DUPLEX_LABELS.duplex,
 ): string {
-  return `${u.label}${u.duplex ? ` ${duplexText}` : ''}${u.outOfRange ? '*' : ''}${u.facadeOk ? '' : ' !'}`;
+  const noPlan = !u.template && !u.duplex && !u.spaces;
+  return `${u.label}${noPlan ? '°' : ''}${u.duplex ? ` ${duplexText}` : ''}${u.outOfRange ? '*' : ''}${u.facadeOk ? '' : ' !'}`;
 }
 
 /** Areas to keep the unit label clear of: rooms and the duplex stair. */
@@ -585,7 +589,7 @@ export function floorPlan(
             ? serviceColor(unitColor(u.typeId, mix))
             : unitColor(u.typeId, mix),
         ),
-        title: `${u.label}${u.duplex ? ` ${dpx.duplex} · ${dpx[u.duplex.level]} · ${fmtArea(u.duplex.totalArea)}` : ''} · ${fmtArea(u.area)}${u.outOfRange ? ' *' : ''} · ${(
+        title: `${u.label}${u.template ? ` · ${u.template.type} ${u.template.category} (${u.template.id})` : ''}${u.duplex ? ` ${dpx.duplex} · ${dpx[u.duplex.level]} · ${fmtArea(u.duplex.totalArea)}` : ''} · ${fmtArea(u.area)}${u.outOfRange ? ' *' : ''} · ${(
           opts.facadeText ?? defaultFacadeText
         )(u.facade, u.facadeRequired)}${u.facadeOk ? '' : ' !'}`,
         ...(u.facadeOk

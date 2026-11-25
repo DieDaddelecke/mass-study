@@ -113,7 +113,8 @@
       "checks": "Prüfungen",
       "output": "Ausgabe",
       "archicad": "Archicad"
-    }
+    },
+    "autoStudy": "Automatische Massenstudie"
   },
   "options": {
     "place": "Platzieren: {{name}}",
@@ -178,9 +179,11 @@
     "bgf": "BGF",
     "depth": "Bautiefe",
     "resolvedAccess": "Erschließung (ermittelt)",
+    "unitsPerCore": "Wohnungen je Treppenhaus und Geschoss",
     "suitability": {
       "zweispaenner": "Zweispänner",
       "dreispaenner": "Dreispänner",
+      "vierspaenner": "Vierspänner",
       "laubengang": "Laubengang",
       "mittelflur": "Mittelflur",
       "punkthaus": "Punkthaus",
@@ -354,7 +357,10 @@
     "mixPlausibility": "{{masses}}: {{actual}} Wohnungen je Geschoss und Kern (erwartet {{min}}–{{max}}).",
     "estimatedContextHeights": "Höhe von {{count}} Umgebungsgebäude(n) geschätzt.",
     "unitFacade": "{{count}} Wohnungen erfüllen die Mindest-Fassadenlängen nicht ({{masses}}).",
-    "constraintBelow": "{{key}} unter dem Minimum: {{actual}} statt min. {{target}}."
+    "constraintBelow": "{{key}} unter dem Minimum: {{actual}} statt min. {{target}}.",
+    "prospect": "Baukörper {{masses}} steht {{actual}} m von einer Nachbargrenze entfernt (Prospect: {{required}} m).",
+    "reculVoie": "Baukörper {{masses}} steht {{actual}} m von der Straße entfernt (Abstand: {{required}} m).",
+    "buildingDistance": "Baukörper {{masses}} stehen {{actual}} m auseinander (Mindestabstand: {{required}} m)."
   },
   "cmd": {
     "undo": "Rückgängig",
@@ -573,6 +579,56 @@
       "public": "Öffentlich",
       "neighbour": "Nachbar",
       "unknown": "?"
+    }
+  },
+  "auto": {
+    "title": "Automatische Massenstudie",
+    "intro": "Regeln des PLU eingeben. Die App berechnet den Bauraum je Höhe und legt die Bauformen hinein, die die größte Surface de plancher ergeben.",
+    "use": "Nutzung",
+    "height": "Höhe und Grundfläche",
+    "niveauxMax": "Max. Geschosse",
+    "distances": "Abstände",
+    "reculVoie": "Abstand Straße",
+    "prospectRatio": "Prospect (× H)",
+    "prospectMin": "Prospect min.",
+    "distanceRatio": "Gebäudeabstand (× H)",
+    "distanceMin": "Gebäudeabstand min.",
+    "edges": "Parzellengrenzen",
+    "edgeRecul": "Abstand Seite {{n}}",
+    "edgeNote": "Leer = allgemeine Regel. Ein Wert ersetzt den Straßenabstand bzw. das Prospect-Minimum dieser Seite (z. B. sensiblere Nachbarzone). Blau = Straße, orange = Nachbar.",
+    "forms": "Bauformen",
+    "maxBuildings": "Max. Gebäude",
+    "depthsOf": "Bautiefen · {{use}}",
+    "depthMin": "Bautiefe min. (Zeilen)",
+    "depthMax": "Bautiefe max. (Zeilen)",
+    "pointMin": "Punkthaus: Seite min.",
+    "pointMax": "Punkthaus: Seite max.",
+    "run": "Szenarien berechnen",
+    "running": "Berechnung…",
+    "empty": "Hier erscheinen die Szenarien, sortiert nach Surface de plancher.",
+    "none": "Mit diesen Regeln passt keine Bauform in den Bauraum.",
+    "best": "Max. SDP",
+    "buildings": "Gebäude",
+    "workplaces": "Arbeitsplätze",
+    "adopt": "Als Variante übernehmen",
+    "done": "Variante erstellt",
+    "created": "Variante „{{name}}“ erstellt.",
+    "limitsTip": "Regeln, die dieses Szenario begrenzen",
+    "family": {
+      "zeile": "Zeile",
+      "zeilen": "Parallele Zeilen",
+      "winkel": "Winkel (L)",
+      "uForm": "U-Form",
+      "punkthaus": "Punkthäuser",
+      "doppelplot": "Versetzte Plots"
+    },
+    "limit": {
+      "emprise": "CES erreicht",
+      "hauteur": "Max. Höhe",
+      "niveaux": "Max. Geschosse",
+      "prospect": "Prospect",
+      "recul": "Abstände",
+      "distance": "Gebäudeabstand"
     }
   }
 }

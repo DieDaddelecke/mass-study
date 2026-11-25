@@ -113,7 +113,8 @@
       "checks": "Checks",
       "output": "Output",
       "archicad": "Archicad"
-    }
+    },
+    "autoStudy": "Automatic study"
   },
   "options": {
     "place": "Place: {{name}}",
@@ -178,9 +179,11 @@
     "bgf": "Gross floor area",
     "depth": "Depth",
     "resolvedAccess": "Resolved access",
+    "unitsPerCore": "Dwellings per core and storey",
     "suitability": {
       "zweispaenner": "2 units/core",
       "dreispaenner": "3 units/core",
+      "vierspaenner": "4 units/core",
       "laubengang": "Gallery",
       "mittelflur": "Central corridor",
       "punkthaus": "Point block",
@@ -354,7 +357,10 @@
     "mixPlausibility": "{{masses}}: {{actual}} units per storey and core (expected {{min}}–{{max}}).",
     "estimatedContextHeights": "Estimated height for {{count}} context building(s).",
     "unitFacade": "{{count}} dwellings do not meet the minimum façade lengths ({{masses}}).",
-    "constraintBelow": "{{key}} below the minimum: {{actual}} instead of min. {{target}}."
+    "constraintBelow": "{{key}} below the minimum: {{actual}} instead of min. {{target}}.",
+    "prospect": "Mass {{masses}} is {{actual}} m from a neighbour boundary (prospect: {{required}} m).",
+    "reculVoie": "Mass {{masses}} is {{actual}} m from the street (set-back: {{required}} m).",
+    "buildingDistance": "Masses {{masses}} are {{actual}} m apart (minimum: {{required}} m)."
   },
   "cmd": {
     "undo": "Undo",
@@ -573,6 +579,56 @@
       "public": "Public",
       "neighbour": "Neighbour",
       "unknown": "?"
+    }
+  },
+  "auto": {
+    "title": "Automatic massing study",
+    "intro": "Enter the planning rules. The app computes the buildable envelope for every height and fits the building forms that give the largest floor area.",
+    "use": "Use",
+    "height": "Height and footprint",
+    "niveauxMax": "Max. levels",
+    "distances": "Set-backs and distances",
+    "reculVoie": "Street set-back",
+    "prospectRatio": "Prospect (× H)",
+    "prospectMin": "Prospect min.",
+    "distanceRatio": "Between buildings (× H)",
+    "distanceMin": "Between buildings min.",
+    "edges": "Site boundaries",
+    "edgeRecul": "Set-back of side {{n}}",
+    "edgeNote": "Empty = general rule. A value replaces the street set-back or the prospect minimum of that side (e.g. a more sensitive neighbouring zone). Blue = street, orange = neighbour.",
+    "forms": "Building forms",
+    "maxBuildings": "Max. buildings",
+    "depthsOf": "Depths · {{use}}",
+    "depthMin": "Min. depth (bars)",
+    "depthMax": "Max. depth (bars)",
+    "pointMin": "Point block: min. side",
+    "pointMax": "Point block: max. side",
+    "run": "Compute scenarios",
+    "running": "Computing…",
+    "empty": "Scenarios appear here, ranked by floor area.",
+    "none": "No building form fits the envelope with these rules.",
+    "best": "Max. floor area",
+    "buildings": "Buildings",
+    "workplaces": "Workplaces",
+    "adopt": "Create variant",
+    "done": "Variant created",
+    "created": "Variant “{{name}}” created.",
+    "limitsTip": "Rules that bound this scenario",
+    "family": {
+      "zeile": "Bar",
+      "zeilen": "Parallel bars",
+      "winkel": "L shape",
+      "uForm": "U shape",
+      "punkthaus": "Point blocks",
+      "doppelplot": "Offset blocks"
+    },
+    "limit": {
+      "emprise": "CES reached",
+      "hauteur": "Max. height",
+      "niveaux": "Max. levels",
+      "prospect": "Prospect",
+      "recul": "Set-backs",
+      "distance": "Building distance"
     }
   }
 }

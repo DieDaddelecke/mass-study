@@ -1,4 +1,5 @@
 import {
+  circulationShare,
   requiredFacade,
   resolveOutdoorRules,
   resolveUnitRules,
@@ -23,6 +24,7 @@ import { useShellStore } from './shellStore';
 import { IfcExportDialog } from '../exports/IfcExportDialog';
 import { DossierDialog } from '../dossier/DossierDialog';
 import { RenderDialog } from '../render/RenderDialog';
+import { AutoStudyDialog } from '../autostudy/AutoStudyDialog';
 import { Dialog, NumField, Row } from './ui';
 
 export function Dialogs() {
@@ -44,6 +46,8 @@ export function Dialogs() {
       return <DossierDialog project={project} />;
     case 'render':
       return <RenderDialog project={project} />;
+    case 'autoStudy':
+      return <AutoStudyDialog project={project} />;
   }
 }
 
@@ -240,7 +244,7 @@ function SettingsDialog({ project }: { project: Project }) {
           {ACCESS_TYPES.map((a: AccessType) =>
             num(
               t(`common:access.${a}`),
-              pct(s.areas.circulationShare[a]),
+              pct(circulationShare(s.areas.circulationShare, a)),
               (v) =>
                 patch((d) => ({
                   ...d,
@@ -412,6 +416,12 @@ function ConstraintsDialog({ project }: { project: Project }) {
       {field('hauteurMax', t('rules.hauteurMax'), { suffix: 'm' })}
       {field('espacesVertsMin', t('rules.espacesVertsMin'), { factor: 100, suffix: '%' })}
       {field('pleineTerreMin', t('rules.pleineTerreMin'), { factor: 100, suffix: '%' })}
+      {field('niveauxMax', t('auto.niveauxMax'), { integer: true })}
+      {field('reculVoie', t('auto.reculVoie'), { suffix: 'm' })}
+      {field('prospectRatio', t('auto.prospectRatio'))}
+      {field('prospectMin', t('auto.prospectMin'), { suffix: 'm' })}
+      {field('distanceRatio', t('auto.distanceRatio'))}
+      {field('distanceMin', t('auto.distanceMin'), { suffix: 'm' })}
       {de && (
         <>
           <h3>{t('rules.de')}</h3>
@@ -438,6 +448,9 @@ export const WARNING_CODES: WarningCode[] = [
   'mixPlausibility',
   'estimatedContextHeights',
   'unitFacade',
+  'prospect',
+  'reculVoie',
+  'buildingDistance',
 ];
 
 /** Translated message for a model warning (numbers formatted for the UI language). */

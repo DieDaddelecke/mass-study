@@ -65,6 +65,8 @@ export function FloorPlanLegend({
     (u) => u.facadeRatioOk === false && u.duplex?.level !== 'nuit',
   ).length;
   const accessFail = units.filter((u) => u.accessOk === false).length;
+  const dwellings = units.filter((u) => !u.duplex && !u.spaces);
+  const fromLibrary = dwellings.filter((u) => u.template).length;
   const oversize = units.filter((u) => u.outOfRange && u.duplex?.level !== 'nuit').length;
   const orientFail = units.filter(
     (u) => u.orientationOk === false && u.duplex?.level !== 'nuit',
@@ -233,6 +235,11 @@ export function FloorPlanLegend({
         {t('fp.facadeRule')} :{' '}
         {mix.map((u) => `${u.label} ${formatNumber(requiredFacade(u, rules))} m`).join(' · ')}
       </p>
+      {rules.planLibrary !== false && dwellings.length > 0 && (
+        <p className="dv-legend-note">
+          {t('fp.library', { n: fromLibrary, total: dwellings.length })}
+        </p>
+      )}
       {failing > 0 && (
         <p className="dv-legend-note dv-legend-warn">{t('fp.facadeFail', { count: failing })}</p>
       )}
