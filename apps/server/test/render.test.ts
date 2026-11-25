@@ -140,6 +140,54 @@ describe('/api/render', () => {
     ).toBe(400);
   });
 
+  it('sends the view to OpenRouter as an input reference', async () => {
+    const { app: a, calls } = app({ RENDER_OPENROUTER_KEY: 'or' }, () =>
+      Response.json({ data: [{ b64_json: 'AAA=', media_type: 'image/png' }] }),
+    );
+    const res = await a.request(
+      '/api/render',
+      post({
+        provider: 'openrouter',
+        model: 'google/gemini-3-pro-image',
+        prompt: 'p',
+        image: PNG,
+        aspect: 1.5,
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { image: string }).image).toBe('data:image/png;base64,AAA=');
+    expect(calls[0]!.url).toBe('https://openrouter.ai/api/v1/images');
+    const sent = JSON.parse(calls[0]!.init!.body as string) as {
+      model: string;
+      aspect_ratio: string;
+      input_references: { image_url: { url: string } }[];
+    };
+    expect(sent.model).toBe('google/gemini-3-pro-image');
+    expect(sent.aspect_ratio).toBe('3:2');
+    expect(sent.input_references[0]!.image_url.url.startsWith('data:image/png;base64,')).toBe(true);
+  });
+
+  it('accepts vendor/model ids only for OpenRouter', async () => {
+    const { app: a } = app({}, () => new Response());
+    const k = { 'X-Render-Key': 'k' };
+    expect(
+      (
+        await a.request(
+          '/api/render',
+          post({ provider: 'gemini', model: 'google/x', prompt: 'p', image: PNG }, k),
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await a.request(
+          '/api/render',
+          post({ provider: 'openrouter', model: '../../x', prompt: 'p', image: PNG }, k),
+        )
+      ).status,
+    ).toBe(400);
+  });
+
   it('picks output formats', () => {
     expect(openAiSize(1.7)).toBe('1536x1024');
     expect(openAiSize(0.6)).toBe('1024x1536');

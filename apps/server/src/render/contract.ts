@@ -3,8 +3,13 @@
  * The server only forwards one request to the chosen image provider; it stores nothing.
  */
 
-export type RenderProviderId = 'stability' | 'openai' | 'gemini';
-export const RENDER_PROVIDERS: readonly RenderProviderId[] = ['stability', 'openai', 'gemini'];
+export type RenderProviderId = 'gemini' | 'openrouter' | 'stability' | 'openai';
+export const RENDER_PROVIDERS: readonly RenderProviderId[] = [
+  'gemini',
+  'openrouter',
+  'stability',
+  'openai',
+];
 
 /** GET /api/render/providers → which providers have a key configured on the server. */
 export interface RenderProvidersResponse {

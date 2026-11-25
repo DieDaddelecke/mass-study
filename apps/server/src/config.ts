@@ -18,7 +18,7 @@ export interface ServerConfig {
   overpassUrls: string[];
   /**
    * Server-side API keys for the AI rendering (RENDER_STABILITY_KEY, RENDER_OPENAI_KEY,
-   * RENDER_GEMINI_KEY). Optional: users can enter their own key in the app instead.
+   * RENDER_GEMINI_KEY, RENDER_OPENROUTER_KEY). Optional: users can enter their own key in the app instead.
    */
   renderKeys: Partial<Record<RenderProviderId, string>>;
 }
@@ -43,6 +43,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       stability: env.RENDER_STABILITY_KEY?.trim() || undefined,
       openai: env.RENDER_OPENAI_KEY?.trim() || undefined,
       gemini: env.RENDER_GEMINI_KEY?.trim() || undefined,
+      openrouter: env.RENDER_OPENROUTER_KEY?.trim() || undefined,
     },
   };
 }

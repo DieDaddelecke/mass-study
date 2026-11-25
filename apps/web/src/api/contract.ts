@@ -162,8 +162,13 @@ export const API = {
 
 // --- AI rendering (mirrors apps/server/src/render/contract.ts) ---
 
-export type RenderProviderId = 'stability' | 'openai' | 'gemini';
-export const RENDER_PROVIDERS: readonly RenderProviderId[] = ['stability', 'openai', 'gemini'];
+export type RenderProviderId = 'gemini' | 'openrouter' | 'stability' | 'openai';
+export const RENDER_PROVIDERS: readonly RenderProviderId[] = [
+  'gemini',
+  'openrouter',
+  'stability',
+  'openai',
+];
 
 /** GET /api/render/providers */
 export interface RenderProvidersResponse {

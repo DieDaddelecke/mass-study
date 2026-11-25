@@ -37,18 +37,21 @@
   "needKey": "Enter an API key for this provider.",
   "providers": {
     "gemini": "Google Gemini (Nano Banana)",
+    "openrouter": "OpenRouter (many models)",
     "stability": "Stability AI – Structure",
     "openai": "OpenAI – GPT Image"
   },
   "providerHints": {
     "gemini": "Recommended: very realistic images, keeps the massing well.",
     "stability": "Strictest geometry (edge control, ControlNet-like); slightly less natural.",
-    "openai": "Very good image quality; may drift a little from the geometry."
+    "openai": "Very good image quality; may drift a little from the geometry.",
+    "openrouter": "One credit for many models. Recommended: google/gemini-nano-banana-2.1 for variants, google/gemini-3-pro-image for final images."
   },
   "cost": {
     "gemini": "≈ $0.04 per rendering (Google pricing)",
     "stability": "≈ $0.03 per rendering (Stability pricing)",
-    "openai": "≈ $0.05–0.10 per rendering (OpenAI pricing)"
+    "openai": "≈ $0.05–0.10 per rendering (OpenAI pricing)",
+    "openrouter": "≈ $0.04 (nano-banana) to $0.13–0.24 (gemini-3-pro) per rendering"
   },
   "styles": {
     "photo": "Photo – sunny day",

@@ -11,6 +11,8 @@ export const DEFAULT_MODELS: Record<RenderProviderId, string> = {
   stability: 'structure',
   openai: 'gpt-image-1',
   gemini: 'gemini-2.5-flash-image',
+  // One key for many models (Gemini, GPT Image, Flux, …); the model id carries the vendor.
+  openrouter: 'google/gemini-nano-banana-2.1',
 };
 
 /** Max. upstream time for one rendering. */
@@ -229,7 +231,39 @@ async function gemini({ req, model, image, key, fetch }: ProviderCall): Promise<
   );
 }
 
+async function openrouter({ req, model, image, key, fetch }: ProviderCall): Promise<string> {
+  const neg = req.negativePrompt ? `\nAvoid: ${req.negativePrompt}` : '';
+  const body = {
+    model,
+    prompt: req.prompt + neg,
+    input_references: [
+      { type: 'image_url', image_url: { url: toDataUrl(image.mime, image.bytes) } },
+    ],
+    n: 1,
+    ...(req.aspect && Number.isFinite(req.aspect) ? { aspect_ratio: geminiRatio(req.aspect) } : {}),
+  };
+  const res = await fetch('https://openrouter.ai/api/v1/images', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      'X-Title': 'Kubatur',
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(RENDER_TIMEOUT_MS),
+  });
+  if (!res.ok) throw await upstreamError('OpenRouter', res);
+  const j = (await res.json()) as {
+    data?: { b64_json?: string; media_type?: string; url?: string }[];
+  };
+  const d = j.data?.[0];
+  if (d?.b64_json) return toDataUrl(d.media_type || 'image/png', d.b64_json);
+  if (d?.url?.startsWith('data:image/')) return d.url;
+  throw new RenderError(502, 'upstream_error', 'OpenRouter: no image in the response');
+}
+
 const ADAPTERS: Record<RenderProviderId, (c: ProviderCall) => Promise<string>> = {
+  openrouter,
   stability,
   openai,
   gemini,
@@ -240,6 +274,8 @@ function clamp01(v: number): number {
 }
 
 const MODEL_RE = /^[A-Za-z0-9][\w.-]{0,79}$/;
+/** OpenRouter ids: vendor/model, optional :variant (sent in the body, never in a URL). */
+const OPENROUTER_MODEL_RE = /^[A-Za-z0-9][\w.-]{0,40}\/[\w.-]{1,80}(:[\w.-]{1,20})?$/;
 
 /** Validates the request and calls the provider. */
 export async function render(
@@ -256,7 +292,8 @@ export async function render(
   if (req.negativePrompt !== undefined && typeof req.negativePrompt !== 'string')
     throw new RenderError(400, 'bad_request', 'negativePrompt must be a string');
   const model = req.model?.trim() || DEFAULT_MODELS[req.provider];
-  if (!MODEL_RE.test(model)) throw new RenderError(400, 'bad_request', 'invalid model id');
+  const re = req.provider === 'openrouter' ? OPENROUTER_MODEL_RE : MODEL_RE;
+  if (!re.test(model)) throw new RenderError(400, 'bad_request', 'invalid model id');
   if (typeof req.image !== 'string') throw new RenderError(400, 'bad_request', 'image is required');
   const image = decodeDataUrl(req.image);
   if (!key) throw new RenderError(401, 'no_key', `no API key for ${req.provider}`);

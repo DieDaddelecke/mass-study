@@ -25,8 +25,20 @@ import { useRenderStore } from './renderStore';
 import './render.css';
 
 /** Where to get a key, per provider. */
+/** Suggested models per provider (the field stays free text). */
+export const MODEL_SUGGESTIONS: Partial<Record<RenderProviderId, string[]>> = {
+  openrouter: [
+    'google/gemini-nano-banana-2.1',
+    'google/gemini-3-pro-image',
+    'google/gemini-3.1-flash-image',
+    'openai/gpt-image-2',
+  ],
+  gemini: ['gemini-2.5-flash-image', 'gemini-3-pro-image-preview'],
+};
+
 export const KEY_URLS: Record<RenderProviderId, string> = {
   gemini: 'https://aistudio.google.com/apikey',
+  openrouter: 'https://openrouter.ai/settings/keys',
   stability: 'https://platform.stability.ai/account/keys',
   openai: 'https://platform.openai.com/api-keys',
 };
@@ -355,10 +367,16 @@ export function RenderDialog({ project }: { project: Project }) {
             <input
               aria-label={t('model')}
               spellCheck={false}
+              list="rnd-models"
               placeholder={info?.defaultModel ?? t('defaultModel')}
               value={model}
               onChange={(e) => update({ models: { ...s.models, [s.provider]: e.target.value } })}
             />
+            <datalist id="rnd-models">
+              {(MODEL_SUGGESTIONS[s.provider] ?? []).map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
           </Row>
           <label className="rnd-consent">
             <input

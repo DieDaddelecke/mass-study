@@ -25,7 +25,7 @@ export interface RenderSettings {
 }
 
 export const DEFAULT_RENDER_SETTINGS: RenderSettings = {
-  provider: 'gemini',
+  provider: 'openrouter',
   keys: {},
   models: {},
   rememberKeys: true,
