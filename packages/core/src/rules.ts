@@ -180,7 +180,7 @@ export function constraintRows(
       row('ces', fr.ces, c.empriseMax),
       row('hauteur', fr.hauteurEgout, c.hauteurMax ?? c.maxHeight),
       row('surfaceDePlancher', fr.surfaceDePlancher),
-      row('niveaux', fr.niveaux),
+      row('niveaux', fr.niveaux, c.niveauxMax),
     ];
     if (green) {
       rows.push(minRow('espacesVerts', green.espacesVertsRatio, c.espacesVertsMin));

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type DialogId =
-  'projectInfo' | 'settings' | 'constraints' | 'warnings' | 'ifcExport' | 'dossier';
+  'projectInfo' | 'settings' | 'constraints' | 'warnings' | 'ifcExport' | 'dossier' | 'autoStudy';
 export type LeftTab = 'project' | 'layers' | 'views';
 
 function wideScreen(): boolean {

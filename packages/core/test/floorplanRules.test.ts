@@ -220,6 +220,5 @@ describe('floor-plan guide', () => {
         }
       }
     }
-    // seven full mass layouts: slow under coverage on the CI runner
-  }, 60000);
+  }, 60_000); // ~17 s locally under coverage (same on main), slower on CI runners
 });

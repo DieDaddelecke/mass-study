@@ -113,7 +113,8 @@
       "checks": "Contrôles",
       "output": "Sortie",
       "archicad": "Archicad"
-    }
+    },
+    "autoStudy": "Étude automatique"
   },
   "options": {
     "place": "Placer : {{name}}",
@@ -356,7 +357,10 @@
     "mixPlausibility": "{{masses}} : {{actual}} logements par palier et noyau (attendu {{min}}–{{max}}).",
     "estimatedContextHeights": "Hauteur estimée pour {{count}} bâtiment(s) de contexte.",
     "unitFacade": "{{count}} logements ne respectent pas les longueurs de façade minimales ({{masses}}).",
-    "constraintBelow": "{{key}} sous le minimum : {{actual}} au lieu de {{target}} min."
+    "constraintBelow": "{{key}} sous le minimum : {{actual}} au lieu de {{target}} min.",
+    "prospect": "Le volume {{masses}} est à {{actual}} m d'une limite séparative (prospect : {{required}} m).",
+    "reculVoie": "Le volume {{masses}} est à {{actual}} m de la voie (recul : {{required}} m).",
+    "buildingDistance": "Les volumes {{masses}} sont à {{actual}} m l'un de l'autre (distance min. : {{required}} m)."
   },
   "cmd": {
     "undo": "Annuler",
@@ -575,6 +579,56 @@
       "public": "Public",
       "neighbour": "Voisin",
       "unknown": "?"
+    }
+  },
+  "auto": {
+    "title": "Étude automatique",
+    "intro": "Saisissez les règles du PLU. L'application calcule l'enveloppe constructible pour chaque hauteur et y place les formes bâties qui donnent la plus grande surface de plancher.",
+    "use": "Usage",
+    "height": "Hauteur et emprise",
+    "niveauxMax": "Niveaux max.",
+    "distances": "Reculs et distances",
+    "reculVoie": "Recul sur voie",
+    "prospectRatio": "Prospect (× H)",
+    "prospectMin": "Prospect min.",
+    "distanceRatio": "Entre bâtiments (× H)",
+    "distanceMin": "Entre bâtiments min.",
+    "edges": "Limites de la parcelle",
+    "edgeRecul": "Recul du côté {{n}}",
+    "edgeNote": "Vide = règle générale. Une valeur remplace le recul sur voie ou le minimum du prospect de ce côté (ex. zone voisine plus sensible). Bleu = voie, orange = limite séparative.",
+    "forms": "Formes bâties",
+    "maxBuildings": "Bâtiments max.",
+    "depthsOf": "Épaisseurs · {{use}}",
+    "depthMin": "Épaisseur min. (barres)",
+    "depthMax": "Épaisseur max. (barres)",
+    "pointMin": "Plot : côté min.",
+    "pointMax": "Plot : côté max.",
+    "run": "Calculer les scénarios",
+    "running": "Calcul…",
+    "empty": "Les scénarios apparaissent ici, classés par surface de plancher.",
+    "none": "Aucune forme ne tient dans l’enveloppe avec ces règles.",
+    "best": "Max. SDP",
+    "buildings": "Bâtiments",
+    "workplaces": "Postes de travail",
+    "adopt": "Créer la variante",
+    "done": "Variante créée",
+    "created": "Variante « {{name}} » créée.",
+    "limitsTip": "Règles qui limitent ce scénario",
+    "family": {
+      "zeile": "Barre",
+      "zeilen": "Barres parallèles",
+      "winkel": "Équerre (L)",
+      "uForm": "En U",
+      "punkthaus": "Plots",
+      "doppelplot": "Plots décalés"
+    },
+    "limit": {
+      "emprise": "CES atteint",
+      "hauteur": "Hauteur max.",
+      "niveaux": "Niveaux max.",
+      "prospect": "Prospect",
+      "recul": "Reculs",
+      "distance": "Distance entre bâtiments"
     }
   }
 }

@@ -24,3 +24,4 @@ export * from './residence.js';
 export * from './office.js';
 export * from './boundaries.js';
 export * from './planLibrary.js';
+export * from './autostudy.js';
