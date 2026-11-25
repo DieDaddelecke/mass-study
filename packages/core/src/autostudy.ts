@@ -78,7 +78,7 @@ export interface AutoStudyRules {
 }
 
 export const DEFAULT_AUTO_RULES: AutoStudyRules = {
-  reculVoie: 4,
+  reculVoie: 0,
   prospectRatio: 0.5,
   prospectMin: 4,
   distanceRatio: 0.5,
