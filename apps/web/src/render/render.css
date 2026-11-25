@@ -1,0 +1,211 @@
+/* "Rendu IA" dialog: image (capture / result) on the left, prompt and provider on the right. */
+.dlg:has(.rnd) {
+  width: min(1240px, calc(100vw - 32px));
+}
+.rnd {
+  display: grid;
+  grid-template-columns: 1fr minmax(300px, 380px);
+  gap: 20px;
+  min-height: 0;
+}
+.rnd-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.rnd-frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 280px;
+  border-radius: var(--r-md);
+  background: var(--field);
+  overflow: hidden;
+}
+.rnd-frame img {
+  display: block;
+  width: 100%;
+  max-height: 64vh;
+  object-fit: contain;
+}
+.rnd-frame.is-busy img {
+  filter: saturate(0.4) brightness(0.9);
+  transition: filter var(--dur) var(--ease);
+}
+.rnd-spinner {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 10px 14px;
+  font-size: var(--fs-sm);
+  color: var(--on-accent);
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.55));
+}
+.rnd-spinner::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: rnd-spin 0.9s linear infinite;
+}
+@keyframes rnd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.rnd-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  background: var(--glass-strong);
+  box-shadow: var(--shadow-sm);
+}
+.rnd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.rnd-actions .btn,
+.dlg-foot .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rnd-actions .btn.is-on {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.rnd-history {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.rnd-thumb {
+  flex: 0 0 auto;
+  width: 84px;
+  height: 56px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--field);
+  cursor: pointer;
+}
+.rnd-thumb.is-on {
+  border-color: var(--accent);
+}
+.rnd-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.rnd-note,
+.rnd-hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+}
+.rnd-form {
+  max-height: min(72vh, 760px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.rnd-form h3 {
+  margin: 16px 0 6px;
+}
+.rnd-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rnd-range input {
+  flex: 1;
+}
+.rnd-prompt {
+  margin-top: 10px;
+}
+.rnd-prompt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.rnd-prompt-head .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.rnd-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font: inherit;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--field);
+  color: var(--text);
+}
+.rnd-prompt .muted {
+  margin: 4px 0 0;
+  font-size: var(--fs-xs);
+}
+.rnd-adv {
+  margin-top: 8px;
+  font-size: var(--fs-sm);
+}
+.rnd-adv summary {
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+.rnd-hint a {
+  color: var(--accent-text);
+}
+.rnd-consent {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--warning-soft);
+  color: var(--warning-text);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.rnd-warn,
+.rnd-error {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+.rnd-warn {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+}
+.rnd-error {
+  background: var(--error-soft);
+  color: var(--error-text);
+  overflow-wrap: anywhere;
+}
+.rnd-cost {
+  margin-right: auto;
+  font-size: var(--fs-xs);
+}
+@media (max-width: 860px) {
+  .rnd {
+    grid-template-columns: 1fr;
+  }
+}

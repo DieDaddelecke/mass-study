@@ -156,4 +156,53 @@ export const API = {
   contextLayers: '/api/context/layers',
   tiles: '/api/tiles',
   health: '/api/health',
+  render: '/api/render',
+  renderProviders: '/api/render/providers',
 } as const;
+
+// --- AI rendering (mirrors apps/server/src/render/contract.ts) ---
+
+export type RenderProviderId = 'gemini' | 'openrouter' | 'stability' | 'openai';
+export const RENDER_PROVIDERS: readonly RenderProviderId[] = [
+  'gemini',
+  'openrouter',
+  'stability',
+  'openai',
+];
+
+/** GET /api/render/providers */
+export interface RenderProvidersResponse {
+  providers: { id: RenderProviderId; serverKey: boolean; defaultModel: string }[];
+}
+
+/** POST /api/render (user key in the `X-Render-Key` header). */
+export interface RenderRequest {
+  provider: RenderProviderId;
+  model?: string;
+  prompt: string;
+  negativePrompt?: string;
+  /** data URL of the 3D view */
+  image: string;
+  /** 0–1: how strictly the geometry is kept */
+  fidelity?: number;
+  /** width / height */
+  aspect?: number;
+}
+
+export interface RenderResponse {
+  image: string;
+  provider: RenderProviderId;
+  model: string;
+}
+
+export interface RenderApiError {
+  error:
+    | 'bad_request'
+    | 'no_key'
+    | 'invalid_key'
+    | 'payment_required'
+    | 'rate_limited'
+    | 'upstream_error'
+    | 'blocked';
+  message: string;
+}

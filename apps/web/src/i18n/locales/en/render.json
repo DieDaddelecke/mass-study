@@ -1,0 +1,82 @@
+{
+  "title": "AI rendering of the 3D view",
+  "button": "AI rendering (photoreal image of the view)",
+  "run": "Generate rendering",
+  "runAgain": "Generate another",
+  "running": "Rendering… (10–60 s)",
+  "cancel": "Cancel",
+  "close": "Close",
+  "recapture": "Recapture view",
+  "compare": "Before / after",
+  "download": "Download",
+  "before": "3D view",
+  "after": "AI rendering",
+  "history": "Renderings of this session",
+  "resultAlt": "AI rendering",
+  "captureAlt": "Captured 3D view",
+  "noCapture": "No view captured. Close this window and frame the 3D view.",
+  "captureNote": "Frame the 3D view before opening this window; the selection is hidden for the capture. Renderings are not saved in the project: download the ones to keep.",
+  "style": "Style",
+  "material": "Façades",
+  "animate": "Trees, people",
+  "fidelity": "Geometry fidelity",
+  "prompt": "Prompt (English)",
+  "resetPrompt": "Automatic prompt",
+  "promptNote": "Built from the project (uses, storeys, roofs, outdoor spaces, site); edit freely.",
+  "negative": "Avoid (negative prompt)",
+  "provider": "Provider",
+  "apiKey": "API key",
+  "keyPlaceholder": "Paste the provider's key",
+  "serverKey": "Server key in use",
+  "getKey": "Get a key",
+  "keyNote": "The key stays on this computer and is never saved in the project.",
+  "rememberKey": "Remember key",
+  "model": "Model",
+  "defaultModel": "default",
+  "paidOk": "I understand each rendering is billed by the provider to my account.",
+  "needKey": "Enter an API key for this provider.",
+  "providers": {
+    "gemini": "Google Gemini (Nano Banana)",
+    "openrouter": "OpenRouter (many models)",
+    "stability": "Stability AI – Structure",
+    "openai": "OpenAI – GPT Image"
+  },
+  "providerHints": {
+    "gemini": "Recommended: very realistic images, keeps the massing well.",
+    "stability": "Strictest geometry (edge control, ControlNet-like); slightly less natural.",
+    "openai": "Very good image quality; may drift a little from the geometry.",
+    "openrouter": "One credit for many models. Recommended: google/gemini-nano-banana-2.1 for variants, google/gemini-3-pro-image for final images."
+  },
+  "cost": {
+    "gemini": "≈ $0.04 per rendering (Google pricing)",
+    "stability": "≈ $0.03 per rendering (Stability pricing)",
+    "openai": "≈ $0.05–0.10 per rendering (OpenAI pricing)",
+    "openrouter": "≈ $0.04 (nano-banana) to $0.13–0.24 (gemini-3-pro) per rendering"
+  },
+  "styles": {
+    "photo": "Photo – sunny day",
+    "golden": "Photo – golden hour",
+    "overcast": "Photo – overcast",
+    "dusk": "Photo – blue hour",
+    "aquarelle": "Watercolour sketch",
+    "maquette": "Physical model"
+  },
+  "materials": {
+    "auto": "By use",
+    "enduit": "Light render",
+    "brique": "Brick",
+    "bois": "Timber cladding",
+    "beton": "Architectural concrete",
+    "pierre": "Light stone",
+    "metal": "Metal and glass"
+  },
+  "errors": {
+    "no_key": "No API key",
+    "invalid_key": "Key refused by the provider",
+    "payment_required": "No credit left with the provider",
+    "rate_limited": "Too many requests, try again shortly",
+    "blocked": "The provider refused the request",
+    "network": "The server does not respond"
+  },
+  "short": "AI render"
+}

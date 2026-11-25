@@ -1,0 +1,82 @@
+{
+  "title": "KI-Rendering der 3D-Ansicht",
+  "button": "KI-Rendering (fotorealistisches Bild der Ansicht)",
+  "run": "Rendering erzeugen",
+  "runAgain": "Weiteres Rendering",
+  "running": "Rendering läuft … (10–60 s)",
+  "cancel": "Abbrechen",
+  "close": "Schließen",
+  "recapture": "Ansicht neu aufnehmen",
+  "compare": "Vorher / nachher",
+  "download": "Herunterladen",
+  "before": "3D-Ansicht",
+  "after": "KI-Rendering",
+  "history": "Renderings dieser Sitzung",
+  "resultAlt": "KI-Rendering",
+  "captureAlt": "Aufgenommene 3D-Ansicht",
+  "noCapture": "Keine Ansicht aufgenommen. Fenster schließen und die 3D-Ansicht ausrichten.",
+  "captureNote": "Die 3D-Ansicht vor dem Öffnen ausrichten; die Auswahl wird für die Aufnahme ausgeblendet. Renderings werden nicht im Projekt gespeichert – bitte herunterladen.",
+  "style": "Stil",
+  "material": "Fassaden",
+  "animate": "Bäume, Passanten",
+  "fidelity": "Treue zur Geometrie",
+  "prompt": "Prompt (Englisch)",
+  "resetPrompt": "Automatischer Prompt",
+  "promptNote": "Aus dem Projekt erzeugt (Nutzungen, Geschosse, Dächer, Freibereiche, Ort); frei änderbar.",
+  "negative": "Vermeiden (Negativ-Prompt)",
+  "provider": "Anbieter",
+  "apiKey": "API-Schlüssel",
+  "keyPlaceholder": "Schlüssel des Anbieters einfügen",
+  "serverKey": "Schlüssel des Servers wird genutzt",
+  "getKey": "Schlüssel holen",
+  "keyNote": "Der Schlüssel bleibt auf diesem Rechner und wird nie im Projekt gespeichert.",
+  "rememberKey": "Schlüssel merken",
+  "model": "Modell",
+  "defaultModel": "Standard",
+  "paidOk": "Mir ist klar, dass jedes Rendering vom Anbieter auf meinem Konto abgerechnet wird.",
+  "needKey": "Bitte einen API-Schlüssel für diesen Anbieter eingeben.",
+  "providers": {
+    "gemini": "Google Gemini (Nano Banana)",
+    "openrouter": "OpenRouter (mehrere Modelle)",
+    "stability": "Stability AI – Structure",
+    "openai": "OpenAI – GPT Image"
+  },
+  "providerHints": {
+    "gemini": "Empfohlen: sehr realistische Bilder, hält die Kubatur gut.",
+    "stability": "Strengste Geometrie (Kantensteuerung, ControlNet-artig); etwas weniger natürlich.",
+    "openai": "Sehr gute Bildqualität; weicht manchmal etwas von der Geometrie ab.",
+    "openrouter": "Ein Guthaben für viele Modelle. Empfohlen: google/gemini-nano-banana-2.1 für Varianten, google/gemini-3-pro-image für Endbilder."
+  },
+  "cost": {
+    "gemini": "≈ 0,04 $ je Rendering (Preis Google)",
+    "stability": "≈ 0,03 $ je Rendering (Preis Stability)",
+    "openai": "≈ 0,05–0,10 $ je Rendering (Preis OpenAI)",
+    "openrouter": "≈ 0,04 $ (nano-banana) bis 0,13–0,24 $ (gemini-3-pro) je Rendering"
+  },
+  "styles": {
+    "photo": "Foto – sonniger Tag",
+    "golden": "Foto – Abendlicht",
+    "overcast": "Foto – bedeckt",
+    "dusk": "Foto – blaue Stunde",
+    "aquarelle": "Aquarellskizze",
+    "maquette": "Physisches Modell"
+  },
+  "materials": {
+    "auto": "Nach Nutzung",
+    "enduit": "Heller Putz",
+    "brique": "Ziegel",
+    "bois": "Holzverschalung",
+    "beton": "Sichtbeton",
+    "pierre": "Heller Naturstein",
+    "metal": "Metall und Glas"
+  },
+  "errors": {
+    "no_key": "Kein API-Schlüssel",
+    "invalid_key": "Schlüssel vom Anbieter abgelehnt",
+    "payment_required": "Kein Guthaben beim Anbieter",
+    "rate_limited": "Zu viele Anfragen, gleich noch einmal versuchen",
+    "blocked": "Anfrage vom Anbieter abgelehnt",
+    "network": "Der Server antwortet nicht"
+  },
+  "short": "KI-Rendering"
+}

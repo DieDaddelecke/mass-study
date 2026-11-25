@@ -1,5 +1,6 @@
 import { OVERPASS_URLS } from './geo/osm.js';
 import type { WfsParcelConfig } from './geo/wfs-parcel.js';
+import type { RenderProviderId } from './render/contract.js';
 
 /** Runtime configuration from environment variables (see README / docker-compose.yml). */
 export interface ServerConfig {
@@ -15,6 +16,11 @@ export interface ServerConfig {
   wfsParcelProviders: WfsParcelConfig[];
   /** Overpass endpoints tried in order on 429/5xx (OVERPASS_URLS, comma separated). */
   overpassUrls: string[];
+  /**
+   * Server-side API keys for the AI rendering (RENDER_STABILITY_KEY, RENDER_OPENAI_KEY,
+   * RENDER_GEMINI_KEY, RENDER_OPENROUTER_KEY). Optional: users can enter their own key in the app instead.
+   */
+  renderKeys: Partial<Record<RenderProviderId, string>>;
 }
 
 /** Default port outside Docker; 8080 is often taken (Docker Desktop, WSL). The image sets PORT=8080. */
@@ -33,6 +39,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       .filter(Boolean),
     wfsParcelProviders: parseWfsConfig(env.PARCEL_WFS),
     overpassUrls: parseList(env.OVERPASS_URLS, OVERPASS_URLS),
+    renderKeys: {
+      stability: env.RENDER_STABILITY_KEY?.trim() || undefined,
+      openai: env.RENDER_OPENAI_KEY?.trim() || undefined,
+      gemini: env.RENDER_GEMINI_KEY?.trim() || undefined,
+      openrouter: env.RENDER_OPENROUTER_KEY?.trim() || undefined,
+    },
   };
 }
 

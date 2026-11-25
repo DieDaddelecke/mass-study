@@ -8,6 +8,7 @@ import {
   Magnet,
   Maximize,
   Palette,
+  Sparkles,
   SquareDashed,
   Sun,
 } from 'lucide-react';
@@ -18,6 +19,7 @@ import { useViewportStore } from './viewportStore';
 import { useProjectStore } from '../store/projectStore';
 import { useAnalysis } from '../store/useAnalysis';
 import { defaultCutLevel } from './scene/storeyCut';
+import { openRenderDialog } from '../render/capture';
 
 /** 3D ↔ plan switch: both are editable working views of the same scene. */
 function ModeSwitch({ plan }: { plan: boolean }) {
@@ -51,6 +53,7 @@ function ModeSwitch({ plan }: { plan: boolean }) {
 /** Floating view controls (bottom-left): 3D/plan, visual style, sun, projection, zoom, home. */
 export function ViewControlBar({ plan = false }: { plan?: boolean }) {
   const { t } = useTranslation('viewport');
+  const { t: tr } = useTranslation('render');
   const mode = useDisplayMode();
   const projection = useUiStore((s) => s.projection);
   const setProjection = useUiStore((s) => s.setProjection);
@@ -143,6 +146,18 @@ export function ViewControlBar({ plan = false }: { plan?: boolean }) {
           onClick={toggleCut}
         >
           <Layers size={16} strokeWidth={1.75} />
+        </button>
+      )}
+      {!plan && (
+        <button
+          type="button"
+          className="vp-bar-btn vp-render"
+          title={tr('button')}
+          aria-label={tr('button')}
+          disabled={!project}
+          onClick={() => void openRenderDialog()}
+        >
+          <Sparkles size={16} strokeWidth={1.75} />
         </button>
       )}
       <span className="vp-bar-sep" />

@@ -9,6 +9,8 @@ services:
       CACHE_TTL_DAYS: '30'
       USER_AGENT: 'Kubatur/0.1 (massing study tool)'
       # ALLOWED_ORIGINS: 'https://kubatur.example.org'
+      # Optional server keys for the AI rendering (otherwise each user enters their own key):
+      # RENDER_GEMINI_KEY: '…'
     restart: unless-stopped
 
 volumes:
