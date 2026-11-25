@@ -39,6 +39,7 @@ function edgesOf(site: Polygon, kinds: BoundaryKind[]): BoundarySegment[] {
 
 const rules = (over: Partial<AutoStudyRules> = {}): AutoStudyRules => ({
   ...DEFAULT_AUTO_RULES,
+  reculVoie: 4,
   hauteurMax: 16,
   ...over,
 });
