@@ -94,17 +94,20 @@ export interface ProviderCall {
   req: RenderRequest;
   model: string;
   image: DecodedImage;
+  guide?: DecodedImage;
+  seed?: number;
   key: string;
   fetch: FetchLike;
 }
 
-async function stability({ req, model, image, key, fetch }: ProviderCall): Promise<string> {
+async function stability({ req, model, image, seed, key, fetch }: ProviderCall): Promise<string> {
   const form = new FormData();
   form.append('image', new Blob([image.bytes], { type: image.mime }), `view.${ext(image.mime)}`);
   form.append('prompt', req.prompt);
   if (req.negativePrompt) form.append('negative_prompt', req.negativePrompt);
   form.append('control_strength', String(clamp01(req.fidelity ?? 0.7)));
   form.append('output_format', 'png');
+  if (seed !== undefined) form.append('seed', String(seed));
   const res = await fetch(`https://api.stability.ai/v2beta/stable-image/control/${model}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, Accept: 'image/*' },
@@ -176,7 +179,15 @@ interface GeminiPart {
   inline_data?: { mime_type?: string; data?: string };
 }
 
-async function gemini({ req, model, image, key, fetch }: ProviderCall): Promise<string> {
+async function gemini({
+  req,
+  model,
+  image,
+  guide,
+  seed,
+  key,
+  fetch,
+}: ProviderCall): Promise<string> {
   const neg = req.negativePrompt ? `\nAvoid: ${req.negativePrompt}` : '';
   const body = {
     contents: [
@@ -190,11 +201,22 @@ async function gemini({ req, model, image, key, fetch }: ProviderCall): Promise<
               data: Buffer.from(image.bytes).toString('base64'),
             },
           },
+          ...(guide
+            ? [
+                {
+                  inline_data: {
+                    mime_type: guide.mime,
+                    data: Buffer.from(guide.bytes).toString('base64'),
+                  },
+                },
+              ]
+            : []),
         ],
       },
     ],
     generationConfig: {
       responseModalities: ['TEXT', 'IMAGE'],
+      ...(seed !== undefined ? { seed } : {}),
       ...(req.aspect && Number.isFinite(req.aspect)
         ? { imageConfig: { aspectRatio: geminiRatio(req.aspect) } }
         : {}),
@@ -231,15 +253,27 @@ async function gemini({ req, model, image, key, fetch }: ProviderCall): Promise<
   );
 }
 
-async function openrouter({ req, model, image, key, fetch }: ProviderCall): Promise<string> {
+async function openrouter({
+  req,
+  model,
+  image,
+  guide,
+  seed,
+  key,
+  fetch,
+}: ProviderCall): Promise<string> {
   const neg = req.negativePrompt ? `\nAvoid: ${req.negativePrompt}` : '';
   const body = {
     model,
     prompt: req.prompt + neg,
     input_references: [
       { type: 'image_url', image_url: { url: toDataUrl(image.mime, image.bytes) } },
+      ...(guide
+        ? [{ type: 'image_url', image_url: { url: toDataUrl(guide.mime, guide.bytes) } }]
+        : []),
     ],
     n: 1,
+    ...(seed !== undefined ? { seed } : {}),
     ...(req.aspect && Number.isFinite(req.aspect) ? { aspect_ratio: geminiRatio(req.aspect) } : {}),
   };
   const res = await fetch('https://openrouter.ai/api/v1/images', {
@@ -296,7 +330,14 @@ export async function render(
   if (!re.test(model)) throw new RenderError(400, 'bad_request', 'invalid model id');
   if (typeof req.image !== 'string') throw new RenderError(400, 'bad_request', 'image is required');
   const image = decodeDataUrl(req.image);
+  const guide = typeof req.guide === 'string' && req.guide ? decodeDataUrl(req.guide) : undefined;
+  let seed: number | undefined;
+  if (req.seed !== undefined && req.seed !== null) {
+    if (!Number.isInteger(req.seed) || req.seed < 0 || req.seed > 4_294_967_294)
+      throw new RenderError(400, 'bad_request', 'seed must be an integer 0–4294967294');
+    seed = req.seed;
+  }
   if (!key) throw new RenderError(401, 'no_key', `no API key for ${req.provider}`);
-  const out = await ADAPTERS[req.provider]({ req, model, image, key, fetch });
+  const out = await ADAPTERS[req.provider]({ req, model, image, guide, seed, key, fetch });
   return { image: out, provider: req.provider, model };
 }

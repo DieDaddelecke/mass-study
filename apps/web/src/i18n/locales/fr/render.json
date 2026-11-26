@@ -19,7 +19,7 @@
   "style": "Style",
   "material": "Façades",
   "animate": "Arbres, passants",
-  "fidelity": "Fidélité à la géométrie",
+  "fidelity": "Fidélité à la vue",
   "prompt": "Prompt (anglais)",
   "resetPrompt": "Prompt automatique",
   "promptNote": "Généré à partir du projet (usages, niveaux, toitures, extérieurs, site) ; modifiable librement.",
@@ -78,5 +78,12 @@
     "blocked": "Le fournisseur a refusé la demande",
     "network": "Le serveur ne répond pas"
   },
-  "short": "Rendu IA"
+  "short": "Rendu IA",
+  "useGuide": "Envoyer les arêtes (géométrie)",
+  "seed": "Graine",
+  "seedRandom": "aléatoire",
+  "seedNew": "Nouvelle graine",
+  "lines": "Superposer les arêtes",
+  "linesHint": "Affiche les arêtes de la vue 3D sur le rendu pour vérifier qu'il n'a pas bougé",
+  "fixedHint": "Pour une série depuis le même point de vue : même capture, fidélité élevée, arêtes activées ; une graine fixe garde aussi le même éclairage et les mêmes détails quand seul le style change."
 }

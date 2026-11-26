@@ -187,6 +187,10 @@ export interface RenderRequest {
   fidelity?: number;
   /** width / height */
   aspect?: number;
+  /** Line drawing of the view (data URL), sent as a second image where the provider allows it. */
+  guide?: string;
+  /** Fixed seed (0 – 4 294 967 294) for series from the same view. */
+  seed?: number;
 }
 
 export interface RenderResponse {

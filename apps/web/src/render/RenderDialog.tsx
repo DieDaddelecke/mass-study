@@ -1,5 +1,5 @@
 import type { Project } from '@kubatur/core';
-import { Download, ExternalLink, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
+import { Dices, Download, ExternalLink, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RenderRequestError, renderApi } from '../api/client';
@@ -54,6 +54,10 @@ export function RenderDialog({ project }: { project: Project }) {
   const { settings: s, capture, results, update, addResult } = useRenderStore();
   const look = useViewportStore((v) => v.look);
   const mode = useDisplayMode();
+  // Only Gemini and OpenRouter take a second image (the line drawing).
+  const guideCapable = s.provider === 'gemini' || s.provider === 'openrouter';
+  const sendGuide = guideCapable && s.useGuide && !!capture?.guide;
+  const seed = /^\d{1,10}$/.test(s.seed.trim()) ? Number(s.seed.trim()) : undefined;
   const promptOpts: PromptOptions = useMemo(
     () => ({
       style: s.style,
@@ -61,8 +65,10 @@ export function RenderDialog({ project }: { project: Project }) {
       animate: s.animate,
       look,
       colourCoded: mode === 'usages' || mode === 'granulometrie',
+      fidelity: s.fidelity,
+      guide: sendGuide,
     }),
-    [s.style, s.material, s.animate, look, mode],
+    [s.style, s.material, s.animate, look, mode, s.fidelity, sendGuide],
   );
   const auto = useMemo(() => buildPrompt(project, promptOpts), [project, promptOpts]);
   // The prompt follows the options until the user edits it.
@@ -74,6 +80,7 @@ export function RenderDialog({ project }: { project: Project }) {
   const [error, setError] = useState<string | null>(null);
   const [shown, setShown] = useState<string | null>(results[0]?.id ?? null);
   const [compare, setCompare] = useState(false);
+  const [lines, setLines] = useState(false);
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -111,6 +118,8 @@ export function RenderDialog({ project }: { project: Project }) {
           image: capture.image,
           fidelity: s.fidelity,
           aspect: capture.width / capture.height,
+          guide: sendGuide ? capture.guide : undefined,
+          seed: seed !== undefined && seed <= 4_294_967_294 ? seed : undefined,
         },
         key,
         ac.signal,
@@ -187,11 +196,15 @@ export function RenderDialog({ project }: { project: Project }) {
         <div className="rnd-view">
           <div className={`rnd-frame${busy ? ' is-busy' : ''}`}>
             {shownImage ? (
-              <img
-                src={shownImage}
-                alt={result && !compare ? t('resultAlt') : t('captureAlt')}
+              <div
+                className="rnd-stack"
                 style={capture ? { aspectRatio: `${capture.width} / ${capture.height}` } : {}}
-              />
+              >
+                <img src={shownImage} alt={result && !compare ? t('resultAlt') : t('captureAlt')} />
+                {lines && capture?.overlay && (
+                  <img className="rnd-lines" src={capture.overlay} alt="" />
+                )}
+              </div>
             ) : (
               <p className="muted">{t('noCapture')}</p>
             )}
@@ -217,6 +230,16 @@ export function RenderDialog({ project }: { project: Project }) {
                 >
                   {t('compare')}
                 </button>
+                {capture?.overlay && (
+                  <button
+                    className={`btn btn-small${lines ? ' is-on' : ''}`}
+                    onClick={() => setLines(!lines)}
+                    aria-pressed={lines}
+                    title={t('linesHint')}
+                  >
+                    {t('lines')}
+                  </button>
+                )}
                 <button className="btn btn-small" onClick={() => void download()}>
                   <Download size={14} strokeWidth={1.75} />
                   {t('download')}
@@ -293,6 +316,35 @@ export function RenderDialog({ project }: { project: Project }) {
               <span>{Math.round(s.fidelity * 100)} %</span>
             </span>
           </Row>
+          {guideCapable && (
+            <Row label={t('useGuide')}>
+              <input
+                type="checkbox"
+                aria-label={t('useGuide')}
+                checked={s.useGuide}
+                onChange={(e) => update({ useGuide: e.target.checked })}
+              />
+            </Row>
+          )}
+          <Row label={t('seed')}>
+            <span className="rnd-seed">
+              <input
+                inputMode="numeric"
+                aria-label={t('seed')}
+                placeholder={t('seedRandom')}
+                value={s.seed}
+                onChange={(e) => update({ seed: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+              />
+              <button
+                className="btn btn-small"
+                title={t('seedNew')}
+                onClick={() => update({ seed: String(Math.floor(Math.random() * 1_000_000)) })}
+              >
+                <Dices size={14} strokeWidth={1.75} />
+              </button>
+            </span>
+          </Row>
+          <p className="muted rnd-hint">{t('fixedHint')}</p>
 
           <div className="rnd-prompt">
             <div className="rnd-prompt-head">

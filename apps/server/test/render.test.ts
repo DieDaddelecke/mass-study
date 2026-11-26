@@ -163,6 +163,7 @@ describe('/api/render', () => {
       input_references: { image_url: { url: string } }[];
     };
     expect(sent.model).toBe('google/gemini-3-pro-image');
+    expect(sent.input_references).toHaveLength(1);
     expect(sent.aspect_ratio).toBe('3:2');
     expect(sent.input_references[0]!.image_url.url.startsWith('data:image/png;base64,')).toBe(true);
   });
@@ -186,6 +187,40 @@ describe('/api/render', () => {
         )
       ).status,
     ).toBe(400);
+  });
+
+  it('sends the line drawing as second image and the seed', async () => {
+    const { app: a, calls } = app({ RENDER_OPENROUTER_KEY: 'or', RENDER_GEMINI_KEY: 'g' }, (url) =>
+      url.includes('openrouter')
+        ? Response.json({ data: [{ b64_json: 'AAA=' }] })
+        : Response.json({
+            candidates: [{ content: { parts: [{ inlineData: { data: 'AAA=' } }] } }],
+          }),
+    );
+    for (const provider of ['openrouter', 'gemini']) {
+      const res = await a.request(
+        '/api/render',
+        post({ provider, prompt: 'p', image: PNG, guide: PNG, seed: 42 }),
+      );
+      expect(res.status).toBe(200);
+    }
+    const or = JSON.parse(calls[0]!.init!.body as string) as {
+      input_references: unknown[];
+      seed: number;
+    };
+    expect(or.input_references).toHaveLength(2);
+    expect(or.seed).toBe(42);
+    const ge = JSON.parse(calls[1]!.init!.body as string) as {
+      contents: { parts: unknown[] }[];
+      generationConfig: { seed: number };
+    };
+    expect(ge.contents[0]!.parts).toHaveLength(3);
+    expect(ge.generationConfig.seed).toBe(42);
+    const bad = await a.request(
+      '/api/render',
+      post({ provider: 'gemini', prompt: 'p', image: PNG, seed: -1 }),
+    );
+    expect(bad.status).toBe(400);
   });
 
   it('picks output formats', () => {

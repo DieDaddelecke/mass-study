@@ -19,7 +19,7 @@
   "style": "Style",
   "material": "Façades",
   "animate": "Trees, people",
-  "fidelity": "Geometry fidelity",
+  "fidelity": "Fidelity to the view",
   "prompt": "Prompt (English)",
   "resetPrompt": "Automatic prompt",
   "promptNote": "Built from the project (uses, storeys, roofs, outdoor spaces, site); edit freely.",
@@ -78,5 +78,12 @@
     "blocked": "The provider refused the request",
     "network": "The server does not respond"
   },
-  "short": "AI render"
+  "short": "AI render",
+  "useGuide": "Send edges (geometry)",
+  "seed": "Seed",
+  "seedRandom": "random",
+  "seedNew": "New seed",
+  "lines": "Overlay edges",
+  "linesHint": "Lays the edges of the 3D view over the rendering to check for drift",
+  "fixedHint": "For a series from the same viewpoint: same capture, high fidelity, edges on; a fixed seed also keeps light and details when only the style changes."
 }

@@ -19,7 +19,7 @@
   "style": "Stil",
   "material": "Fassaden",
   "animate": "Bäume, Passanten",
-  "fidelity": "Treue zur Geometrie",
+  "fidelity": "Treue zur Ansicht",
   "prompt": "Prompt (Englisch)",
   "resetPrompt": "Automatischer Prompt",
   "promptNote": "Aus dem Projekt erzeugt (Nutzungen, Geschosse, Dächer, Freibereiche, Ort); frei änderbar.",
@@ -78,5 +78,12 @@
     "blocked": "Anfrage vom Anbieter abgelehnt",
     "network": "Der Server antwortet nicht"
   },
-  "short": "KI-Rendering"
+  "short": "KI-Rendering",
+  "useGuide": "Kanten mitsenden (Geometrie)",
+  "seed": "Seed",
+  "seedRandom": "zufällig",
+  "seedNew": "Neuer Seed",
+  "lines": "Kanten überlagern",
+  "linesHint": "Legt die Kanten der 3D-Ansicht über das Rendering, um Verschiebungen zu sehen",
+  "fixedHint": "Für eine Serie aus demselben Blickpunkt: dieselbe Aufnahme, hohe Treue, Kanten an; ein fester Seed hält zusätzlich Licht und Details gleich, wenn nur der Stil wechselt."
 }
