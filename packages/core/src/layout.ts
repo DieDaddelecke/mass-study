@@ -850,7 +850,11 @@ function planBar(
       centres.forEach((c, i) => {
         const k0 = Math.max(0, c - cw / 2);
         const k1 = Math.min(L, c + cw / 2);
-        plan.cores.push([k0, g, k1, D]);
+        // the stair on the gallery, a dwelling behind it on the far façade (no core through
+        // the whole depth: dark area)
+        const back = D - g - cd >= 4;
+        plan.cores.push([k0, g, k1, back ? g + cd : D]);
+        if (back) plan.fixed.push({ rects: [[k0, g + cd, k1, D]], core: i });
         if (k0 - a > 1e-6) plan.rows.push({ rect: [a, g, k0, D], core: i, sides: gs });
         a = k1;
       });
