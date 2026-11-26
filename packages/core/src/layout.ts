@@ -25,6 +25,15 @@ import {
 } from './analysis.js';
 import { largestRemainder, unitMix } from './mix.js';
 import {
+  programmeDeviation,
+  programmeResult,
+  programmeSettings,
+  programmeShares,
+  resolveProgramme,
+  type ProgrammeResult,
+  type ProgrammeShare,
+} from './programme.js';
+import {
   difference,
   intersection,
   normalizePolygon,
@@ -139,6 +148,11 @@ export interface LayoutUnit {
   orientationOk?: boolean;
   /** Outdoor space (balcon, loggia, terrasse), if the building has one on this façade. */
   outdoor?: LayoutOutdoor;
+  /**
+   * Further outdoor spaces, so that those of the storeys above and below repeat on the façade
+   * (a T4 above two T2 gets the two balconies of the T2, Soheyl 26.11.2026).
+   */
+  outdoorExtra?: LayoutOutdoor[];
   /** One level of a duplex dwelling (the same polygon on both storeys). */
   duplex?: LayoutDuplex;
   /** Interior spaces of a residence unit (entrée, salle d'eau, kitchenette). */
@@ -231,6 +245,8 @@ export interface MassLayout {
   areaBasedDwellings: number;
   /** Expected units per core of the access type (Zweispänner 2, Dreispänner 3, …). */
   expectedUnitsPerCore?: [number, number];
+  /** Target vs achieved of the building's housing programme (when it has one). */
+  programme?: ProgrammeResult;
 }
 
 export interface LayoutDimensions {
@@ -3462,10 +3478,13 @@ const coresKey = (cores: readonly LayoutArea[]): string =>
 export function massLayout(
   mass: Mass,
   solids: readonly StoreySolid[],
-  settings: Settings,
+  baseSettings: Settings,
   areaBasedDwellings?: number,
   site?: SiteEdges,
 ): MassLayout {
+  // housing programme of the building: the storeys plan with its shares (and are balanced below)
+  const programme = resolveProgramme(mass, baseSettings);
+  const settings = programmeSettings(mass, baseSettings);
   const access = resolveAccess(mass, settings);
   const party = partyOf(mass, solids, settings, site);
   const byStorey = new Map<number, StoreySolid[]>();
@@ -3504,45 +3523,68 @@ export function massLayout(
     early = layoutStorey(mass, byStorey.get(regular)!, settings, access, party ? { party } : {});
     ref = refOf(early);
   }
-  // séjours stack: each storey sees the séjours of the storey below
-  let below: Polygon[] | undefined;
-  const simplex = order.map((i) => {
-    const own = special.get(i);
-    if (own) return own;
+  /**
+   * Layout of storey `i` with the unit mix of `s`: the footprint of the Regelgeschoss is laid
+   * out freely (the same plan), another footprint in the frames and with the cores of the
+   * Regelgeschoss (storeys without dwellings take the cores of those above: stackCores).
+   */
+  const planAt = (i: number, s: Settings, below?: Polygon[]) => {
     const solidsHere = byStorey.get(i)!;
     const base: LayoutPass = { ...(below ? { below } : {}), ...(party ? { party } : {}) };
-    // the footprint of the Regelgeschoss: laid out freely (the same plan); another
-    // footprint: in the frames and with the cores of the Regelgeschoss
-    // (storeys without dwellings take the cores of those above: stackCores)
     const same =
       regular === undefined ||
       solidsHere[0]!.usage !== 'wohnen' ||
       solidsKey(solidsHere) === refKey;
     let r =
-      i === regular && early && !below
-        ? early
-        : same || !ref
-          ? layoutStorey(mass, solidsHere, settings, access, base)
-          : layoutStorey(mass, solidsHere, settings, access, { ...base, frame: ref.frame });
+      same || !ref
+        ? layoutStorey(mass, solidsHere, s, access, base)
+        : layoutStorey(mass, solidsHere, s, access, { ...base, frame: ref.frame });
+    if (same && ref && solidsHere[0]!.usage === 'wohnen' && coresKey(r.layout.cores) !== ref.cores)
+      r = layoutStorey(mass, solidsHere, s, access, { ...base, frame: ref.frame });
+    return { r, same };
+  };
+  // séjours stack: each storey sees the séjours of the storey below
+  let below: Polygon[] | undefined;
+  const sejours = (st: StoreyLayout) =>
+    st.units.flatMap((u) => u.rooms.filter((x) => x.kind === 'sejour').map((x) => x.polygon));
+  const simplex = order.map((i) => {
+    const own = special.get(i);
+    if (own) return own;
+    let r: ReturnType<typeof layoutStorey>;
+    let same = true;
+    if (i === regular && early && !below) r = early;
+    else {
+      const p = planAt(i, settings, below);
+      r = p.r;
+      same = p.same;
+    }
     if (i === regular && !ref) ref = refOf(r);
-    else if (
-      same &&
-      ref &&
-      solidsHere[0]!.usage === 'wohnen' &&
-      coresKey(r.layout.cores) !== ref.cores
-    )
-      r = layoutStorey(mass, solidsHere, settings, access, { ...base, frame: ref.frame });
     if (!same && ref) frames.set(i, ref.frame);
     pins.set(i, r.pins);
-    const sej = r.layout.units.flatMap((u) =>
-      u.rooms.filter((x) => x.kind === 'sejour').map((x) => x.polygon),
-    );
+    const sej = sejours(r.layout);
     below = sej.length ? sej : below;
     return r.layout;
   });
-  const storeys = stackCores(
-    applyDuplex(mass, byStorey, settings, access, simplex, pins, party, frames),
-  );
+  let planned = applyDuplex(mass, byStorey, settings, access, simplex, pins, party, frames);
+  if (programme && access !== 'reihenhaus')
+    planned = balanceProgramme(
+      planned.map((st, k) => ({
+        layout: st,
+        // storeys planned freely with dwellings (not duplex, not residence / office)
+        free:
+          st === simplex[k] &&
+          !special.has(st.storeyIndex) &&
+          st.usage === 'wohnen' &&
+          st.units.length > 0 &&
+          !st.units.some((u) => u.duplex),
+        key: solidsKey(byStorey.get(st.storeyIndex)!),
+      })),
+      programmeShares(programme, baseSettings.unitMix),
+      settings,
+      (i, s, below) => planAt(i, s, below).r.layout,
+      sejours,
+    );
+  const storeys = stackOutdoors(stackCores(planned));
   const counts = new Map<string, LayoutTypeCount>();
   let units = 0;
   let unitArea = 0;
@@ -3568,9 +3610,281 @@ export function massLayout(
     totals: { units, byType: [...counts.values()], unitArea },
     areaBasedDwellings: areaBasedDwellings ?? 0,
   };
+  if (programme) {
+    const byId = new Map<string, number>();
+    for (const t of out.totals.byType) byId.set(t.typeId, (byId.get(t.typeId) ?? 0) + t.count);
+    out.programme = programmeResult(programme, baseSettings.unitMix, byId);
+  }
   const expected = massUnitsPerCoreRange(mass, access, coreRange(settings));
   if (expected) out.expectedUnitsPerCore = expected;
   return out;
+}
+
+/** All outdoor spaces of a dwelling (its own and those repeated from the storeys around). */
+export function unitOutdoors(u: Pick<LayoutUnit, 'outdoor' | 'outdoorExtra'>): LayoutOutdoor[] {
+  return [...(u.outdoor ? [u.outdoor] : []), ...(u.outdoorExtra ?? [])];
+}
+
+/** Dwellings by type of one storey (a duplex counts on its entrance level). */
+function storeyCounts(st: StoreyLayout): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const t of st.summary.byType) if (t.count) m.set(t.typeId, (m.get(t.typeId) ?? 0) + t.count);
+  return m;
+}
+
+const countsKey = (m: ReadonlyMap<string, number>) =>
+  [...m]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([k, v]) => `${k}${v}`)
+    .join(',');
+
+/**
+ * Cost of a storey plan in dwellings: dead area (floor area no dwelling, core or circulation
+ * takes, Soheyl 26.11.2026: « möglichst wenig tote Fläche ») per average dwelling, and one
+ * dwelling per dwelling off its type's area range or below its façade minimum.
+ */
+function storeyCost(st: StoreyLayout, avgTarget: number): number {
+  const fails = st.units.filter(
+    (u) => u.duplex?.level !== 'nuit' && (u.outOfRange || !u.facadeOk),
+  ).length;
+  return (DEAD_AREA_WEIGHT * st.summary.openArea) / avgTarget + fails;
+}
+
+/** Dwellings of programme deviation one average dwelling of dead area is worth. */
+const DEAD_AREA_WEIGHT = 2.5;
+
+/**
+ * Unit mixes to try on a storey: each programme entry favoured (×3) or left out, one type of a
+ * group alone, two neighbouring entries alone.
+ */
+function candidateMixes(mix: readonly UnitType[], shares: readonly ProgrammeShare[]): UnitType[][] {
+  const out: UnitType[][] = [];
+  const seen = new Set<string>([mix.map((t) => t.share.toFixed(4)).join(',')]);
+  const add = (f: (t: UnitType) => number) => {
+    const m = mix.map((t) => ({ ...t, share: f(t) }));
+    if (!m.some((t) => t.share > 0 && t.areaTarget > 0)) return;
+    const k = m.map((t) => t.share.toFixed(4)).join(',');
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push(m);
+  };
+  const inE = (e: ProgrammeShare, t: UnitType) => e.typeIds.includes(t.id);
+  for (const e of shares) {
+    if (e.share <= 0) continue;
+    add((t) => (inE(e, t) ? t.share * 3 : t.share));
+    add((t) => (inE(e, t) ? 0 : t.share));
+  }
+  for (const e of shares) {
+    if (e.typeIds.length < 2 || e.share <= 0) continue;
+    for (const id of e.typeIds) add((t) => (t.id === id ? e.share : inE(e, t) ? 0 : t.share));
+  }
+  for (let k = 0; k + 1 < shares.length; k++) {
+    const [e, f] = [shares[k]!, shares[k + 1]!];
+    add((t) => (inE(e, t) || inE(f, t) ? t.share : 0));
+  }
+  return out;
+}
+
+/**
+ * Housing programme of a building (Soheyl 26.11.2026): the storeys planned freely with
+ * dwellings may take other unit mixes – storeys of the same massing then get different plans –
+ * so that the building as a whole comes as close as it can to the programme. A storey changes
+ * only when that pays off against dead area, dwellings off their rules and the number of
+ * different plans (séjours and outdoor spaces stack best on identical storeys). The stair cores
+ * stay where they are on every storey.
+ */
+function balanceProgramme(
+  items: readonly { layout: StoreyLayout; free: boolean; key: string }[],
+  shares: readonly ProgrammeShare[],
+  settings: Settings,
+  plan: (storeyIndex: number, s: Settings, below?: Polygon[]) => StoreyLayout,
+  sejours: (st: StoreyLayout) => Polygon[],
+): StoreyLayout[] {
+  const freeIdx = items.flatMap((x, k) => (x.free ? [k] : []));
+  if (!freeIdx.length || !shares.length) return items.map((x) => x.layout);
+  const mix = settings.unitMix.filter((t) => t.share > 0 && t.areaTarget > 0);
+  const shareSum = mix.reduce((s, t) => s + t.share, 0) || 1;
+  const avg = mix.reduce((s, t) => s + (t.share / shareSum) * t.areaTarget, 0) || 60;
+  type Option = { counts: Map<string, number>; cost: number; mix?: UnitType[] };
+  const options = new Map<string, Option[]>();
+  const mixes = candidateMixes(settings.unitMix, shares);
+  for (const k of freeIdx) {
+    const it = items[k]!;
+    if (options.has(it.key)) continue;
+    const base = it.layout;
+    const list: Option[] = [{ counts: storeyCounts(base), cost: storeyCost(base, avg) }];
+    const byCounts = new Map<string, number>([[countsKey(list[0]!.counts), 0]]);
+    const cores = coresKey(base.cores);
+    for (const m of mixes) {
+      const l = plan(base.storeyIndex, { ...settings, unitMix: m });
+      if (!l.units.length || coresKey(l.cores) !== cores) continue;
+      // no plan with markedly more dead area than the storey's own
+      if (
+        l.summary.openArea >
+        base.summary.openArea + Math.max(10, 0.02 * base.summary.footprintArea)
+      )
+        continue;
+      const o: Option = { counts: storeyCounts(l), cost: storeyCost(l, avg), mix: m };
+      const ck = countsKey(o.counts);
+      const j = byCounts.get(ck);
+      // the same dwellings: keep the plan with less dead area (the base one on a tie)
+      if (j !== undefined) {
+        if (j > 0 && o.cost < list[j]!.cost - 1e-9) list[j] = o;
+        continue;
+      }
+      byCounts.set(ck, list.length);
+      list.push(o);
+    }
+    options.set(it.key, list);
+  }
+  const fixed = new Map<string, number>();
+  items.forEach((x) => {
+    if (!x.free)
+      for (const [id, c] of storeyCounts(x.layout)) fixed.set(id, (fixed.get(id) ?? 0) + c);
+  });
+  const choice = new Map<number, number>(freeIdx.map((k) => [k, 0]));
+  const opt = (k: number) => options.get(items[k]!.key)![choice.get(k)!]!;
+  const cost = (): number => {
+    const sum = new Map(fixed);
+    let c = 0;
+    for (const k of freeIdx) {
+      const o = opt(k);
+      for (const [id, n] of o.counts) sum.set(id, (sum.get(id) ?? 0) + n);
+      c += o.cost + (choice.get(k)! > 0 ? 0.3 : 0);
+      // a change of plan between two storeys of the same massing (stacking)
+      const up = k + 1;
+      if (choice.has(up) && items[up]!.key === items[k]!.key && choice.get(up) !== choice.get(k))
+        c += 0.2;
+    }
+    return programmeDeviation(shares, sum) + c;
+  };
+  let best = cost();
+  for (let round = 0; round < 6; round++) {
+    let improved = false;
+    for (const k of freeIdx) {
+      const n = options.get(items[k]!.key)!.length;
+      const keep = choice.get(k)!;
+      let pick = keep;
+      for (let j = 0; j < n; j++) {
+        if (j === keep) continue;
+        choice.set(k, j);
+        const c = cost();
+        if (c < best - 1e-9) {
+          best = c;
+          pick = j;
+        }
+      }
+      choice.set(k, pick);
+      if (pick !== keep) improved = true;
+    }
+    if (!improved) break;
+  }
+  // the storeys that change are planned again over the final storey below (séjours stack)
+  const out: StoreyLayout[] = [];
+  let below: Polygon[] | undefined;
+  items.forEach((x, k) => {
+    let st = x.layout;
+    const o = x.free ? opt(k) : undefined;
+    if (o?.mix) {
+      const l = plan(st.storeyIndex, { ...settings, unitMix: o.mix }, below);
+      if (l.units.length && coresKey(l.cores) === coresKey(st.cores)) st = l;
+    }
+    out.push(st);
+    const sej = sejours(st);
+    below = sej.length ? sej : below;
+  });
+  return out;
+}
+
+/**
+ * Outdoor spaces repeat over the storeys (Soheyl 26.11.2026): every balcony or loggia of a
+ * dwelling storey is given to the dwelling at the same place on the other dwelling storeys that
+ * have this façade there, also as its second (third …) outdoor space – a T4 above two T2 takes
+ * the balconies of both. Ground-floor terraces stay as they are.
+ */
+function stackOutdoors(storeys: StoreyLayout[]): StoreyLayout[] {
+  const eligible = (st: StoreyLayout) =>
+    st.usage === 'wohnen' &&
+    st.units.length > 0 &&
+    !st.residence &&
+    !st.office &&
+    !st.units.some((u) => u.outdoor?.kind === 'terrasse');
+  const list = storeys.filter(eligible);
+  if (list.length < 2) return storeys;
+  const slots: LayoutOutdoor[] = [];
+  for (const st of list)
+    for (const u of st.units)
+      for (const o of unitOutdoors(u)) {
+        if (o.kind === 'terrasse') continue;
+        const min = (s: LayoutOutdoor) => 0.2 * Math.min(s.area, o.area);
+        if (slots.some((s) => overlapArea([s.polygon], [o.polygon]) > min(s))) continue;
+        slots.push(o);
+      }
+  return storeys.map((st) => {
+    if (!eligible(st)) return st;
+    const outline = union(st.footprints);
+    const units = st.units.map((u) => ({ ...u }));
+    let added = 0;
+    for (const slot of slots) {
+      const here = units.flatMap((u) => unitOutdoors(u).map((o) => o.polygon));
+      if (here.some((p) => overlapArea([p], [slot.polygon]) > 0.2 * slot.area)) continue;
+      const grown = offsetPolygons([slot.polygon], 0.2);
+      const inside = overlapArea([slot.polygon], outline);
+      const touch = overlapArea(grown, outline);
+      const ring = grown.reduce((s, p) => s + polygonArea(p), 0) - slot.area;
+      // on this storey's façade: a loggia inside the outline and open to the outside, a balcony
+      // outside the outline and along it over its whole width
+      const onFacade =
+        slot.kind === 'loggia'
+          ? inside >= 0.95 * slot.area && ring - (touch - inside) >= 0.15 * slot.width
+          : inside <= 0.05 * slot.area && touch - inside >= 0.18 * slot.width;
+      if (!onFacade) continue;
+      // the dwelling it belongs to: the only one it touches
+      const contact = units.map((u) =>
+        overlapArea(slot.kind === 'loggia' ? [slot.polygon] : grown, [u.polygon]),
+      );
+      const total = contact.reduce((a, b) => a + b, 0);
+      const bi = contact.reduce((b, c, i) => (c > contact[b]! ? i : b), 0);
+      const u = units[bi]!;
+      if (total <= 0 || contact[bi]! < 0.95 * total || u.duplex?.level === 'nuit' || u.spaces)
+        continue;
+      let polygon = slot.polygon;
+      if (here.some((p) => overlapArea([p], [polygon]) > 1e-3)) {
+        const rest = difference([polygon], here).sort((a, b) => polygonArea(b) - polygonArea(a))[0];
+        if (!rest || polygonArea(rest) < 0.8 * slot.area) continue;
+        polygon = rest;
+      }
+      const sejour = u.rooms.find((r) => r.kind === 'sejour');
+      const o: LayoutOutdoor = {
+        ...slot,
+        polygon,
+        area: polygonArea(polygon),
+        position:
+          sejour && polygonDistance(sejour.polygon, polygon) < 0.6 ? slot.position : 'remote',
+      };
+      if (slot.kind === 'loggia')
+        // the loggia is cut out of the rooms it lies in
+        u.rooms = u.rooms.flatMap((r) => {
+          if (overlapArea([r.polygon], [polygon]) < 1e-3) return [r];
+          const rest = difference([r.polygon], [polygon]).sort(
+            (a, b) => polygonArea(b) - polygonArea(a),
+          )[0];
+          if (!rest || polygonArea(rest) < 0.2) return [];
+          const a = polygonArea(rest);
+          return [
+            {
+              ...r,
+              polygon: rest,
+              area: a,
+              areaOk: r.areaRequired <= 0 || a >= r.areaRequired - 0.05,
+            },
+          ];
+        });
+      u.outdoorExtra = [...(u.outdoorExtra ?? []), o];
+      added++;
+    }
+    return added ? { ...st, units, signature: `${st.signature}|o${added}` } : st;
+  });
 }
 
 /**

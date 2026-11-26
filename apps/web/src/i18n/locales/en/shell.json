@@ -631,5 +631,26 @@
       "recul": "Set-backs",
       "distance": "Building distance"
     }
+  },
+  "programme": {
+    "title": "Housing programme",
+    "enabled": "Programme for this building",
+    "projectEnabled": "Default programme of the buildings",
+    "mode": "Values",
+    "percent": "in %",
+    "count": "as number of dwellings",
+    "type": "Type",
+    "target": "Target",
+    "achieved": "Achieved",
+    "total": "Total",
+    "merge": "Group with the next type",
+    "split": "Split the group",
+    "met": "Programme met for the whole building.",
+    "deviation_one": "Deviation: {{count}} dwelling of another type than the programme.",
+    "deviation_other": "Deviation: {{count}} dwellings of another type than the programme.",
+    "other_one": "{{count}} dwelling outside the programme.",
+    "other_other": "{{count}} dwellings outside the programme.",
+    "useProject": "Use the project's programme",
+    "note": "The programme applies to the whole building, not per storey: storeys may get different plans, even with the same massing. Cores stay the same on every storey, a storey only changes when that creates no dead area, and balconies and loggias repeat from storey to storey (a T4 above two T2 gets two outdoor spaces)."
   }
 }

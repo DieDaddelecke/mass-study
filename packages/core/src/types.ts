@@ -159,6 +159,8 @@ export interface Mass {
   roof?: RoofConfig;
   /** Duplex dwellings on the upper storeys; default: settings (off). */
   duplex?: DuplexConfig;
+  /** Housing programme (target unit mix) of this building; default: settings (off). */
+  programme?: ProgrammeConfig;
   /** Residence (Wohnheim) rules of this mass; default: settings. */
   residence?: Partial<ResidenceRules>;
   /** Office (Büro) rules of this mass; default: settings. */
@@ -177,6 +179,26 @@ export interface DuplexConfig {
   entry: 'lower' | 'upper';
   /** Unit types built as duplex (ids of the unit mix); default: types with ≥ 3 rooms. */
   types?: string[];
+}
+
+/** One entry of a housing programme: a unit type or a group of types (« T1/T2 »). */
+export interface ProgrammeEntry {
+  /** Ids of the unit mix. */
+  typeIds: string[];
+  /** Percent or dwellings, by the programme's mode. */
+  value: number;
+}
+
+/**
+ * Housing programme (« programme de logements »): target unit mix of a building. With it the
+ * storeys may get different plans, even with the same massing, so that the building as a
+ * whole approaches the programme (Soheyl 26.11.2026).
+ */
+export interface ProgrammeConfig {
+  enabled: boolean;
+  /** Values as percentages or as dwelling counts (« T3 : 30 logements »). */
+  mode: 'percent' | 'count';
+  entries: ProgrammeEntry[];
 }
 
 export type OutdoorKind = 'none' | 'balcon' | 'loggia';
@@ -570,6 +592,8 @@ export interface Settings {
   boundaryRules?: BoundaryRules;
   /** Duplex dwellings: default configuration of new buildings. */
   duplex?: DuplexConfig;
+  /** Housing programme: default of the buildings without their own (off when missing). */
+  programme?: ProgrammeConfig;
   /** Residences (résidence étudiante / seniors), defaults when missing. */
   residenceRules?: Partial<ResidenceRules>;
   /** Office floors (bureaux), defaults when missing. */
