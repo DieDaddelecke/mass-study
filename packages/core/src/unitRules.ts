@@ -32,6 +32,7 @@ export const DEFAULT_UNIT_RULES: Required<UnitRules> = {
   minAreas: DEFAULT_MIN_AREAS,
   unitsPerCoreMin: 3,
   unitsPerCoreMax: 8,
+  unitsPerCoreFlex: true,
   facadeAreaRatio: 0.12,
   facadeGrid: 1.25,
   // office decision 2026-11-24: plans of the office library first, ±10 % / ±0.50 m

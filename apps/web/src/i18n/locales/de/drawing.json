@@ -129,7 +129,8 @@
     "outdoorStacked_one": "{{count}} Außenraum ergänzt, damit sich Balkone und Loggien über die Etagen wiederholen.",
     "outdoorStacked_other": "{{count}} Außenräume ergänzt, damit sich Balkone und Loggien über die Etagen wiederholen.",
     "programme": "Programm",
-    "programmeWhole": "Ist / Soll, ganzes Gebäude"
+    "programmeWhole": "Ist / Soll, ganzes Gebäude",
+    "perCoreChanged": "statt {{given}} vorgegeben: besserer Plan"
   },
   "ridge": "First"
 }

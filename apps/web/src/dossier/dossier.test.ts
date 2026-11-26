@@ -63,7 +63,8 @@ describe('dossier sheets', () => {
     expect(fp).toHaveLength(1);
     expect(fp[0]!.title).toContain('R+1 à R+4');
     expect(fp[0]!.svg).toContain('Cage d');
-    expect(fp[0]!.svg).toContain('Distribution triple');
+    // Dreispänner given; with flexible dwellings per core it may become a Vierspänner
+    expect(fp[0]!.svg).toMatch(/Distribution (triple|quadruple)/);
     if (process.env.KUBATUR_DOSSIER_OUT) writeFileSync(process.env.KUBATUR_DOSSIER_OUT, fp[0]!.svg);
   });
 

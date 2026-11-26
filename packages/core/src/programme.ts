@@ -1,4 +1,5 @@
 import type { Mass, ProgrammeConfig, Settings, UnitType } from './types.js';
+import { unitRooms } from './unitRules.js';
 
 /**
  * Housing programme (« programme de logements »): the target unit mix of a building, as
@@ -140,4 +141,29 @@ export function programmeDeviation(
     dev += Math.abs(a - e.share * n);
   }
   return 0.5 * (dev + (n - inside));
+}
+
+/**
+ * Margin above a type's areaMax before a dwelling counts as clearly too large (Soheyl
+ * 26.11.2026): its own value, else T1/T2 10 %, T3/T4 15 %, T5 and larger 17 %.
+ */
+export function unitAreaTolerance(t: Pick<UnitType, 'id' | 'label' | 'rooms' | 'areaTolerance'>) {
+  if (t.areaTolerance !== undefined && Number.isFinite(t.areaTolerance))
+    return Math.max(0, t.areaTolerance);
+  const rooms = unitRooms(t);
+  return rooms <= 2 ? 0.1 : rooms <= 4 ? 0.15 : 0.17;
+}
+
+/** Margin below a type's areaMin before a dwelling counts as clearly too small. */
+export const AREA_TOLERANCE_BELOW = 0.1;
+
+/** Whether a dwelling area is clearly off the type's range (beyond the margins). */
+export function clearlyOffRange(
+  t: Pick<UnitType, 'id' | 'label' | 'rooms' | 'areaTolerance' | 'areaMin' | 'areaMax'>,
+  area: number,
+): boolean {
+  return (
+    area > t.areaMax * (1 + unitAreaTolerance(t)) + 1e-6 ||
+    area < t.areaMin * (1 - AREA_TOLERANCE_BELOW) - 1e-6
+  );
 }

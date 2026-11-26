@@ -109,6 +109,12 @@ export function FloorPlanLegend({
           {m.expectedUnitsPerCore && s.unitsPerCore !== undefined && s.units.length > 0 && (
             <> : {t('fp.perCore', { n: fmt(s.unitsPerCore) })}</>
           )}
+          {m.unitsPerCoreChange && (
+            <span className="muted">
+              {' '}
+              ({t('fp.perCoreChanged', { given: m.unitsPerCoreChange.given })})
+            </span>
+          )}
         </p>
       ))}
       {total > 0 || nuit > 0 ? (

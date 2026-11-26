@@ -332,7 +332,16 @@
     "bikePerSmall": "Places par logement (T1, T2)",
     "bikePerLarge": "Places par logement (T3 et plus)",
     "bikeOfficeShare": "Places vélos par poste de travail",
-    "bikeArea": "Surface par place vélo"
+    "bikeArea": "Surface par place vélo",
+    "unitSizes": "Surfaces des logements",
+    "areaMin": "min.",
+    "areaTarget": "cible",
+    "areaMax": "max.",
+    "areaTolerance": "marge",
+    "areaLimit": "limite",
+    "unitSizesNote": "Surfaces habitables en m². La marge s’ajoute au maximum : au-delà de la limite, un logement ne prend jamais ce type (il prend un type plus grand). Entre le maximum et la limite, il est signalé hors fourchette.",
+    "unitsPerCoreFlex": "Logements par palier flexibles",
+    "unitsPerCoreFlexNote": "Le nombre de logements par palier (ou le type Zwei-/Dreispänner) est une préférence : le plan peut en prévoir un de moins ou un à deux de plus si la répartition, les surfaces ou la surface perdue s’en trouvent meilleures."
   },
   "rules": {
     "fr": "Plan local d'urbanisme (PLU)",

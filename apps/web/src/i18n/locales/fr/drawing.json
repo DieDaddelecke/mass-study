@@ -129,7 +129,8 @@
     "outdoorStacked_one": "{{count}} espace extérieur ajouté pour que les balcons et loggias se répètent d'un étage à l'autre.",
     "outdoorStacked_other": "{{count}} espaces extérieurs ajoutés pour que les balcons et loggias se répètent d'un étage à l'autre.",
     "programme": "Programme",
-    "programmeWhole": "obtenu / objectif, tout le bâtiment"
+    "programmeWhole": "obtenu / objectif, tout le bâtiment",
+    "perCoreChanged": "au lieu de {{given}} prévus : meilleur plan"
   },
   "ridge": "faîtage"
 }
