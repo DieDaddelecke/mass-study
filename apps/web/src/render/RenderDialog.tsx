@@ -18,6 +18,7 @@ import {
   FACADE_MATERIALS,
   NEGATIVE_PROMPT,
   RENDER_STYLES,
+  STRICT_FROM,
   buildPrompt,
   type PromptOptions,
 } from './prompt';
@@ -56,7 +57,9 @@ export function RenderDialog({ project }: { project: Project }) {
   const mode = useDisplayMode();
   // Only Gemini and OpenRouter take a second image (the line drawing).
   const guideCapable = s.provider === 'gemini' || s.provider === 'openrouter';
-  const sendGuide = guideCapable && s.useGuide && !!capture?.guide;
+  const strict = s.fidelity >= STRICT_FROM;
+  // the line drawing pins every edge: only in strict mode
+  const sendGuide = strict && guideCapable && s.useGuide && !!capture?.guide;
   const seed = /^\d{1,10}$/.test(s.seed.trim()) ? Number(s.seed.trim()) : undefined;
   const promptOpts: PromptOptions = useMemo(
     () => ({
@@ -316,7 +319,8 @@ export function RenderDialog({ project }: { project: Project }) {
               <span>{Math.round(s.fidelity * 100)} %</span>
             </span>
           </Row>
-          {guideCapable && (
+          <p className="muted rnd-hint">{strict ? t('modeStrict') : t('modeFree')}</p>
+          {guideCapable && strict && (
             <Row label={t('useGuide')}>
               <input
                 type="checkbox"

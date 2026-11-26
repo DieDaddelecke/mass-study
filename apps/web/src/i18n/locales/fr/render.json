@@ -85,5 +85,7 @@
   "seedNew": "Nouvelle graine",
   "lines": "Superposer les arêtes",
   "linesHint": "Affiche les arêtes de la vue 3D sur le rendu pour vérifier qu'il n'a pas bougé",
-  "fixedHint": "Pour une série depuis le même point de vue : même capture, fidélité élevée, arêtes activées ; une graine fixe garde aussi le même éclairage et les mêmes détails quand seul le style change."
+  "fixedHint": "Une graine fixe garde le même éclairage et les mêmes détails quand seul le style change.",
+  "modeFree": "Mode libre : seul le point de vue est conservé ; façades, détails et abords sont interprétés librement. Au-delà de 85 % : mode strict (arêtes, aucun ajout).",
+  "modeStrict": "Mode strict : arêtes, étages et cadrage sont tenus au plus près ; moins de liberté artistique."
 }
