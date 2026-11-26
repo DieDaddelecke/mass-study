@@ -9,6 +9,11 @@ import type { FacadeMaterial, RenderStyle } from './prompt';
  */
 
 const STORAGE_KEY = 'kubatur.render';
+/**
+ * Version of the stored defaults. v2: free mode is the default again (fidelity 0.6); settings
+ * saved before keep key, provider and model but get the new fidelity.
+ */
+const SETTINGS_VERSION = 2;
 
 export interface RenderSettings {
   provider: RenderProviderId;
@@ -36,7 +41,7 @@ export const DEFAULT_RENDER_SETTINGS: RenderSettings = {
   style: 'photo',
   material: 'auto',
   animate: true,
-  fidelity: 0.85,
+  fidelity: 0.6,
   paidOk: false,
   useGuide: true,
   seed: '',
@@ -45,7 +50,13 @@ export const DEFAULT_RENDER_SETTINGS: RenderSettings = {
 function load(): RenderSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULT_RENDER_SETTINGS, ...(JSON.parse(raw) as Partial<RenderSettings>) };
+    if (raw) {
+      const stored = JSON.parse(raw) as Partial<RenderSettings> & { v?: number };
+      // older defaults: drop the remembered fidelity so the new default applies
+      if ((stored.v ?? 1) < SETTINGS_VERSION) delete stored.fidelity;
+      delete stored.v;
+      return { ...DEFAULT_RENDER_SETTINGS, ...stored };
+    }
   } catch {
     /* storage unavailable */
   }
@@ -55,7 +66,7 @@ function load(): RenderSettings {
 function save(s: RenderSettings) {
   try {
     const stored = s.rememberKeys ? s : { ...s, keys: {} };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...stored, v: SETTINGS_VERSION }));
   } catch {
     /* ignore */
   }

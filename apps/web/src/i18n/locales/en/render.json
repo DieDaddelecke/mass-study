@@ -85,5 +85,7 @@
   "seedNew": "New seed",
   "lines": "Overlay edges",
   "linesHint": "Lays the edges of the 3D view over the rendering to check for drift",
-  "fixedHint": "For a series from the same viewpoint: same capture, high fidelity, edges on; a fixed seed also keeps light and details when only the style changes."
+  "fixedHint": "A fixed seed keeps light and details when only the style changes.",
+  "modeFree": "Free mode: only the viewpoint is kept; façades, details and surroundings are interpreted freely. From 85 %: strict mode (edges, nothing added).",
+  "modeStrict": "Strict mode: edges, floors and framing are kept as closely as possible; less artistic freedom."
 }

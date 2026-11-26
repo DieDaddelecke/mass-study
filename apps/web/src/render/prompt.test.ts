@@ -3,9 +3,32 @@ import { palaiseauDemo } from '../demo/palaiseau';
 import { closestRatio, cropRect, edgeMagnitude, outputSize } from './capture';
 import { buildPrompt, cityOf, describeProject } from './prompt';
 
-const base = { style: 'photo', material: 'auto', animate: true, look: 'maquette' } as const;
+const base = {
+  style: 'photo',
+  material: 'auto',
+  animate: true,
+  look: 'maquette',
+  fidelity: 0.9,
+} as const;
+const free = { ...base, fidelity: 0.6 };
 
-describe('render prompt', () => {
+describe('render prompt, free mode (default)', () => {
+  it('keeps only the viewpoint and leaves freedom', () => {
+    const p = palaiseauDemo();
+    const d = describeProject(p);
+    const text = buildPrompt(p, free);
+    expect(text).toContain('keep the camera viewpoint');
+    expect(text).toContain('do not pull the camera back');
+    expect(text).toContain('may be interpreted freely');
+    expect(text).toContain(`R+${d.maxUpper}`);
+    expect(text).toContain('pedestrians');
+    expect(text).not.toContain('Edit this image');
+    expect(text).not.toContain('line drawing');
+    expect(buildPrompt(p, { ...free, fidelity: undefined })).toBe(text);
+  });
+});
+
+describe('render prompt, strict mode', () => {
   it('is an edit instruction that locks the camera and the framing', () => {
     const p = palaiseauDemo();
     expect(describeProject(p).city).toBe('Palaiseau');

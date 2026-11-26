@@ -160,14 +160,74 @@ function defaultMaterial(uses: Usage[]): string {
   return 'light mineral render façades with accents of brick and wood, regular vertical French windows with thin metal railings';
 }
 
+/** From this fidelity on, the strict prompt (edit instruction, line drawing) is used. */
+export const STRICT_FROM = 0.85;
+
 /**
- * The prompt is an edit instruction, not a scene description: image models otherwise "re-shoot"
+ * Free prompt (default): describes the project and leaves the model artistic freedom, but keeps
+ * the viewpoint of the 3D view. Strict prompt from STRICT_FROM on.
+ */
+export function buildPrompt(project: Project, o: PromptOptions): string {
+  return (o.fidelity ?? 0.6) >= STRICT_FROM ? strictPrompt(project, o) : freePrompt(project, o);
+}
+
+function freePrompt(project: Project, o: PromptOptions): string {
+  const d = describeProject(project);
+  const lines: string[] = [];
+  const sketch = o.style === 'aquarelle' || o.style === 'maquette';
+  lines.push(
+    sketch
+      ? STYLE_TEXT[o.style]
+      : `${STYLE_TEXT[o.style]} High-end architectural visualisation, realistic materials, sharp details.`,
+  );
+  const src = o.colourCoded ? 'an abstract colour-coded massing model' : LOOK_TEXT[o.look];
+  lines.push(
+    `The input image is ${src}. Use it as the composition reference: keep the camera viewpoint, ` +
+      'height, viewing direction and perspective of the image (do not pull the camera back or up, ' +
+      'do not change the angle) and keep the overall massing. Façade design, details, materials and ' +
+      'surroundings may be interpreted freely.' +
+      (sketch ? '' : ' Replace the abstract model surfaces with real building materials.'),
+  );
+  if (d.count) {
+    const storeys =
+      d.minUpper === d.maxUpper
+        ? `${d.maxUpper + 1} storeys (R+${d.maxUpper})`
+        : `${d.minUpper + 1} to ${d.maxUpper + 1} storeys (R+${d.minUpper} to R+${d.maxUpper})`;
+    const n = d.count > 1 ? `${d.count} buildings` : 'one building';
+    let prog = `Programme: ${n}, ${storeys}, ${list(d.uses.map((u) => USAGE_TEXT[u]))}`;
+    const ground = d.groundUses.filter((u) => !d.uses.includes(u));
+    if (ground.length)
+      prog += `, with ${list(ground.map((u) => USAGE_TEXT[u]))} on the ground floor`;
+    lines.push(`${prog}.`);
+    const shape: string[] = [list(d.roofs.map((r) => ROOF_TEXT[r]))];
+    if (d.setback) shape.push('a set-back top floor (attic storey) with a terrace');
+    if (d.terraces) shape.push('stepped roof terraces');
+    if (d.outdoor.includes('balcon')) shape.push('balconies');
+    if (d.outdoor.includes('loggia')) shape.push('recessed loggias');
+    lines.push(`Architecture: contemporary French architecture, ${list(shape)}.`);
+  }
+  lines.push(
+    `Façades: ${o.material === 'auto' ? defaultMaterial(d.uses) : MATERIAL_TEXT[o.material]}.`,
+  );
+  const ctx: string[] = [d.city ? `${d.city}, France` : 'a French town'];
+  if (d.neighbours) ctx.push('existing neighbouring buildings kept simple and in neutral tones');
+  if (o.animate)
+    ctx.push(
+      d.trees ? 'mature street trees, landscaped gardens' : 'landscaped gardens and young trees',
+      'a few pedestrians and cyclists',
+    );
+  lines.push(`Context: ${ctx.join('; ')}.`);
+  return lines.join('\n');
+}
+
+/**
+ * Strict prompt: an edit instruction, not a scene description: image models otherwise "re-shoot"
  * the scene (camera pulled back, whole buildings shown, extra floors). Storey counts are left out
  * on purpose: the view is often cropped, and a number makes the model add the missing floors.
  */
-export function buildPrompt(project: Project, o: PromptOptions): string {
+function strictPrompt(project: Project, o: PromptOptions): string {
   const d = describeProject(project);
-  const fidelity = o.fidelity ?? 0.85;
+  const fidelity = o.fidelity ?? STRICT_FROM;
   const sketch = o.style === 'aquarelle' || o.style === 'maquette';
   const src = o.colourCoded ? 'an abstract colour-coded massing model' : LOOK_TEXT[o.look];
   const lines: string[] = [];
