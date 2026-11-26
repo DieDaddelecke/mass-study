@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { RenderProviderId } from '../api/contract';
+import type { RenderProviderId, RenderResolution } from '../api/contract';
 import type { FacadeMaterial, RenderStyle } from './prompt';
 
 /**
@@ -31,6 +31,8 @@ export interface RenderSettings {
   useGuide: boolean;
   /** Fixed seed for series from the same view; empty = random. */
   seed: string;
+  /** Output size tier (OpenRouter). */
+  resolution: RenderResolution;
 }
 
 export const DEFAULT_RENDER_SETTINGS: RenderSettings = {
@@ -45,6 +47,7 @@ export const DEFAULT_RENDER_SETTINGS: RenderSettings = {
   paidOk: false,
   useGuide: true,
   seed: '',
+  resolution: '1K',
 };
 
 function load(): RenderSettings {

@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { RenderRequestError, renderApi } from '../api/client';
 import {
   RENDER_PROVIDERS,
+  RENDER_RESOLUTIONS,
+  type RenderResolution,
   type RenderProviderId,
   type RenderProvidersResponse,
 } from '../api/contract';
@@ -123,6 +125,7 @@ export function RenderDialog({ project }: { project: Project }) {
           aspect: capture.width / capture.height,
           guide: sendGuide ? capture.guide : undefined,
           seed: seed !== undefined && seed <= 4_294_967_294 ? seed : undefined,
+          resolution: s.resolution,
         },
         key,
         ac.signal,
@@ -419,6 +422,21 @@ export function RenderDialog({ project }: { project: Project }) {
               onChange={(e) => update({ rememberKeys: e.target.checked })}
             />
           </Row>
+          {s.provider === 'openrouter' && (
+            <Row label={t('resolution')}>
+              <select
+                aria-label={t('resolution')}
+                value={s.resolution}
+                onChange={(e) => update({ resolution: e.target.value as RenderResolution })}
+              >
+                {RENDER_RESOLUTIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </Row>
+          )}
           <Row label={t('model')}>
             <input
               aria-label={t('model')}

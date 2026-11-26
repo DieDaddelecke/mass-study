@@ -61,7 +61,8 @@ async function upstreamError(provider: string, res: Response): Promise<RenderErr
     const text = await res.text();
     try {
       const j = JSON.parse(text) as {
-        error?: { message?: string } | string;
+        error?:
+          { message?: string; metadata?: { limit_source?: string; reason?: string } } | string;
         errors?: string[];
         message?: string;
       };
@@ -70,6 +71,10 @@ async function upstreamError(provider: string, res: Response): Promise<RenderErr
         j.errors?.join('; ') ??
         j.message ??
         text;
+      // OpenRouter says which limit refused the request (key limit, credits, in-flight budget)
+      const meta = typeof j.error === 'object' ? j.error?.metadata : undefined;
+      const why = [meta?.limit_source, meta?.reason].filter(Boolean).join(', ');
+      if (why) detail += ` [${why}]`;
     } catch {
       detail = text;
     }
@@ -273,6 +278,7 @@ async function openrouter({
         : []),
     ],
     n: 1,
+    resolution: RESOLUTIONS.has(req.resolution ?? '') ? req.resolution : '1K',
     ...(seed !== undefined ? { seed } : {}),
     ...(req.aspect && Number.isFinite(req.aspect) ? { aspect_ratio: geminiRatio(req.aspect) } : {}),
   };
@@ -306,6 +312,8 @@ const ADAPTERS: Record<RenderProviderId, (c: ProviderCall) => Promise<string>> =
 function clamp01(v: number): number {
   return Math.min(1, Math.max(0, Number.isFinite(v) ? v : 0.7));
 }
+
+const RESOLUTIONS = new Set<string>(['1K', '2K', '4K']);
 
 const MODEL_RE = /^[A-Za-z0-9][\w.-]{0,79}$/;
 /** OpenRouter ids: vendor/model, optional :variant (sent in the body, never in a URL). */
