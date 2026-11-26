@@ -110,6 +110,30 @@ describe('housing programme', () => {
       for (const st of l.storeys) expect(st.summary.openArea).toBeLessThanOrEqual(dead + 16);
     });
 
+  // Soheyl 26.11.2026: « T2 deutlich zu groß » – the programme must not inflate dwellings
+  for (const access of ['laubengang', 'dreispaenner', 'vierspaenner', 'mittelflur'] as const)
+    for (const sections of [3, 4])
+      it(`${access}, ${sections} tronçons: no dwelling more than 10 % off its type's area range`, () => {
+        const off = (s: Settings) => {
+          const m = mass(
+            { kind: 'zeile', length: 67.48, depth: 14, sections, sectionOffset: 0 },
+            { access },
+          );
+          m.storeys.upper.count = 5;
+          const l = massLayouts(analyzeMasses([m], s), s)[0]!;
+          return l.storeys.flatMap((st) =>
+            st.units.filter((u) => {
+              const t = base.unitMix.find((x) => x.id === u.typeId)!;
+              return (
+                u.duplex?.level !== 'nuit' &&
+                (u.area > t.areaMax * 1.1 + 1e-6 || u.area < t.areaMin * 0.9 - 1e-6)
+              );
+            }),
+          ).length;
+        };
+        expect(off(withProgramme)).toBeLessThanOrEqual(off(base));
+      }, 60000);
+
   it('outdoor spaces repeat over the storeys, a larger dwelling takes several', () => {
     const l = layoutOf(withProgramme);
     const upper = l.storeys.filter((st) => st.storeyIndex > 0);

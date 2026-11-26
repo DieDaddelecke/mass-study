@@ -3587,6 +3587,7 @@ export function massLayout(
       settings,
       (i, s, below) => planAt(i, s, below).r.layout,
       sejours,
+      baseSettings.unitMix,
     );
   const storeys = stackOutdoors(stackCores(planned));
   const counts = new Map<string, LayoutTypeCount>();
@@ -3654,6 +3655,25 @@ function storeyCost(st: StoreyLayout, avgTarget: number): number {
   return (DEAD_AREA_WEIGHT * st.summary.openArea) / avgTarget + fails;
 }
 
+/**
+ * Dwellings clearly off their type's area range, more than 10 % (Soheyl 26.11.2026: no T2 of
+ * 80 m² to reach the programme; T2 50 m² → at most 55 m²): the programme may never add one,
+ * it counts as a deviation instead.
+ */
+const offRange = (st: StoreyLayout, types: readonly UnitType[]): number =>
+  st.units.filter((u) => {
+    if (u.duplex?.level === 'nuit' || !u.outOfRange) return false;
+    const t = types.find((x) => x.id === u.typeId);
+    if (!t) return true;
+    const a = u.duplex?.totalArea ?? u.area;
+    return (
+      a > t.areaMax * (1 + RANGE_TOLERANCE) + 1e-6 || a < t.areaMin * (1 - RANGE_TOLERANCE) - 1e-6
+    );
+  }).length;
+
+/** Tolerance on a type's area range before the programme counts a dwelling as off range. */
+const RANGE_TOLERANCE = 0.1;
+
 /** Dwellings of programme deviation one average dwelling of dead area is worth. */
 const DEAD_AREA_WEIGHT = 2.5;
 
@@ -3703,20 +3723,28 @@ function balanceProgramme(
   settings: Settings,
   plan: (storeyIndex: number, s: Settings, below?: Polygon[]) => StoreyLayout,
   sejours: (st: StoreyLayout) => Polygon[],
+  /** The unit mix without the programme (its plans are tried too). */
+  plain?: UnitType[],
 ): StoreyLayout[] {
   const freeIdx = items.flatMap((x, k) => (x.free ? [k] : []));
   if (!freeIdx.length || !shares.length) return items.map((x) => x.layout);
   const mix = settings.unitMix.filter((t) => t.share > 0 && t.areaTarget > 0);
   const shareSum = mix.reduce((s, t) => s + t.share, 0) || 1;
   const avg = mix.reduce((s, t) => s + (t.share / shareSum) * t.areaTarget, 0) || 60;
-  type Option = { counts: Map<string, number>; cost: number; mix?: UnitType[] };
+  type Option = { counts: Map<string, number>; cost: number; off: number; mix?: UnitType[] };
   const options = new Map<string, Option[]>();
-  const mixes = candidateMixes(settings.unitMix, shares);
+  const mixes = [...candidateMixes(settings.unitMix, shares), ...(plain ? [plain] : [])];
   for (const k of freeIdx) {
     const it = items[k]!;
     if (options.has(it.key)) continue;
     const base = it.layout;
-    const list: Option[] = [{ counts: storeyCounts(base), cost: storeyCost(base, avg) }];
+    let list: Option[] = [
+      {
+        counts: storeyCounts(base),
+        cost: storeyCost(base, avg),
+        off: offRange(base, settings.unitMix),
+      },
+    ];
     const byCounts = new Map<string, number>([[countsKey(list[0]!.counts), 0]]);
     const cores = coresKey(base.cores);
     for (const m of mixes) {
@@ -3728,17 +3756,26 @@ function balanceProgramme(
         base.summary.openArea + Math.max(10, 0.02 * base.summary.footprintArea)
       )
         continue;
-      const o: Option = { counts: storeyCounts(l), cost: storeyCost(l, avg), mix: m };
+      const o: Option = {
+        counts: storeyCounts(l),
+        cost: storeyCost(l, avg),
+        off: offRange(l, settings.unitMix),
+        mix: m,
+      };
       const ck = countsKey(o.counts);
       const j = byCounts.get(ck);
       // the same dwellings: keep the plan with less dead area (the base one on a tie)
       if (j !== undefined) {
-        if (j > 0 && o.cost < list[j]!.cost - 1e-9) list[j] = o;
+        if (list[j]!.mix && (o.off < list[j]!.off || o.cost < list[j]!.cost - 1e-9)) list[j] = o;
         continue;
       }
       byCounts.set(ck, list.length);
       list.push(o);
     }
+    // only the plans with the fewest dwellings off their area range (none, where one can):
+    // the programme never inflates or shrinks a dwelling beyond its type
+    const least = Math.min(...list.map((o) => o.off));
+    list = list.filter((o) => o.off === least);
     options.set(it.key, list);
   }
   const fixed = new Map<string, number>();
@@ -3754,7 +3791,7 @@ function balanceProgramme(
     for (const k of freeIdx) {
       const o = opt(k);
       for (const [id, n] of o.counts) sum.set(id, (sum.get(id) ?? 0) + n);
-      c += o.cost + (choice.get(k)! > 0 ? 0.3 : 0);
+      c += o.cost + (o.mix ? 0.3 : 0);
       // a change of plan between two storeys of the same massing (stacking)
       const up = k + 1;
       if (choice.has(up) && items[up]!.key === items[k]!.key && choice.get(up) !== choice.get(k))
@@ -3813,8 +3850,14 @@ function balanceProgramme(
     let st = x.layout;
     const o = x.free ? opt(k) : undefined;
     if (o?.mix) {
-      const l = plan(st.storeyIndex, { ...settings, unitMix: o.mix }, below);
-      if (l.units.length && coresKey(l.cores) === coresKey(st.cores)) st = l;
+      const ok = (l: StoreyLayout) =>
+        l.units.length > 0 &&
+        coresKey(l.cores) === coresKey(st.cores) &&
+        offRange(l, settings.unitMix) <= o.off;
+      const m = { ...settings, unitMix: o.mix };
+      // over the séjours below, else as evaluated (never with more dwellings off their range)
+      const l = [plan(st.storeyIndex, m, below), plan(st.storeyIndex, m)].find(ok);
+      if (l) st = l;
     }
     out.push(st);
     const sej = sejours(st);
