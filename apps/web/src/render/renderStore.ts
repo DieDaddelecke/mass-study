@@ -22,6 +22,10 @@ export interface RenderSettings {
   fidelity: number;
   /** The user confirmed that each rendering is billed by the provider. */
   paidOk: boolean;
+  /** Send the line drawing as a second image (Gemini, OpenRouter). */
+  useGuide: boolean;
+  /** Fixed seed for series from the same view; empty = random. */
+  seed: string;
 }
 
 export const DEFAULT_RENDER_SETTINGS: RenderSettings = {
@@ -32,8 +36,10 @@ export const DEFAULT_RENDER_SETTINGS: RenderSettings = {
   style: 'photo',
   material: 'auto',
   animate: true,
-  fidelity: 0.75,
+  fidelity: 0.85,
   paidOk: false,
+  useGuide: true,
+  seed: '',
 };
 
 function load(): RenderSettings {
@@ -59,6 +65,12 @@ export interface Capture {
   image: string;
   width: number;
   height: number;
+  /** Aspect ratio sent to the provider, e.g. "16:9" (the capture is cropped to it). */
+  ratio?: string;
+  /** Line drawing of the view (black on white), sent as a second image to keep the geometry. */
+  guide?: string;
+  /** The same lines in red on transparent, laid over a result to check the drift. */
+  overlay?: string;
 }
 
 export interface RenderResult {

@@ -42,6 +42,10 @@ export interface PromptOptions {
   /** Current ambiance of the 3D view (tells the model what the screenshot shows). */
   look: SceneLook;
   colourCoded?: boolean;
+  /** 0–1: how strictly the result keeps the view (wording of the constraints). */
+  fidelity?: number;
+  /** A line drawing of the view is sent as second image. */
+  guide?: boolean;
 }
 
 const STYLE_TEXT: Record<RenderStyle, string> = {
@@ -156,52 +160,63 @@ function defaultMaterial(uses: Usage[]): string {
   return 'light mineral render façades with accents of brick and wood, regular vertical French windows with thin metal railings';
 }
 
+/**
+ * The prompt is an edit instruction, not a scene description: image models otherwise "re-shoot"
+ * the scene (camera pulled back, whole buildings shown, extra floors). Storey counts are left out
+ * on purpose: the view is often cropped, and a number makes the model add the missing floors.
+ */
 export function buildPrompt(project: Project, o: PromptOptions): string {
   const d = describeProject(project);
-  const lines: string[] = [];
+  const fidelity = o.fidelity ?? 0.85;
   const sketch = o.style === 'aquarelle' || o.style === 'maquette';
-  lines.push(
-    sketch
-      ? STYLE_TEXT[o.style]
-      : `${STYLE_TEXT[o.style]} High-end architectural visualisation, realistic materials, sharp details.`,
-  );
   const src = o.colourCoded ? 'an abstract colour-coded massing model' : LOOK_TEXT[o.look];
+  const lines: string[] = [];
   lines.push(
-    `The input image is ${src}. Keep the exact building volumes, footprints, number of floors, roof shapes, ` +
-      'camera position and perspective unchanged. Do not add or remove floors or buildings. ' +
-      (sketch ? '' : 'Replace the abstract model surfaces with real building materials.'),
+    `Edit this image. It is a screenshot of ${src} seen from a fixed camera. ` +
+      `Turn it into: ${STYLE_TEXT[o.style]}` +
+      (sketch ? '' : ' High-end architectural visualisation, realistic materials, sharp details.'),
   );
+  const keep = [
+    'Keep the exact composition of the input image: same camera position, height, direction and focal length, same framing. Do not zoom out, do not move, tilt or rotate the camera.',
+    'Every building edge, floor line, opening, balcony and roof line stays exactly where it is in the image.',
+    'Buildings cut off by the image border stay cut off; do not reveal roofs, floors or anything else outside the frame.',
+    'Keep the number of floors, the building heights and the street width as shown; do not add buildings, floors or storeys.',
+  ];
+  if (fidelity >= 0.85) keep.push('Do not add new objects in front of the buildings.');
+  if (fidelity < 0.5) keep.push('Small deviations in details are acceptable.');
+  lines.push(keep.join(' '));
+  if (o.guide)
+    lines.push(
+      'The second image is a line drawing of the first one at the same size: all edges of the result must lie exactly on these lines.',
+    );
+  if (!sketch) lines.push('Replace the abstract model surfaces with real building materials.');
   if (d.count) {
-    const storeys =
-      d.minUpper === d.maxUpper
-        ? `${d.maxUpper + 1} storeys (R+${d.maxUpper})`
-        : `${d.minUpper + 1} to ${d.maxUpper + 1} storeys (R+${d.minUpper} to R+${d.maxUpper})`;
-    const n = d.count > 1 ? `${d.count} buildings` : 'one building';
-    let prog = `Programme: ${n}, ${storeys}, ${list(d.uses.map((u) => USAGE_TEXT[u]))}`;
+    let use = `Use: ${list(d.uses.map((u) => USAGE_TEXT[u]))}`;
     const ground = d.groundUses.filter((u) => !d.uses.includes(u));
     if (ground.length)
-      prog += `, with ${list(ground.map((u) => USAGE_TEXT[u]))} on the ground floor`;
-    lines.push(`${prog}.`);
-    const shape: string[] = [list(d.roofs.map((r) => ROOF_TEXT[r]))];
-    if (d.setback) shape.push('a set-back top floor (attic storey) with a terrace');
-    if (d.terraces) shape.push('stepped roof terraces');
+      use += `, with ${list(ground.map((u) => USAGE_TEXT[u]))} on the ground floor`;
+    lines.push(`${use}.`);
+    const shape: string[] = [];
     if (d.outdoor.includes('balcon')) shape.push('balconies');
     if (d.outdoor.includes('loggia')) shape.push('recessed loggias');
-    lines.push(`Architecture: contemporary French architecture, ${list(shape)}.`);
+    const roofs = list(d.roofs.map((r) => ROOF_TEXT[r]));
+    lines.push(
+      `Architecture: contemporary French architecture, ${roofs} where visible` +
+        `${shape.length ? `; the openings in the model are ${list(shape)}` : ''}.`,
+    );
   }
   lines.push(
     `Façades: ${o.material === 'auto' ? defaultMaterial(d.uses) : MATERIAL_TEXT[o.material]}.`,
   );
   const ctx: string[] = [d.city ? `${d.city}, France` : 'a French town'];
-  if (d.neighbours) ctx.push('existing neighbouring buildings kept simple and in neutral tones');
-  if (o.animate)
+  if (d.neighbours) ctx.push('neighbouring buildings kept simple and in neutral tones');
+  if (o.animate && fidelity < 0.95)
     ctx.push(
-      d.trees ? 'mature street trees, landscaped gardens' : 'landscaped gardens and young trees',
-      'a few pedestrians and cyclists',
+      'a few small pedestrians and some planting on the open ground only, never covering the façades',
     );
   lines.push(`Context: ${ctx.join('; ')}.`);
   return lines.join('\n');
 }
 
 export const NEGATIVE_PROMPT =
-  'distorted geometry, extra floors, warped or curved walls, changed camera angle, text, labels, watermark, logo, cartoon, blurry, low resolution';
+  'changed camera angle, zoomed out view, wider street, extra floors, extra buildings, distorted geometry, warped or curved walls, text, labels, watermark, logo, cartoon, blurry, low resolution';
