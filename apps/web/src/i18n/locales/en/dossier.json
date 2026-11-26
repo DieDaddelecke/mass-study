@@ -20,7 +20,7 @@
     "elevations": "Elevations",
     "sections": "Sections",
     "axo": "Axonometries",
-    "tables": "Tables (areas, KPIs, unit mix)",
+    "tables": "Tables (areas, KPIs, unit mix, calculation steps)",
     "floorPlans": "Schematic floor plans"
   },
   "tb": {

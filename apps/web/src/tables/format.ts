@@ -12,7 +12,15 @@ import i18n, { formatNumber, numberLocale } from '../i18n';
 
 /** Translate an i18n reference of the schedule model. */
 export function text(ref: TextRef): string {
-  return i18n.t(ref.key, ref.params ?? {});
+  if (!ref.params) return i18n.t(ref.key);
+  // numbers in the parameters (calculation steps) follow the locale: "0,40", "1 234,5"
+  const params: Record<string, string> = {};
+  for (const [k, v] of Object.entries(ref.params))
+    params[k] =
+      typeof v === 'number'
+        ? new Intl.NumberFormat(numberLocale(), { maximumFractionDigits: 2 }).format(v)
+        : v;
+  return i18n.t(ref.key, params);
 }
 
 /** Column header incl. unit, e.g. "SDP (m²)". */

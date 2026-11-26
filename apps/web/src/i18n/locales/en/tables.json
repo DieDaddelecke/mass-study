@@ -10,6 +10,7 @@
     "surfaces": "Areas",
     "kpis": "Key figures",
     "typologies": "Typologies and mix",
+    "calculation": "Calculation steps",
     "comparison": "Variant comparison"
   },
   "actions": {
@@ -64,7 +65,11 @@
     "workplaces": "Workplaces",
     "parkingDemand": "Parking required",
     "parkingCapacity": "Parking provided",
-    "variant": "{{name}}"
+    "variant": "{{name}}",
+    "step": "Step",
+    "formula": "Calculation",
+    "value": "Value",
+    "shareOfBgf": "% of gross area"
   },
   "row": {
     "aboveGround": "Subtotal above ground",
@@ -122,5 +127,85 @@
     "kombibuero": "Combi offices",
     "openSpace": "Open-plan",
     "atrium": "Atrium"
+  },
+  "calc": {
+    "group": {
+      "areas": "Gross floor area → usable area (DIN 277 approximation)",
+      "sdp": "Surface de plancher (art. R.111-22, simplified)",
+      "parking": "Car parking",
+      "bikes": "Bicycle parking (arrêté of 30 June 2022, the PLU may require more)"
+    },
+    "row": {
+      "bgf": "Gross floor area",
+      "exteriorWalls": "− Exterior walls",
+      "interior": "− Interior structure",
+      "nrf": "= Net floor area",
+      "vf": "− Circulation",
+      "tf": "− Technical rooms",
+      "nuf": "= Usable area",
+      "livingArea": "Living area",
+      "dwellings": "Dwellings (estimate)",
+      "sdpGross": "Gross area of all storeys",
+      "sdpParking": "− Parking storeys",
+      "sdpWalls": "− Exterior wall thickness",
+      "sdpTechnical": "− Technical rooms",
+      "sdpBefore": "= Subtotal",
+      "sdpAbatement": "− Residential abatement",
+      "sdp": "= Surface de plancher (SDP)",
+      "parkDwellings": "Spaces for dwellings",
+      "parkOffice": "Spaces for offices",
+      "parkRetail": "Spaces for retail",
+      "parkDemand": "= Required spaces",
+      "parkRequiredArea": "Garage area needed",
+      "parkGarage": "Planned garage gross area",
+      "parkUsable": "Area for spaces and aisles",
+      "parkCapacity": "= Spaces provided",
+      "parkBalance": "Balance (provided − required)",
+      "bikeSmall": "Dwellings up to {{rooms}} rooms",
+      "bikeLarge": "Dwellings with {{rooms}} rooms or more",
+      "bikeOffice": "Offices",
+      "bikeSpaces": "= Required bicycle spaces",
+      "bikeArea": "= Bicycle room area"
+    },
+    "f": {
+      "bgf": "Sum of the footprints of {{levels}} storeys ({{masses}} mass(es))",
+      "exteriorWalls": "Sum of perimeters {{perimeter}} m × thickness {{thickness}} m",
+      "interior": "{{pct}} % × gross area {{bgf}} m²",
+      "nrf": "Gross area − exterior walls − interior structure",
+      "vf": "{{pct}} % × net area {{base}} m² (without parking and technical)",
+      "vfMasses": "By the access type of each mass (details below)",
+      "none": "—",
+      "tf": "{{pct}} % × net area {{base}} m²",
+      "tfStoreys": "+ technical storeys {{area}} m²",
+      "nuf": "Net area − circulation − technical rooms",
+      "livingArea": "Residential usable area {{nuf}} m² × factor {{factor}}",
+      "dwellings": "Living area ÷ {{avg}} m² (average unit size of the mix), rounded down per mass",
+      "sdpGross": "Sum of all gross areas, basements included",
+      "sdpParking": "Gross area of the parking storeys",
+      "sdpWalls": "Perimeter × {{thickness}} m (storeys without parking)",
+      "sdpTechnical": "Technical rooms of the remaining storeys",
+      "sdpAbatement": "{{pct}} % × residential part {{base}} m²",
+      "sdp": "Subtotal − abatement",
+      "parkDwellings": "{{n}} dwellings × {{rate}} space(s) per dwelling",
+      "perArea": "Usable area {{nuf}} m² ÷ {{area}} m² per space",
+      "roundUp": "{{exact}} rounded up",
+      "parkRequiredArea": "{{n}} spaces × {{area}} m² ÷ efficiency {{eff}} %",
+      "parkGarage": "Gross area of the “Parking” storeys",
+      "parkUsable": "{{bgf}} m² × efficiency {{eff}} %",
+      "parkCapacity": "{{usable}} m² ÷ {{area}} m² per space, rounded down",
+      "parkBalance": "Spaces provided − spaces required",
+      "bikeDwellings": "{{n}} dwellings × {{rate}} space(s)",
+      "bikeOffice": "{{n}} workplaces × {{pct}} %",
+      "bikeArea": "{{n}} spaces × {{area}} m² (without clearance)"
+    },
+    "nufUsage": {
+      "wohnen": "of which residential",
+      "wohnheim": "of which residence",
+      "buero": "of which office",
+      "gewerbe": "of which retail",
+      "gemeinbedarf": "of which public facility",
+      "parken": "of which parking",
+      "technik": "of which plant"
+    }
   }
 }

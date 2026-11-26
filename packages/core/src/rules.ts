@@ -97,18 +97,64 @@ export interface KpisFR {
   surfaceHabitable: number;
 }
 
-export function kpisFR(r: VariantResult, siteArea: number, settings: Settings): KpisFR {
+/** Steps of the surface de plancher approximation (R.111-22), the numbers {@link kpisFR} uses. */
+export interface SdpBreakdown {
+  /** Surface brute of all storeys (incl. basements). */
+  gross: number;
+  /** Parking storeys left out (BGF), when `deductParking`. */
+  parking: number;
+  /** Exterior wall thickness (perimeter × wall thickness) of the remaining storeys. */
+  exteriorWalls: number;
+  /** Technical rooms (TF) of the remaining storeys, when `deductTechnical`. */
+  technical: number;
+  /** After the deductions, before the abatement. */
+  beforeAbatement: number;
+  /** Residential part of `beforeAbatement`. */
+  residential: number;
+  /** Abatement on the residential part (residential × residentialAbatement). */
+  abatement: number;
+  /** Surface de plancher (not clamped). */
+  sdp: number;
+}
+
+export function sdpBreakdown(r: Pick<VariantResult, 'solids'>, settings: Settings): SdpBreakdown {
   const sdpSettings = settings.surfaceDePlancher;
-  let sdp = 0;
+  let gross = 0;
+  let parkingArea = 0;
+  let exteriorWalls = 0;
+  let technical = 0;
+  let before = 0;
   let residential = 0;
   for (const s of r.solids) {
-    if (sdpSettings.deductParking && s.solid.usage === 'parken') continue;
+    gross += s.areas.bgf;
+    if (sdpSettings.deductParking && s.solid.usage === 'parken') {
+      parkingArea += s.areas.bgf;
+      continue;
+    }
     let a = s.areas.bgf - s.areas.exteriorWalls;
-    if (sdpSettings.deductTechnical) a -= s.areas.tf;
-    sdp += a;
+    exteriorWalls += s.areas.exteriorWalls;
+    if (sdpSettings.deductTechnical) {
+      a -= s.areas.tf;
+      technical += s.areas.tf;
+    }
+    before += a;
     if (s.solid.usage === 'wohnen') residential += a;
   }
-  sdp -= residential * sdpSettings.residentialAbatement;
+  const abatement = residential * sdpSettings.residentialAbatement;
+  return {
+    gross,
+    parking: parkingArea,
+    exteriorWalls,
+    technical,
+    beforeAbatement: before,
+    residential,
+    abatement,
+    sdp: before - abatement,
+  };
+}
+
+export function kpisFR(r: VariantResult, siteArea: number, settings: Settings): KpisFR {
+  const sdp = sdpBreakdown(r, settings).sdp;
   const highest = r.masses.reduce<VariantResult['masses'][number] | undefined>(
     (best, m) => (!best || m.aboveGroundStoreys > best.aboveGroundStoreys ? m : best),
     undefined,

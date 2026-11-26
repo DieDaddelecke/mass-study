@@ -327,7 +327,12 @@
       "wc": "WC"
     },
     "facadeAreaRatio": "Façade min. en % de la surface",
-    "facadeGrid": "Trame de façade (murs séparatifs)"
+    "facadeGrid": "Trame de façade (murs séparatifs)",
+    "bikes": "Stationnement vélos",
+    "bikePerSmall": "Places par logement (T1, T2)",
+    "bikePerLarge": "Places par logement (T3 et plus)",
+    "bikeOfficeShare": "Places vélos par poste de travail",
+    "bikeArea": "Surface par place vélo"
   },
   "rules": {
     "fr": "Plan local d'urbanisme (PLU)",

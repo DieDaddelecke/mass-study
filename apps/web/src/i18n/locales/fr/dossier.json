@@ -20,7 +20,7 @@
     "elevations": "Façades",
     "sections": "Coupes",
     "axo": "Axonométries",
-    "tables": "Tableaux (surfaces, indicateurs, programme)",
+    "tables": "Tableaux (surfaces, indicateurs, programme, méthode de calcul)",
     "floorPlans": "Plans d'étage schématiques"
   },
   "tb": {

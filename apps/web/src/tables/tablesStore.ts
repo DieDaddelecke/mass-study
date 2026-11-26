@@ -11,6 +11,7 @@ export const SCHEDULE_TABS: readonly ScheduleId[] = [
   'surfaces',
   'kpis',
   'typologies',
+  'calculation',
   'comparison',
 ];
 
@@ -70,7 +71,7 @@ export function exportActiveCsv(schedule?: Schedule): void {
   }
 }
 
-// `?schedule=surfaces|kpis|typologies|comparison` opens the schedule workspace (screenshots, links).
+// `?schedule=surfaces|kpis|typologies|calculation|comparison` opens the schedule workspace (screenshots, links).
 if (typeof window !== 'undefined') {
   const s = new URLSearchParams(window.location.search).get('schedule');
   if (s && (SCHEDULE_TABS as readonly string[]).includes(s)) openSchedule(s as ScheduleId);

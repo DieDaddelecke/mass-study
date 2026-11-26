@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   allSchedules,
+  analyzeProject,
+  calculationSchedule,
   comparisonSchedule,
   kpiSchedule,
   surfacesSchedule,
@@ -121,7 +123,108 @@ describe('typology schedule and comparison', () => {
       'surfaces',
       'kpis',
       'typologies',
+      'calculation',
       'comparison',
     ]);
+  });
+});
+
+describe('calculation steps', () => {
+  const value = (s: Schedule, key: string) =>
+    s.rows.filter((r) => nameKey(r) === `tables:calc.row.${key}`).map((r) => Number(r.cells.value));
+  const one = (s: Schedule, key: string) => {
+    const v = value(s, key);
+    expect(v.length).toBeGreaterThan(0);
+    return v[0]!;
+  };
+
+  function project() {
+    const p = referenceProject('FR');
+    const m = p.variants[0]!.masses[0]!;
+    m.storeys.basement = { count: 1, height: 3 };
+    p.variants[0]!.masses.push(
+      mass(
+        { kind: 'solitaer', length: 20, depth: 20 },
+        { id: 'm2', name: 'BK2', position: [15, 10], usage: 'buero', access: 'buero' },
+      ),
+    );
+    return p;
+  }
+
+  it('surface brute → surface utile adds up to the surfaces table', () => {
+    const p = project();
+    const a = analyzeProject(p);
+    const s = calculationSchedule(p);
+    const bgf = one(s, 'bgf');
+    expect(bgf).toBeCloseTo(a.result.areas.bgf, 6);
+    const nrf = one(s, 'nrf');
+    expect(bgf + one(s, 'exteriorWalls') + one(s, 'interior')).toBeCloseTo(nrf, 6);
+    expect(nrf).toBeCloseTo(a.result.areas.nrf, 6);
+    // two masses with circulation: one total row and one row per mass
+    const vf = value(s, 'vf');
+    expect(vf).toHaveLength(1);
+    const perMass = s.rows
+      .filter((r) => r.depth === 2 && r.massId)
+      .map((r) => Number(r.cells.value));
+    expect(perMass).toHaveLength(2);
+    expect(perMass[0]! + perMass[1]!).toBeCloseTo(vf[0]!, 6);
+    const nuf = one(s, 'nuf');
+    expect(nrf + vf[0]! + one(s, 'tf')).toBeCloseTo(nuf, 6);
+    expect(nuf).toBeCloseTo(a.result.areas.nuf, 6);
+    expect(one(s, 'livingArea')).toBeCloseTo(a.result.livingArea, 6);
+    expect(one(s, 'dwellings')).toBe(a.result.dwellings);
+    const bgfRow = s.rows.find((r) => nameKey(r) === 'tables:calc.row.bgf')!;
+    expect(bgfRow.cells.share).toBeCloseTo(100, 9);
+  });
+
+  it('surface de plancher equals the KPI', () => {
+    const p = project();
+    const a = analyzeProject(p);
+    const s = calculationSchedule(p);
+    const sdp = one(s, 'sdp');
+    expect(sdp).toBeCloseTo(a.fr.surfaceDePlancher, 6);
+    expect(
+      one(s, 'sdpGross') +
+        one(s, 'sdpParking') +
+        one(s, 'sdpWalls') +
+        one(s, 'sdpTechnical') +
+        one(s, 'sdpAbatement'),
+    ).toBeCloseTo(sdp, 6);
+    expect(one(s, 'sdpParking')).toBeLessThan(0);
+  });
+
+  it('car parking: demand and capacity as in the KPIs', () => {
+    const p = project();
+    const a = analyzeProject(p);
+    const s = calculationSchedule(p);
+    expect(one(s, 'parkDemand')).toBe(a.result.parking.demand);
+    expect(one(s, 'parkCapacity')).toBe(a.result.parking.capacity);
+    expect(one(s, 'parkDwellings')).toBe(a.result.dwellings);
+    expect(one(s, 'parkOffice')).toBeCloseTo(a.result.usageNuf.buero / 40, 6);
+    expect(one(s, 'parkBalance')).toBe(a.result.parking.capacity - a.result.parking.demand);
+  });
+
+  it('bicycle parking: 1 space up to T2, 2 from T3, 15 % of workplaces, 1.5 m² each', () => {
+    const p = project();
+    const a = analyzeProject(p);
+    const s = calculationSchedule(p);
+    const byType = new Map<string, number>();
+    for (const m of a.result.masses)
+      for (const t of m.dwellings.byType) byType.set(t.id, (byType.get(t.id) ?? 0) + t.count);
+    const small = (byType.get('t1') ?? 0) + (byType.get('t2') ?? 0);
+    const large = a.result.dwellings - small;
+    expect(one(s, 'bikeSmall')).toBe(small);
+    expect(one(s, 'bikeLarge')).toBe(2 * large);
+    expect(one(s, 'bikeOffice')).toBeCloseTo(a.result.workplaces * 0.15, 6);
+    const spaces = Math.ceil(small + 2 * large + a.result.workplaces * 0.15 - 1e-9);
+    expect(one(s, 'bikeSpaces')).toBe(spaces);
+    expect(one(s, 'bikeArea')).toBeCloseTo(spaces * 1.5, 6);
+  });
+
+  it('uses the bicycle settings of the project', () => {
+    const p = project();
+    p.settings.bikeParking = { perLargeDwelling: 3, areaPerSpace: 2 };
+    const s = calculationSchedule(p);
+    expect(one(s, 'bikeArea')).toBeCloseTo(one(s, 'bikeSpaces') * 2, 6);
   });
 });
