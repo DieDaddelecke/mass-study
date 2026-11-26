@@ -2,6 +2,7 @@ import { typologySegments, toWorld } from './generators.js';
 import { intersection, offsetPolygons, ringBBox, rect } from './geometry.js';
 import type {
   Mass,
+  SetbackDistance,
   Polygon,
   Settings,
   StoreyNotation,
@@ -169,23 +170,40 @@ export function applySetback(
  */
 export function massToSolids(mass: Mass, settings: Pick<Settings, 'notation'>): StoreySolid[] {
   const out: StoreySolid[] = [];
-  for (const seg of typologySegments(mass.typology)) {
-    const stack = mergeStack(
-      mass.storeys,
-      seg.segment !== undefined ? mass.segmentOverrides?.[seg.segment] : undefined,
-    );
+  const segs = typologySegments(mass.typology);
+  const stackOf = (i: number | undefined) =>
+    mergeStack(mass.storeys, i !== undefined ? mass.segmentOverrides?.[i] : undefined);
+  for (const seg of segs) {
+    const stack = stackOf(seg.segment);
     const defs = storeyDefs(stack);
+    // the sections of a Zeile form one building: no setback (attique, terraces) at a joint with
+    // a neighbouring section that reaches the same storey (Soheyl 26.11.2026)
+    const joint = (side: -1 | 1, index: number): boolean => {
+      if (mass.typology.kind !== 'zeile' || seg.segment === undefined) return false;
+      const nb = seg.segment + side;
+      if (nb < 0 || nb >= segs.length) return false;
+      return storeyDefs(stackOf(nb)).some((d) => d.index === index);
+    };
+    const atJoints = (d: SetbackDistance, index: number): SetbackDistance => {
+      const left = joint(-1, index);
+      const right = joint(1, index);
+      if (!left && !right) return d;
+      const o = typeof d === 'number' ? { front: d, back: d, left: d, right: d } : { ...d };
+      if (left) o.left = 0;
+      if (right) o.right = 0;
+      return o;
+    };
     const topIndex = defs[defs.length - 1]?.index;
     const cache = new Map<string, Polygon[]>();
     const footprintsOf = (d: StoreyDef): Polygon[] => {
       const step = terraceStepFor(stack, d.index);
-      const key = `${step ? step.fromStorey : '-'}|${d.setback ? 1 : 0}`;
+      const key = `${step ? step.fromStorey : '-'}|${d.setback ? 1 : 0}|${joint(-1, d.index)}|${joint(1, d.index)}`;
       let polys = cache.get(key);
       if (polys) return polys;
-      polys = step ? applySetback(seg.local, step.distance) : [seg.local];
+      polys = step ? applySetback(seg.local, atJoints(step.distance, d.index)) : [seg.local];
       if (d.setback && stack.setback && stack.setback.storeys > 0) {
         // both measured from the full footprint
-        const attique = applySetback(seg.local, stack.setback.distance);
+        const attique = applySetback(seg.local, atJoints(stack.setback.distance, d.index));
         polys = step ? intersection(polys, attique) : attique;
       }
       cache.set(key, polys);

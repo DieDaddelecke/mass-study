@@ -466,11 +466,15 @@ interface BarPlan {
   fixed: FixedUnit[];
   rows: Row[];
   open: boolean;
+  /** Centres to pin to get the same cores again (when not the cores' own centres). */
+  pins?: number[];
 }
 
 /**
  * Cores of the mass (`requiredCores`: escape distance + section length of the access type)
  * distributed over its bars by length (largest remainder). Bars too short for a core get none.
+ * A Zeile has one core per section (« tronçon », Soheyl 26.11.2026): its number of sections is
+ * its number of stair cores (`zeileCoreShortfall` warns when the escape distance needs more).
  */
 function distributeCores(
   bars: readonly Bar[],
@@ -481,16 +485,20 @@ function distributeCores(
   avgTarget: number,
 ): number[] {
   if (access === 'reihenhaus' || !bars.length) return bars.map(() => 0);
-  const total = Math.max(
-    requiredCores(mass, access, settings),
-    mixCores(
-      bars,
-      access,
-      dim,
-      avgTarget,
-      massUnitsPerCoreRange(mass, access, coreRange(settings))?.[1] ?? coreRange(settings)[1],
-    ),
-  );
+  const sections =
+    mass.typology.kind === 'zeile' ? Math.max(1, Math.round(mass.typology.sections)) : 0;
+  const total =
+    sections ||
+    Math.max(
+      requiredCores(mass, access, settings),
+      mixCores(
+        bars,
+        access,
+        dim,
+        avgTarget,
+        massUnitsPerCoreRange(mass, access, coreRange(settings))?.[1] ?? coreRange(settings)[1],
+      ),
+    );
   const fits = bars.map((b) => b.length >= dim.coreWidth + 4);
   const weights = bars.map((b, i) => (fits[i] ? b.length : 0));
   if (!weights.some((w) => w > 0)) {
@@ -694,6 +702,8 @@ function planBar(
     peek: (area: number, count: number) => UnitType[];
     consume: (ts: readonly UnitType[]) => void;
   },
+  /** Exactly `n` cores (Zeile: one per section), the spänner plans may not change it. */
+  exact = false,
 ): BarPlan {
   const L = bar.length;
   const D = bar.depth;
@@ -733,6 +743,7 @@ function planBar(
       trial ?? { peek: pick, consume: () => {} },
       fc,
       pins,
+      exact,
     )
   )
     return plan;
@@ -839,7 +850,11 @@ function planBar(
       centres.forEach((c, i) => {
         const k0 = Math.max(0, c - cw / 2);
         const k1 = Math.min(L, c + cw / 2);
-        plan.cores.push([k0, g, k1, D]);
+        // the stair on the gallery, a dwelling behind it on the far façade (no core through
+        // the whole depth: dark area)
+        const back = D - g - cd >= 4;
+        plan.cores.push([k0, g, k1, back ? g + cd : D]);
+        if (back) plan.fixed.push({ rects: [[k0, g + cd, k1, D]], core: i });
         if (k0 - a > 1e-6) plan.rows.push({ rect: [a, g, k0, D], core: i, sides: gs });
         a = k1;
       });
@@ -998,6 +1013,7 @@ function planSpaenner(
   },
   fc: FacadeCtx,
   pins?: readonly number[],
+  exact = false,
 ): boolean {
   const pick = types.peek;
   const rules = resolveUnitRules(settings);
@@ -1229,9 +1245,9 @@ function planSpaenner(
 
   const pinned = pins?.length === n0 ? pins : undefined;
   const nMin = Math.max(1, Math.ceil(L / (2 * settings.cores.maxEscapeDistance) - 1e-9));
-  const ns = pinned ? [n0] : [n0, n0 - 1, n0 + 1].filter((k) => k >= nMin);
+  const ns = pinned || exact ? [n0] : [n0, n0 - 1, n0 + 1].filter((k) => k >= nMin);
   // a trial: library dwellings it reaches, and the plan it writes when chosen
-  type Trial = { score: number; apply: () => void };
+  type Trial = { score: number; apply: () => void; pins: number[] };
   let best: Trial | undefined;
   const consider = (t: Trial | undefined) => {
     if (t && (!best || t.score > best.score + 1e-9)) best = t;
@@ -1328,6 +1344,7 @@ function planSpaenner(
           const row = placeRow(ts, mids, D, 2, pinned);
           if (!row) continue;
           consider({
+            pins: centresOf(row.mids),
             score:
               row.hits +
               (libC ? 2 * n : 0) +
@@ -1368,6 +1385,7 @@ function planSpaenner(
           const row = placeRow(ts, mids, D, 2, pinned);
           if (!row) continue;
           consider({
+            pins: centresOf(row.mids),
             score: row.hits - off - mixDev(ts) - misfits(ts, row.units, D, 2),
             apply: () => {
               row.mids.forEach(([m0, m1]) => strip(m0, m1, cd, D));
@@ -1389,6 +1407,7 @@ function planSpaenner(
           const row = placeRow(ts, mids, D, 2, pinned);
           if (!row) continue;
           consider({
+            pins: centresOf(row.mids),
             score:
               row.hits +
               (c.w !== undefined ? n : 0) -
@@ -1445,6 +1464,7 @@ function planSpaenner(
             );
             if (!b) continue;
             consider({
+              pins: centresOf(f.mids),
               score:
                 f.hits +
                 b.hits -
@@ -1477,9 +1497,13 @@ function planSpaenner(
   }
   if (!best) return false;
   (best as Trial).apply();
+  plan.pins = (best as Trial).pins;
   types.consume(plan.fixed.flatMap((f) => (f.type ? [f.type] : [])));
   return true;
 }
+
+const centresOf = (mids: readonly [number, number][]): number[] =>
+  mids.map(([a, b]) => (a + b) / 2);
 
 /** r − h as up to four rectangles. */
 function subtractRect(r: Rect, h: Rect): Rect[] {
@@ -1607,6 +1631,38 @@ interface LayoutPass {
   below?: Polygon[];
   /** Neighbour boundaries: façades facing them within `distance` get no windows. */
   party?: { segs: [Vec2, Vec2][]; distance: number; site?: Polygon };
+  /**
+   * Bars and core centres of the reference storey (Regelgeschoss): the storey is laid out in
+   * the same frames with the same cores, clipped to its own footprint (attique, terraces), so
+   * the stair cores keep their place and number on every storey (Soheyl 26.11.2026).
+   */
+  frame?: StoreyFrame;
+}
+
+/** Bars, core centres (along each bar) and bar plans of a reference storey. */
+export interface StoreyFrame {
+  bars: Bar[];
+  pins: number[][];
+  plans: BarPlan[];
+  /** Cores the reference moved into a dark leftover (step 3 of the façade rules). */
+  moves: CoreMove[];
+}
+
+/** A stair core moved from the centre `from` of its planned place (and its lift). */
+interface CoreMove {
+  from: Vec2;
+  core: LayoutArea;
+  lift?: Polygon;
+}
+
+/** Same stair cores and lifts (bar coordinates, to 1 cm). */
+function sameAccess(a: BarPlan, b: BarPlan): boolean {
+  const key = (p: BarPlan) =>
+    [...p.cores, ...p.circulation.filter((c) => c.kind === 'lift').map((c) => c.rect)]
+      .map((r) => r.map((v) => v.toFixed(2)).join(','))
+      .sort()
+      .join('|');
+  return key(a) === key(b);
 }
 
 function layoutStorey(
@@ -1615,7 +1671,7 @@ function layoutStorey(
   settings: Settings,
   access: AccessType,
   pass: LayoutPass = {},
-): { layout: StoreyLayout; pins: number[][] } {
+): { layout: StoreyLayout; pins: number[][]; bars: Bar[]; plans: BarPlan[]; moves: CoreMove[] } {
   const first = solids[0]!;
   const dim = layoutDimensions(settings);
   const mix = settings.unitMix.filter((t) => t.share > 0 && t.areaTarget > 0);
@@ -1663,13 +1719,23 @@ function layoutStorey(
     mass.typology.kind === 'zeile' && solids.length > 1
       ? union(solids.map((s) => s.footprint))
       : solids.map((s) => s.footprint);
-  // access side (landing, gallery, corridor) towards a neighbour boundary when one long side
-  // must stay blind (no windows there), else north
-  const bars = accessTowardsBlind(
-    outlines.flatMap((p) => solidBars(mass, p)),
-    pass.party,
-    union(solids.map((x) => normalizePolygon(x.footprint))),
-  );
+  const storeyOutline = union(solids.map((x) => normalizePolygon(x.footprint)));
+  const frame = pass.frame;
+  // with a reference storey: its bars (frames and extents), each clipped to this footprint;
+  // otherwise the access side (landing, gallery, corridor) towards a neighbour boundary when
+  // one long side must stay blind (no windows there), else north
+  const bars = frame
+    ? frame.bars.map((b) => ({
+        ...b,
+        region: intersection(b.region, storeyOutline).filter((q) => polygonArea(q) > 1e-3),
+      }))
+    : accessTowardsBlind(
+        outlines.flatMap((p) => solidBars(mass, p)),
+        pass.party,
+        storeyOutline,
+      );
+  /** Region the cores and the circulation of a bar are cut to (the reference's when given). */
+  const accessRegion = (bi: number): Polygon[] => frame?.bars[bi]?.region ?? bars[bi]!.region;
   // pool of preferred types for the storey (mix shares for the expected number of units)
   const storeyArea = bars.reduce(
     (a, b) => a + b.region.reduce((s2, r) => s2 + polygonArea(r), 0),
@@ -1690,15 +1756,18 @@ function layoutStorey(
       if (i >= 0) typePool.splice(i, 1);
     }
   };
-  const pinned = pass.pins && pass.pins.length === bars.length ? pass.pins : undefined;
+  const ownPins = frame?.pins ?? pass.pins ?? zeileSectionPins(mass, bars);
+  const pinned = ownPins && ownPins.length === bars.length ? ownPins : undefined;
   const coresPerBar = pinned
     ? pinned.map((p) => p.length)
     : distributeCores(bars, mass, effAccess, settings, dim, avgTarget);
   const pins: number[][] = [];
+  const plans: BarPlan[] = [];
+  const moves: CoreMove[] = [];
   for (const [bi, bar] of bars.entries()) {
     {
       regions.push(...bar.region);
-      const plan = planBar(
+      let plan = planBar(
         bar,
         effAccess,
         residential,
@@ -1710,11 +1779,23 @@ function layoutStorey(
         fc,
         pinned?.[bi],
         { peek, consume },
+        mass.typology.kind === 'zeile',
       );
-      pins.push(plan.cores.map((r) => (r[0] + r[2]) / 2));
+      // the plan of the reference storey (clipped below) when this one would move its stair
+      // cores or lifts – e.g. a shallower attique that takes another spänner plan
+      const refPlan = frame?.plans[bi];
+      if (refPlan && !sameAccess(plan, refPlan)) plan = refPlan;
+      pins.push(plan.pins ?? plan.cores.map((r) => (r[0] + r[2]) / 2));
+      plans.push(plan);
       const coreBase = cores.length;
-      for (const r of plan.cores) {
-        for (const p of clip(bar.region, rectPoly(bar.frame, r)))
+      const coreAt: number[] = [];
+      const here = (p: Polygon) => overlapArea([p], bar.region) > 0.5;
+      for (const [c, r] of plan.cores.entries()) {
+        // with a reference storey the core stays whole (a stair reaching onto the terrace of a
+        // set-back storey); one that does not reach this storey's footprint ends below it
+        for (const p of clip(accessRegion(bi), rectPoly(bar.frame, r))) {
+          if (frame && !here(p)) continue;
+          coreAt[c] ??= cores.length;
           cores.push({
             kind: 'core',
             polygon: p,
@@ -1722,16 +1803,30 @@ function layoutStorey(
             index: cores.length,
             box: boxOf(bar.frame, p),
           });
+        }
       }
       const coreOf = (c: number): number =>
         c < 0
           ? cores.length > coreBase
             ? coreBase
             : -1
-          : Math.min(coreBase + c, cores.length - 1);
-      for (const c of plan.circulation)
-        for (const p of clip(bar.region, rectPoly(bar.frame, c.rect)))
+          : (coreAt[c] ??
+            (cores.length > coreBase ? Math.min(coreBase + c, cores.length - 1) : -1));
+      const kept = cores.slice(coreBase).map((k) => k.polygon);
+      for (const c of plan.circulation) {
+        // the lift beside its stair and the gallery along the storey stay as on the reference
+        const whole = frame && (c.kind === 'lift' || c.kind === 'gallery');
+        for (const p of clip(whole ? accessRegion(bi) : bar.region, rectPoly(bar.frame, c.rect))) {
+          if (
+            whole &&
+            (c.kind === 'lift'
+              ? !kept.some((k) => polygonDistance(k, p) < 4)
+              : !storeyOutline.some((o) => polygonDistance(o, p) < 0.05))
+          )
+            continue;
           circulation.push({ kind: c.kind, polygon: p, area: polygonArea(p) });
+        }
+      }
       for (const f of plan.fixed) {
         // union in bar coordinates (exact for axis-aligned rectangles), then to world
         const merged = union(f.rects.map((r) => rect(r[0], r[1], r[2], r[3]))).map((p) =>
@@ -1748,16 +1843,29 @@ function layoutStorey(
             ...(f.type ? { pref: f.type } : {}),
           });
       }
-      for (const r of plan.rows)
+      // in the frame of a reference storey: rows within this storey's extents (the dwellings
+      // then take their widths for the depth they really have)
+      const ext = frame && bar.region.length ? frameExtents(bar.frame, bar.region) : undefined;
+      for (const r of plan.rows) {
+        const rect: Rect = ext
+          ? [
+              Math.max(r.rect[0], ext[0]),
+              Math.max(r.rect[1], ext[1]),
+              Math.min(r.rect[2], ext[2]),
+              Math.min(r.rect[3], ext[3]),
+            ]
+          : r.rect;
+        if (!validRect(rect)) continue;
         rows.push({
           frame: bar.frame,
-          rect: r.rect,
+          rect,
           core: coreOf(r.core),
           region: bar.region,
           sides: r.sides,
-          atStart: r.rect[0] <= 1e-6,
-          atEnd: r.rect[2] >= bar.length - 1e-6,
+          atStart: ext ? rect[0] <= ext[0] + 1e-6 : r.rect[0] <= 1e-6,
+          atEnd: ext ? rect[2] >= ext[2] - 1e-6 : r.rect[2] >= bar.length - 1e-6,
         });
+      }
     }
   }
 
@@ -2237,8 +2345,11 @@ function layoutStorey(
 
       // 3. a dark leftover big enough for the stair (inner corner of an L, Soheyl 23.11.2026):
       // the nearest stair and its lift move there, their old place goes to the dwellings
+      // (with a reference storey: only the moves of the reference, to the same place)
       const sw = dim.stairCoreWidth;
       const cd = dim.coreDepth;
+      const inside = (p: Polygon, host: Polygon) =>
+        overlapArea([host], [p]) >= polygonArea(p) - 0.05;
       for (const o of [...open]) {
         if (o.kind !== 'open' || o.area < sw * cd) continue;
         const hall = circulation.filter(
@@ -2246,14 +2357,21 @@ function layoutStorey(
         );
         if (!hall.length) continue;
         const hallEdges = polygonEdges(hall.map((c) => c.polygon));
-        const ci = cores
-          .map((c, k) => ({ k, d: polygonDistance(c.polygon, o.polygon) }))
-          .filter(({ k }) => hall.some((h) => shared(cores[k]!.polygon, h.polygon) >= 1))
-          .sort((x, y) => x.d - y.d)[0]?.k;
-        if (ci === undefined) continue;
-        const placed = placeInPiece(o.polygon, [sw, cd], hallEdges);
+        const replay = frame?.moves.find((m) => inside(m.core.polygon, o.polygon));
+        if (frame && !replay) continue;
+        const ci = replay
+          ? cores.findIndex((c) => dist(ringCentroid(c.polygon.outer), replay.from) < 0.05)
+          : cores
+              .map((c, k) => ({ k, d: polygonDistance(c.polygon, o.polygon) }))
+              .filter(({ k }) => hall.some((h) => shared(cores[k]!.polygon, h.polygon) >= 1))
+              .sort((x, y) => x.d - y.d)[0]?.k;
+        if (ci === undefined || ci < 0) continue;
+        const placed = replay
+          ? { polygon: replay.core.polygon, box: replay.core.box! }
+          : placeInPiece(o.polygon, [sw, cd], hallEdges);
         if (!placed) continue;
         const old = cores[ci]!;
+        const from = ringCentroid(old.polygon.outer);
         const oldLift = circulation.find(
           (c) => c.kind === 'lift' && polygonDistance(c.polygon, old.polygon) < 4,
         );
@@ -2261,9 +2379,13 @@ function layoutStorey(
         let lift: Polygon | undefined;
         if (oldLift) {
           const [lw, lt] = dim.liftBox;
-          const lp = rest
-            .map((r) => placeInPiece(r, [lw, lt], hallEdges))
-            .find((x): x is NonNullable<typeof x> => !!x);
+          const lp = replay
+            ? replay.lift && rest.some((r) => inside(replay.lift!, r))
+              ? { polygon: replay.lift }
+              : undefined
+            : rest
+                .map((r) => placeInPiece(r, [lw, lt], hallEdges))
+                .find((x): x is NonNullable<typeof x> => !!x);
           if (lp) {
             lift = lp.polygon;
             rest = difference(rest, [lift]);
@@ -2276,6 +2398,7 @@ function layoutStorey(
           index: old.index ?? ci,
           box: placed.box,
         };
+        moves.push({ from, core: cores[ci]!, ...(lift ? { lift } : {}) });
         open.splice(open.indexOf(o), 1);
         for (const r of rest.filter((q) => polygonArea(q) > 0.05))
           circulation.push({ kind: 'landing', polygon: r, area: polygonArea(r) });
@@ -2294,6 +2417,56 @@ function layoutStorey(
               (c): c is { j: number; m: Polygon } =>
                 !!c.m && polygonArea(c.m) <= maxArea(c.m) + 1e-6 && !dark(c.m),
             )
+            .sort((x, y) => polygonArea(y.m) - polygonArea(x.m))[0];
+          if (take) {
+            polys[take.j] = simplify(take.m);
+            delete raw[take.j]!.type;
+          } else circulation.push({ kind: 'landing', polygon: f, area: polygonArea(f) });
+        }
+        accessEdges = polygonEdges(access());
+      }
+      // a move of the reference without the same leftover here (e.g. a shallower attique): the
+      // stair (and its lift) still go to the reference's place, cut out of what lies there
+      for (const m of frame?.moves ?? []) {
+        const at = (p: Polygon, c: Vec2) => dist(ringCentroid(p.outer), c) < 0.05;
+        if (cores.some((c) => at(c.polygon, ringCentroid(m.core.polygon.outer)))) continue;
+        const ci = cores.findIndex((c) => at(c.polygon, m.from));
+        if (ci < 0) continue;
+        const old = cores[ci]!;
+        const oldLift = m.lift
+          ? circulation.find(
+              (c) => c.kind === 'lift' && polygonDistance(c.polygon, old.polygon) < 4,
+            )
+          : undefined;
+        const cut = [m.core.polygon, ...(oldLift && m.lift ? [m.lift] : [])];
+        for (const j of live()) {
+          const rest = difference([polys[j]!], cut).sort((a, b) => polygonArea(b) - polygonArea(a));
+          if (!rest[0] || polygonArea(rest[0]) < 1) alive[j] = false;
+          else if (polygonArea(rest[0]) < polygonArea(polys[j]!) - 1e-3) {
+            polys[j] = simplify(rest[0]);
+            delete raw[j]!.type;
+          }
+        }
+        for (const xs of [open, circulation])
+          for (let k = xs.length - 1; k >= 0; k--) {
+            const x = xs[k]!;
+            if (x === oldLift || overlapArea([x.polygon], cut) < 1e-3) continue;
+            xs.splice(k, 1);
+            for (const q of difference([x.polygon], cut).filter((q) => polygonArea(q) > 0.05))
+              xs.push({ kind: x.kind, polygon: q, area: polygonArea(q) });
+          }
+        cores[ci] = { ...m.core, index: old.index ?? ci };
+        const freed = [old.polygon];
+        if (oldLift && m.lift) {
+          circulation.splice(circulation.indexOf(oldLift), 1);
+          circulation.push({ kind: 'lift', polygon: m.lift, area: polygonArea(m.lift) });
+          freed.push(oldLift.polygon);
+        }
+        for (const f of difference(freed, cut).filter((q) => polygonArea(q) > 0.05)) {
+          const take = live()
+            .filter((j) => shared(polys[j]!, f) > 2)
+            .map((j) => ({ j, m: single(union([polys[j]!, f])) }))
+            .filter((c): c is { j: number; m: Polygon } => !!c.m && !dark(c.m))
             .sort((x, y) => polygonArea(y.m) - polygonArea(x.m))[0];
           if (take) {
             polys[take.j] = simplify(take.m);
@@ -2500,7 +2673,35 @@ function layoutStorey(
   if (cores.length && summary.units)
     out.unitsPerCore = Math.round((summary.units / cores.length) * 10) / 10;
   if (blind.length) out.blindFacades = blind;
-  return { layout: out, pins };
+  return { layout: out, pins, bars, plans, moves };
+}
+
+/**
+ * Core centres of a staggered Zeile or one with differing sections: one core in the middle of
+ * each section (tronçon), along the single bar of the storey. Undefined otherwise (the plan
+ * places its cores freely, their number still the number of sections).
+ */
+function zeileSectionPins(mass: Mass, bars: readonly Bar[]): number[][] | undefined {
+  const t = mass.typology;
+  if (t.kind !== 'zeile' || bars.length !== 1) return undefined;
+  const n = Math.max(1, Math.round(t.sections));
+  const differ =
+    Math.abs(t.sectionOffset) > 1e-6 || Object.keys(mass.segmentOverrides ?? {}).length > 0;
+  if (n < 2 || !differ) return undefined;
+  const cos = Math.cos(mass.rotation);
+  const sin = Math.sin(mass.rotation);
+  const bar = bars[0]!;
+  const w = t.length / n;
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const x = (i + 0.5) * w;
+    const y = i % 2 === 1 ? t.sectionOffset : 0;
+    const p: Vec2 = [mass.position[0] + x * cos - y * sin, mass.position[1] + x * sin + y * cos];
+    const a = toFrame(bar.frame, p)[0];
+    if (a > 0 && a < bar.length) out.push(a);
+  }
+  out.sort((a, b) => a - b);
+  return [out];
 }
 
 /** Point on segment [a, b] at parameter t. */
@@ -3049,6 +3250,7 @@ function applyDuplex(
   storeys: StoreyLayout[],
   pins: Map<number, number[][]>,
   party?: LayoutPass['party'],
+  frames?: Map<number, StoreyFrame>,
 ): StoreyLayout[] {
   const cfg = resolveDuplex(mass, settings);
   if (!cfg.enabled || access === 'reihenhaus') return storeys;
@@ -3072,8 +3274,10 @@ function applyDuplex(
     )
       continue;
     const p = pins.get(lo.storeyIndex);
+    const f = frames?.get(lo.storeyIndex);
     const pass = (level: 'jour' | 'nuit'): LayoutPass => ({
       ...(p ? { pins: p } : {}),
+      ...(f ? { frame: f } : {}),
       ...(party ? { party } : {}),
       duplex: level,
     });
@@ -3237,6 +3441,27 @@ function specialUseLayouts(
   return out;
 }
 
+/** Footprints of the solids of a storey, to 1 cm. */
+const solidsKey = (solids: readonly StoreySolid[]): string =>
+  solids
+    .map((s) =>
+      normalizePolygon(s.footprint)
+        .outer.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
+        .join(';'),
+    )
+    .join('|');
+
+/** Core outlines of a storey, to 1 cm. */
+const coresKey = (cores: readonly LayoutArea[]): string =>
+  cores
+    .map((c) =>
+      ringCentroid(c.polygon.outer)
+        .map((v) => v.toFixed(2))
+        .join(','),
+    )
+    .sort()
+    .join('|');
+
 /** Layouts of all above-ground storeys of one mass (from its storey solids). */
 export function massLayout(
   mass: Mass,
@@ -3255,26 +3480,73 @@ export function massLayout(
     byStorey.set(s.storeyIndex, list);
   }
   const pins = new Map<number, number[][]>();
+  const frames = new Map<number, StoreyFrame>();
   const special = specialUseLayouts(mass, byStorey, settings, party);
+  const order = [...byStorey.keys()].sort((a, b) => a - b);
+  // Regelgeschoss: the dwelling storey with the largest footprint (the lowest of equals); its
+  // stair cores hold on every other storey (attique, terraces), in place and number
+  const area = (i: number) =>
+    union(byStorey.get(i)!.map((x) => normalizePolygon(x.footprint))).reduce(
+      (s2, p) => s2 + polygonArea(p),
+      0,
+    );
+  const regular = order
+    .filter((i) => !special.has(i) && byStorey.get(i)![0]!.usage === 'wohnen')
+    .reduce<number | undefined>(
+      (best, i) => (best === undefined || area(i) > area(best) + 0.01 ? i : best),
+      undefined,
+    );
+  const refKey = regular !== undefined ? solidsKey(byStorey.get(regular)!) : '';
+  let ref: { frame: StoreyFrame; cores: string } | undefined;
+  const refOf = (r: ReturnType<typeof layoutStorey>) => ({
+    frame: { bars: r.bars, pins: r.pins, plans: r.plans, moves: r.moves },
+    cores: coresKey(r.layout.cores),
+  });
+  // (laid out first when a storey below comes earlier, e.g. a smaller ground floor)
+  let early: ReturnType<typeof layoutStorey> | undefined;
+  if (regular !== undefined && regular !== order.find((i) => !special.has(i))) {
+    early = layoutStorey(mass, byStorey.get(regular)!, settings, access, party ? { party } : {});
+    ref = refOf(early);
+  }
   // séjours stack: each storey sees the séjours of the storey below
   let below: Polygon[] | undefined;
-  const simplex = [...byStorey.keys()]
-    .sort((a, b) => a - b)
-    .map((i) => {
-      const own = special.get(i);
-      if (own) return own;
-      const r = layoutStorey(mass, byStorey.get(i)!, settings, access, {
-        ...(below ? { below } : {}),
-        ...(party ? { party } : {}),
-      });
-      pins.set(i, r.pins);
-      const sej = r.layout.units.flatMap((u) =>
-        u.rooms.filter((x) => x.kind === 'sejour').map((x) => x.polygon),
-      );
-      below = sej.length ? sej : below;
-      return r.layout;
-    });
-  const storeys = stackCores(applyDuplex(mass, byStorey, settings, access, simplex, pins, party));
+  const simplex = order.map((i) => {
+    const own = special.get(i);
+    if (own) return own;
+    const solidsHere = byStorey.get(i)!;
+    const base: LayoutPass = { ...(below ? { below } : {}), ...(party ? { party } : {}) };
+    // the footprint of the Regelgeschoss: laid out freely (the same plan); another
+    // footprint: in the frames and with the cores of the Regelgeschoss
+    // (storeys without dwellings take the cores of those above: stackCores)
+    const same =
+      regular === undefined ||
+      solidsHere[0]!.usage !== 'wohnen' ||
+      solidsKey(solidsHere) === refKey;
+    let r =
+      i === regular && early && !below
+        ? early
+        : same || !ref
+          ? layoutStorey(mass, solidsHere, settings, access, base)
+          : layoutStorey(mass, solidsHere, settings, access, { ...base, frame: ref.frame });
+    if (i === regular && !ref) ref = refOf(r);
+    else if (
+      same &&
+      ref &&
+      solidsHere[0]!.usage === 'wohnen' &&
+      coresKey(r.layout.cores) !== ref.cores
+    )
+      r = layoutStorey(mass, solidsHere, settings, access, { ...base, frame: ref.frame });
+    if (!same && ref) frames.set(i, ref.frame);
+    pins.set(i, r.pins);
+    const sej = r.layout.units.flatMap((u) =>
+      u.rooms.filter((x) => x.kind === 'sejour').map((x) => x.polygon),
+    );
+    below = sej.length ? sej : below;
+    return r.layout;
+  });
+  const storeys = stackCores(
+    applyDuplex(mass, byStorey, settings, access, simplex, pins, party, frames),
+  );
   const counts = new Map<string, LayoutTypeCount>();
   let units = 0;
   let unitArea = 0;
