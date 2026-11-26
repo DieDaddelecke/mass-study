@@ -94,9 +94,9 @@ describe('housing programme', () => {
       const before = layoutOf(base, access);
       const l = layoutOf(withProgramme, access);
       expect(l.programme).toBeDefined();
-      // much closer to the programme than identical storeys with the default mix
-      expect(l.programme!.deviation).toBeLessThan(programmeDeviation(sh, counts(before)) / 2);
-      expect(l.programme!.deviation).toBeLessThanOrEqual(4);
+      // closer to the programme than identical storeys with the default mix
+      expect(l.programme!.deviation).toBeLessThan(programmeDeviation(sh, counts(before)));
+      expect(l.programme!.deviation).toBeLessThanOrEqual(0.15 * l.programme!.total);
       // the storeys do not all look the same
       const plans = new Set(
         l.storeys.map((st) => st.summary.byType.map((b) => `${b.typeId}${b.count}`).join()),

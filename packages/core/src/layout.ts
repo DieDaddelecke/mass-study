@@ -3762,24 +3762,47 @@ function balanceProgramme(
     }
     return programmeDeviation(shares, sum) + c;
   };
+  // storeys of the same massing share their options: per massing, every multiset of options
+  // over its storeys is tried (identical plans kept together), the other massings fixed
+  const groups = new Map<string, number[]>();
+  for (const k of freeIdx) groups.set(items[k]!.key, [...(groups.get(items[k]!.key) ?? []), k]);
   let best = cost();
-  for (let round = 0; round < 6; round++) {
+  const binom = (n: number, r: number) => {
+    let c = 1;
+    for (let i = 1; i <= r; i++) c = (c * (n - r + i)) / i;
+    return c;
+  };
+  for (let round = 0; round < 4; round++) {
     let improved = false;
-    for (const k of freeIdx) {
-      const n = options.get(items[k]!.key)!.length;
-      const keep = choice.get(k)!;
+    for (const [key, ks] of groups) {
+      const n = options.get(key)!.length;
+      const keep = ks.map((k) => choice.get(k)!);
       let pick = keep;
-      for (let j = 0; j < n; j++) {
-        if (j === keep) continue;
-        choice.set(k, j);
+      const tryPick = (seq: number[]) => {
+        ks.forEach((k, i) => choice.set(k, seq[i]!));
         const c = cost();
         if (c < best - 1e-9) {
           best = c;
-          pick = j;
+          pick = [...seq];
         }
-      }
-      choice.set(k, pick);
-      if (pick !== keep) improved = true;
+      };
+      if (binom(n + ks.length - 1, ks.length) <= 20000) {
+        // non-decreasing sequences = multisets, base plan (0) first
+        const seq: number[] = [];
+        const rec = (from: number) => {
+          if (seq.length === ks.length) return tryPick(seq);
+          for (let j = from; j < n; j++) {
+            seq.push(j);
+            rec(j);
+            seq.pop();
+          }
+        };
+        rec(0);
+      } else
+        for (let i = 0; i < ks.length; i++)
+          for (let j = 0; j < n; j++) tryPick(pick.map((x, q) => (q === i ? j : x)));
+      ks.forEach((k, i) => choice.set(k, pick[i]!));
+      if (pick.some((x, i) => x !== keep[i])) improved = true;
     }
     if (!improved) break;
   }
