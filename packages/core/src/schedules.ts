@@ -6,10 +6,12 @@
  * Subtotal and total rows carry the indices of the rows they aggregate (`sums`), so spreadsheet
  * renderers can write real SUM formulas instead of static values.
  */
-import { sumAreas, ZERO_AREAS, type AreaFigures } from './areas.js';
+import { circulationShare, sumAreas, ZERO_AREAS, type AreaFigures } from './areas.js';
 import type { MassResult, SolidResult } from './analysis.js';
-import { parking } from './mix.js';
+import { polygonPerimeter } from './geometry.js';
+import { bikeParking, parking, parkingBreakdown } from './mix.js';
 import { analyzeProject, type ProjectAnalysis } from './project.js';
+import { sdpBreakdown } from './rules.js';
 import type { Traffic } from './typologies.js';
 import type { Project, RuleProfileId, Usage } from './types.js';
 
@@ -64,7 +66,7 @@ export interface ScheduleRow {
   status?: Traffic | 'none';
 }
 
-export type ScheduleId = 'surfaces' | 'kpis' | 'typologies' | 'comparison';
+export type ScheduleId = 'surfaces' | 'kpis' | 'typologies' | 'calculation' | 'comparison';
 
 export interface Schedule {
   id: ScheduleId;
@@ -555,7 +557,7 @@ export function typologySchedule(project: Project, opts: ScheduleOptions = {}): 
 }
 
 // ---------------------------------------------------------------------------
-// 4. Variant comparison
+// 5. Variant comparison
 // ---------------------------------------------------------------------------
 
 export function comparisonSchedule(project: Project, opts: ScheduleOptions = {}): Schedule {
@@ -596,12 +598,324 @@ export function comparisonSchedule(project: Project, opts: ScheduleOptions = {})
   return { id: 'comparison', title: tr('tab.comparison'), columns, rows };
 }
 
-/** All four schedules (surfaces, KPIs, typologies for the active variant; comparison of all). */
+// ---------------------------------------------------------------------------
+// 4. Calculation steps: surface brute → surface utile, SDP, car and bicycle parking
+// ---------------------------------------------------------------------------
+
+/**
+ * How the figures of the other schedules come about, step by step, with the parameters of the
+ * settings and the project's own numbers. Every value is taken from the analysis (or from the
+ * same functions it uses: `sdpBreakdown`, `parkingBreakdown`, `bikeParking`), so the steps add up
+ * to the totals of the surfaces and KPI tables. Deductions are negative.
+ */
+export function calculationSchedule(project: Project, opts: ScheduleOptions = {}): Schedule {
+  const id = opts.variantIds?.[0] ?? project.activeVariantId;
+  const a = analysesFor(project, [id], opts.analyses).get(id)!;
+  const r = a.result;
+  const settings = project.settings;
+  const ar = settings.areas;
+  const columns: ScheduleColumn[] = [
+    { key: 'name', label: tr('col.step'), format: 'text', width: 32 },
+    { key: 'value', label: tr('col.value'), format: 'dec2', width: 13 },
+    { key: 'unit', label: tr('col.unit'), format: 'text', width: 7 },
+    { key: 'share', label: tr('col.shareOfBgf'), format: 'dec1', width: 11 },
+    { key: 'formula', label: tr('col.formula'), format: 'text', width: 60 },
+  ];
+  const rows: ScheduleRow[] = [];
+  const bgf = r.areas.bgf;
+  const pctOf = (v: number) => (bgf > 0 ? (v / bgf) * 100 : null);
+  const pct = (v: number) => Math.round(v * 1000) / 10;
+  const c = (key: string, params?: TextRef['params']): TextRef => tr(`calc.${key}`, params);
+  const group = (key: string) =>
+    rows.push({ kind: 'group', depth: 0, variantId: id, cells: { name: c(`group.${key}`) } });
+  const line = (
+    kind: ScheduleRowKind,
+    key: string,
+    formula: ScheduleCell,
+    value: number,
+    unit: ScheduleUnit,
+    o: { share?: boolean; depth?: number; name?: ScheduleCell; massId?: string } = {},
+  ) => {
+    const row: ScheduleRow = {
+      kind,
+      depth: o.depth ?? 1,
+      variantId: id,
+      formats: { value: unit === 'count' && Number.isInteger(value) ? 'int' : 'dec2' },
+      units: { value: unit },
+      cells: {
+        name: o.name ?? c(`row.${key}`),
+        formula,
+        value: value === 0 ? 0 : value, // no "-0,00"
+        unit: tr(`unit.${unit}`),
+        share: o.share === false ? null : unit === 'm2' ? pctOf(value) || 0 : null,
+      },
+    };
+    if (o.massId) row.massId = o.massId;
+    rows.push(row);
+  };
+  const round2 = (v: number) => Math.round(v * 100) / 100;
+
+  // --- 1. surface brute → surface utile ----------------------------------------------------
+  group('areas');
+  const solids = r.solids;
+  const levels = new Set(solids.map((s) => `${s.solid.massId}|${s.solid.storeyIndex}`)).size;
+  line('row', 'bgf', c('f.bgf', { levels, masses: r.masses.length }), bgf, 'm2');
+  const perimeter = solids.reduce((s, x) => s + polygonPerimeter(x.solid.footprint), 0);
+  line(
+    'row',
+    'exteriorWalls',
+    c('f.exteriorWalls', { perimeter: round2(perimeter), thickness: ar.exteriorWallThickness }),
+    -r.areas.exteriorWalls,
+    'm2',
+  );
+  line(
+    'row',
+    'interior',
+    c('f.interior', { pct: pct(ar.interiorConstructionShare), bgf: round2(bgf) }),
+    -(r.areas.kgf - r.areas.exteriorWalls),
+    'm2',
+  );
+  line('subtotal', 'nrf', c('f.nrf'), r.areas.nrf, 'm2');
+  // circulation: share of the access type of each mass, on the net area without parking/technik
+  const vfBase = (m: MassResult) =>
+    m.solids
+      .filter((s) => s.solid.usage !== 'parken' && s.solid.usage !== 'technik')
+      .reduce((x, s) => x + s.areas.nrf, 0);
+  const withVf = r.masses.filter((m) => m.areas.vf > 0);
+  if (withVf.length === 1) {
+    const m = withVf[0]!;
+    line(
+      'row',
+      'vf',
+      [
+        c('f.vf', {
+          pct: pct(circulationShare(ar.circulationShare, m.access)),
+          base: round2(vfBase(m)),
+        }),
+        { key: `common:access.${m.access}` },
+      ],
+      -r.areas.vf,
+      'm2',
+    );
+  } else {
+    line('row', 'vf', withVf.length ? c('f.vfMasses') : c('f.none'), -r.areas.vf, 'm2');
+    for (const m of withVf)
+      line(
+        'row',
+        'vf',
+        [
+          c('f.vf', {
+            pct: pct(circulationShare(ar.circulationShare, m.access)),
+            base: round2(vfBase(m)),
+          }),
+          { key: `common:access.${m.access}` },
+        ],
+        -m.areas.vf,
+        'm2',
+        { depth: 2, name: m.mass.name, massId: m.mass.id },
+      );
+  }
+  const technikNrf = solids
+    .filter((s) => s.solid.usage === 'technik')
+    .reduce((x, s) => x + s.areas.nrf, 0);
+  const tfBase = r.areas.nrf - technikNrf;
+  line(
+    'row',
+    'tf',
+    technikNrf > 0
+      ? [
+          c('f.tf', { pct: pct(ar.technicalShare), base: round2(tfBase) }),
+          c('f.tfStoreys', { area: round2(technikNrf) }),
+        ]
+      : c('f.tf', { pct: pct(ar.technicalShare), base: round2(tfBase) }),
+    -r.areas.tf,
+    'm2',
+  );
+  line('total', 'nuf', c('f.nuf'), r.areas.nuf, 'm2');
+  for (const [usage, nuf] of Object.entries(r.usageNuf) as [Usage, number][])
+    if (nuf > 0.005)
+      line('row', 'nufUsage', null, nuf, 'm2', {
+        depth: 2,
+        name: c(`nufUsage.${usage}`),
+      });
+  if (r.usageNuf.wohnen > 0) {
+    line(
+      'row',
+      'livingArea',
+      c('f.livingArea', { nuf: round2(r.usageNuf.wohnen), factor: ar.livingAreaFactor }),
+      r.livingArea,
+      'm2',
+    );
+    const mix = settings.unitMix;
+    const shareSum = mix.reduce((x, u) => x + u.share, 0);
+    const avg = shareSum > 0 ? mix.reduce((x, u) => x + (u.share / shareSum) * u.areaTarget, 0) : 0;
+    line('row', 'dwellings', c('f.dwellings', { avg: round2(avg) }), r.dwellings, 'count');
+  }
+
+  // --- 2. surface de plancher (FR) -----------------------------------------------------------
+  if (settings.profile === 'FR') {
+    const sdp = sdpBreakdown(r, settings);
+    const sp = settings.surfaceDePlancher;
+    group('sdp');
+    line('row', 'sdpGross', c('f.sdpGross'), sdp.gross, 'm2');
+    if (sp.deductParking) line('row', 'sdpParking', c('f.sdpParking'), -sdp.parking, 'm2');
+    line(
+      'row',
+      'sdpWalls',
+      c('f.sdpWalls', { thickness: ar.exteriorWallThickness }),
+      -sdp.exteriorWalls,
+      'm2',
+    );
+    if (sp.deductTechnical) line('row', 'sdpTechnical', c('f.sdpTechnical'), -sdp.technical, 'm2');
+    line('subtotal', 'sdpBefore', null, sdp.beforeAbatement, 'm2');
+    line(
+      'row',
+      'sdpAbatement',
+      c('f.sdpAbatement', { pct: pct(sp.residentialAbatement), base: round2(sdp.residential) }),
+      -sdp.abatement,
+      'm2',
+    );
+    line('total', 'sdp', c('f.sdp'), Math.max(0, sdp.sdp), 'm2');
+  }
+
+  // --- 3. car parking -----------------------------------------------------------------------
+  const p = settings.parking;
+  const pk = parkingBreakdown(
+    {
+      dwellings: r.dwellings,
+      officeNuf: r.usageNuf.buero,
+      retailNuf: r.usageNuf.gewerbe,
+      garageBgf: solids
+        .filter((s) => s.solid.usage === 'parken')
+        .reduce((x, s) => x + s.areas.bgf, 0),
+    },
+    settings,
+  );
+  group('parking');
+  line(
+    'row',
+    'parkDwellings',
+    c('f.parkDwellings', { n: pk.dwellings, rate: p.perDwelling }),
+    pk.dwellingSpaces,
+    'count',
+  );
+  if (pk.officeNuf > 0)
+    line(
+      'row',
+      'parkOffice',
+      c('f.perArea', { nuf: round2(pk.officeNuf), area: p.officeAreaPerSpace }),
+      pk.officeSpaces,
+      'count',
+    );
+  if (pk.retailNuf > 0)
+    line(
+      'row',
+      'parkRetail',
+      c('f.perArea', { nuf: round2(pk.retailNuf), area: p.retailAreaPerSpace }),
+      pk.retailSpaces,
+      'count',
+    );
+  line(
+    'total',
+    'parkDemand',
+    c('f.roundUp', { exact: round2(pk.demandExact) }),
+    pk.demand,
+    'count',
+  );
+  line(
+    'row',
+    'parkRequiredArea',
+    c('f.parkRequiredArea', {
+      n: pk.demand,
+      area: p.garageAreaPerSpace,
+      eff: pct(p.garageEfficiency),
+    }),
+    pk.garageBgfRequired,
+    'm2',
+  );
+  line('row', 'parkGarage', c('f.parkGarage'), pk.garageBgf, 'm2');
+  if (pk.garageBgf > 0) {
+    line(
+      'row',
+      'parkUsable',
+      c('f.parkUsable', { bgf: round2(pk.garageBgf), eff: pct(p.garageEfficiency) }),
+      pk.garageUsable,
+      'm2',
+    );
+    line(
+      'subtotal',
+      'parkCapacity',
+      c('f.parkCapacity', { usable: round2(pk.garageUsable), area: p.garageAreaPerSpace }),
+      pk.capacity,
+      'count',
+    );
+    line('row', 'parkBalance', c('f.parkBalance'), pk.capacity - pk.demand, 'count');
+  }
+
+  // --- 4. bicycle parking -------------------------------------------------------------------
+  const byType = new Map<string, number>();
+  for (const m of r.masses)
+    for (const t of m.dwellings.byType) byType.set(t.id, (byType.get(t.id) ?? 0) + t.count);
+  const bk = bikeParking(
+    {
+      dwellingsByType: [...byType].map(([tid, count]) => ({ id: tid, count })),
+      workplaces: r.workplaces,
+    },
+    settings,
+  );
+  const br = bk.rules;
+  group('bikes');
+  if (bk.smallDwellings > 0)
+    line(
+      'row',
+      'bikeSmall',
+      c('f.bikeDwellings', { n: bk.smallDwellings, rate: br.perSmallDwelling }),
+      bk.smallSpaces,
+      'count',
+      { name: c('row.bikeSmall', { rooms: br.largeFromRooms - 1 }) },
+    );
+  if (bk.largeDwellings > 0)
+    line(
+      'row',
+      'bikeLarge',
+      c('f.bikeDwellings', { n: bk.largeDwellings, rate: br.perLargeDwelling }),
+      bk.largeSpaces,
+      'count',
+      { name: c('row.bikeLarge', { rooms: br.largeFromRooms }) },
+    );
+  if (bk.workplaces > 0)
+    line(
+      'row',
+      'bikeOffice',
+      c('f.bikeOffice', { n: bk.workplaces, pct: pct(br.officeShareOfWorkplaces) }),
+      bk.officeSpaces,
+      'count',
+    );
+  line(
+    'subtotal',
+    'bikeSpaces',
+    c('f.roundUp', { exact: round2(bk.smallSpaces + bk.largeSpaces + bk.officeSpaces) }),
+    bk.spaces,
+    'count',
+  );
+  line(
+    'total',
+    'bikeArea',
+    c('f.bikeArea', { n: bk.spaces, area: br.areaPerSpace }),
+    bk.area,
+    'm2',
+  );
+
+  return { id: 'calculation', title: tr('tab.calculation'), columns, rows };
+}
+
+/** All schedules (surfaces, KPIs, typologies, calculation steps for the active variant; comparison of all). */
 export function allSchedules(project: Project, opts: ScheduleOptions = {}): Schedule[] {
   return [
     surfacesSchedule(project, opts),
     kpiSchedule(project, opts),
     typologySchedule(project, opts),
+    calculationSchedule(project, opts),
     comparisonSchedule(project, { ...(opts.analyses ? { analyses: opts.analyses } : {}) }),
   ];
 }

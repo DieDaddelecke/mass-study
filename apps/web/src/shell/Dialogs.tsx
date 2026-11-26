@@ -1,9 +1,11 @@
 import {
   circulationShare,
   requiredFacade,
+  resolveBikeParking,
   resolveOutdoorRules,
   resolveUnitRules,
   type AccessType,
+  type BikeParkingRules,
   type Constraints,
   type ModelWarning,
   type Project,
@@ -138,6 +140,9 @@ function SettingsDialog({ project }: { project: Project }) {
     </Row>
   );
   const pct = (v: number) => v * 100;
+  const bikes = resolveBikeParking(s);
+  const setBike = (k: keyof BikeParkingRules, v: number) =>
+    patch((d) => ({ ...d, bikeParking: { ...resolveBikeParking(d), [k]: v } }));
   const rules = resolveUnitRules(s);
   const setRule = (k: Exclude<keyof UnitRules, 'minAreas'>, v: number | boolean) =>
     patch((d) => ({ ...d, unitRules: { ...resolveUnitRules(d), [k]: v } }));
@@ -238,6 +243,23 @@ function SettingsDialog({ project }: { project: Project }) {
             (v) => patch((d) => ({ ...d, workplaceArea: v })),
             { suffix: 'm²' },
           )}
+          <h3>{t('settings.bikes')}</h3>
+          {num(t('settings.bikePerSmall'), bikes.perSmallDwelling, (v) =>
+            setBike('perSmallDwelling', v),
+          )}
+          {num(t('settings.bikePerLarge'), bikes.perLargeDwelling, (v) =>
+            setBike('perLargeDwelling', v),
+          )}
+          {num(
+            t('settings.bikeOfficeShare'),
+            pct(bikes.officeShareOfWorkplaces),
+            (v) => setBike('officeShareOfWorkplaces', v / 100),
+            { suffix: '%', digits: 1 },
+          )}
+          {num(t('settings.bikeArea'), bikes.areaPerSpace, (v) => setBike('areaPerSpace', v), {
+            suffix: 'm²',
+            digits: 2,
+          })}
         </div>
         <div>
           <h3>{t('settings.circulation')}</h3>

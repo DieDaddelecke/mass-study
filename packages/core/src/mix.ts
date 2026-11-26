@@ -1,4 +1,4 @@
-import type { AccessType, Settings, UnitType } from './types.js';
+import type { AccessType, BikeParkingRules, Settings, UnitType } from './types.js';
 
 /** Distribute `total` items over `shares` (any positive weights) with the largest-remainder method. */
 export function largestRemainder(total: number, shares: readonly number[]): number[] {
@@ -79,18 +79,121 @@ export interface ParkingResult {
   capacity: number;
 }
 
+/** Every step of the car parking calculation (same numbers as {@link parking}). */
+export interface ParkingBreakdown extends ParkingResult {
+  dwellings: number;
+  /** Spaces for the dwellings (dwellings × spaces per dwelling, not rounded). */
+  dwellingSpaces: number;
+  officeNuf: number;
+  officeSpaces: number;
+  retailNuf: number;
+  retailSpaces: number;
+  /** Sum before rounding up. */
+  demandExact: number;
+  garageBgf: number;
+  /** Garage area usable for spaces and aisles (BGF × efficiency). */
+  garageUsable: number;
+  /** Garage BGF the demand needs (demand × area per space / efficiency). */
+  garageBgfRequired: number;
+}
+
+export function parkingBreakdown(
+  input: { dwellings: number; officeNuf: number; retailNuf: number; garageBgf: number },
+  settings: Pick<Settings, 'parking'>,
+): ParkingBreakdown {
+  const p = settings.parking;
+  const dwellingSpaces = input.dwellings * p.perDwelling;
+  const officeSpaces = p.officeAreaPerSpace > 0 ? input.officeNuf / p.officeAreaPerSpace : 0;
+  const retailSpaces = p.retailAreaPerSpace > 0 ? input.retailNuf / p.retailAreaPerSpace : 0;
+  const demandExact = dwellingSpaces + officeSpaces + retailSpaces;
+  const demand = Math.ceil(demandExact - 1e-9);
+  const garageUsable = input.garageBgf * p.garageEfficiency;
+  const capacity = p.garageAreaPerSpace > 0 ? Math.floor(garageUsable / p.garageAreaPerSpace) : 0;
+  return {
+    dwellings: input.dwellings,
+    dwellingSpaces,
+    officeNuf: input.officeNuf,
+    officeSpaces,
+    retailNuf: input.retailNuf,
+    retailSpaces,
+    demandExact,
+    demand,
+    garageBgf: input.garageBgf,
+    garageUsable,
+    capacity,
+    garageBgfRequired:
+      p.garageEfficiency > 0 ? (demand * p.garageAreaPerSpace) / p.garageEfficiency : 0,
+  };
+}
+
 export function parking(
   input: { dwellings: number; officeNuf: number; retailNuf: number; garageBgf: number },
   settings: Pick<Settings, 'parking'>,
 ): ParkingResult {
-  const p = settings.parking;
-  const demand =
-    input.dwellings * p.perDwelling +
-    (p.officeAreaPerSpace > 0 ? input.officeNuf / p.officeAreaPerSpace : 0) +
-    (p.retailAreaPerSpace > 0 ? input.retailNuf / p.retailAreaPerSpace : 0);
-  const capacity =
-    p.garageAreaPerSpace > 0
-      ? Math.floor((input.garageBgf * p.garageEfficiency) / p.garageAreaPerSpace)
-      : 0;
-  return { demand: Math.ceil(demand - 1e-9), capacity };
+  const b = parkingBreakdown(input, settings);
+  return { demand: b.demand, capacity: b.capacity };
+}
+
+/** Bicycle parking defaults (arrêté du 30 juin 2022; the PLU may ask for more). */
+export const DEFAULT_BIKE_PARKING: BikeParkingRules = Object.freeze({
+  perSmallDwelling: 1,
+  perLargeDwelling: 2,
+  largeFromRooms: 3,
+  areaPerSpace: 1.5,
+  officeShareOfWorkplaces: 0.15,
+});
+
+export function resolveBikeParking(settings: Pick<Settings, 'bikeParking'>): BikeParkingRules {
+  return { ...DEFAULT_BIKE_PARKING, ...settings.bikeParking };
+}
+
+export interface BikeParkingResult {
+  rules: BikeParkingRules;
+  /** Dwellings with fewer than `largeFromRooms` pièces principales. */
+  smallDwellings: number;
+  largeDwellings: number;
+  smallSpaces: number;
+  largeSpaces: number;
+  workplaces: number;
+  officeSpaces: number;
+  /** Total spaces (rounded up). */
+  spaces: number;
+  /** Floor area of the bicycle room(s), m². */
+  area: number;
+}
+
+/**
+ * Bicycle spaces and their area: dwellings by number of pièces principales (`rooms` of the
+ * unit type; dwellings of an unknown type count as large) and office workplaces.
+ */
+export function bikeParking(
+  input: {
+    dwellingsByType: readonly { id: string; count: number }[];
+    workplaces: number;
+  },
+  settings: Pick<Settings, 'bikeParking' | 'unitMix'>,
+): BikeParkingResult {
+  const rules = resolveBikeParking(settings);
+  let small = 0;
+  let large = 0;
+  for (const t of input.dwellingsByType) {
+    const rooms = settings.unitMix.find((u) => u.id === t.id)?.rooms;
+    if (rooms !== undefined && rooms < rules.largeFromRooms) small += t.count;
+    else large += t.count;
+  }
+  const smallSpaces = small * rules.perSmallDwelling;
+  const largeSpaces = large * rules.perLargeDwelling;
+  const officeSpaces = input.workplaces * rules.officeShareOfWorkplaces;
+  const spaces = Math.ceil(smallSpaces + largeSpaces + officeSpaces - 1e-9);
+  return {
+    rules,
+    smallDwellings: small,
+    largeDwellings: large,
+    smallSpaces,
+    largeSpaces,
+    workplaces: input.workplaces,
+    officeSpaces,
+    spaces,
+    area: spaces * rules.areaPerSpace,
+  };
 }

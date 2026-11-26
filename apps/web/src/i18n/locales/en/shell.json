@@ -327,7 +327,12 @@
       "wc": "WC"
     },
     "facadeAreaRatio": "Min. façade as % of area",
-    "facadeGrid": "Façade grid (party walls)"
+    "facadeGrid": "Façade grid (party walls)",
+    "bikes": "Bicycle parking",
+    "bikePerSmall": "Spaces per dwelling (T1, T2)",
+    "bikePerLarge": "Spaces per dwelling (T3 and more)",
+    "bikeOfficeShare": "Bicycle spaces per workplace",
+    "bikeArea": "Area per bicycle space"
   },
   "rules": {
     "fr": "France (PLU)",

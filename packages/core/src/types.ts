@@ -582,6 +582,12 @@ export interface Settings {
     garageAreaPerSpace: number;
     garageEfficiency: number;
   };
+  /**
+   * Bicycle parking (local vélos), defaults when missing ({@link DEFAULT_BIKE_PARKING}:
+   * arrêté du 30 juin 2022 – 1 space per dwelling up to 2 pièces principales, 2 from 3, at least
+   * 1.5 m² per space without the clearance; offices 15 % of the workplaces).
+   */
+  bikeParking?: Partial<BikeParkingRules>;
   /** DE full-storey rule (Vollgeschoss, configurable per Land). */
   fullStorey: {
     minHeightAboveGround: number;
@@ -596,6 +602,19 @@ export interface Settings {
     residentialAbatement: number;
   };
   levelTolerance: number;
+}
+
+export interface BikeParkingRules {
+  /** Spaces per dwelling with up to `largeFromRooms − 1` pièces principales. */
+  perSmallDwelling: number;
+  /** Spaces per dwelling with `largeFromRooms` pièces principales or more. */
+  perLargeDwelling: number;
+  /** Pièces principales from which a dwelling counts as large (default 3). */
+  largeFromRooms: number;
+  /** Floor area per space, m² (without the clearance). */
+  areaPerSpace: number;
+  /** Spaces per workplace of the offices (share of the staff, 0.15 = 15 %). */
+  officeShareOfWorkplaces: number;
 }
 
 export interface ProjectInfo {

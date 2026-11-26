@@ -10,6 +10,7 @@
     "surfaces": "Flächen",
     "kpis": "Kennzahlen",
     "typologies": "Typologien und Mix",
+    "calculation": "Rechenweg",
     "comparison": "Variantenvergleich"
   },
   "actions": {
@@ -64,7 +65,11 @@
     "workplaces": "Arbeitsplätze",
     "parkingDemand": "Stellplatzbedarf",
     "parkingCapacity": "Stellplatzangebot",
-    "variant": "{{name}}"
+    "variant": "{{name}}",
+    "step": "Schritt",
+    "formula": "Rechnung",
+    "value": "Wert",
+    "shareOfBgf": "% der BGF"
   },
   "row": {
     "aboveGround": "Zwischensumme oberirdisch",
@@ -122,5 +127,85 @@
     "kombibuero": "Kombibüro",
     "openSpace": "Großraum",
     "atrium": "Atrium"
+  },
+  "calc": {
+    "group": {
+      "areas": "Bruttogrundfläche → Nutzungsfläche (Näherung DIN 277)",
+      "sdp": "Surface de plancher (Art. R.111-22, vereinfacht)",
+      "parking": "Pkw-Stellplätze",
+      "bikes": "Fahrradstellplätze (Erlass vom 30.06.2022, der PLU kann mehr verlangen)"
+    },
+    "row": {
+      "bgf": "Bruttogrundfläche (BGF)",
+      "exteriorWalls": "− Außenwände",
+      "interior": "− Innere Konstruktion",
+      "nrf": "= Netto-Raumfläche (NRF)",
+      "vf": "− Verkehrsfläche (VF)",
+      "tf": "− Technikfläche (TF)",
+      "nuf": "= Nutzungsfläche (NUF)",
+      "livingArea": "Wohnfläche",
+      "dwellings": "Wohnungen (Schätzung)",
+      "sdpGross": "BGF aller Geschosse",
+      "sdpParking": "− Parkgeschosse",
+      "sdpWalls": "− Dicke der Außenwände",
+      "sdpTechnical": "− Technikflächen",
+      "sdpBefore": "= Zwischensumme",
+      "sdpAbatement": "− Abschlag Wohnen",
+      "sdp": "= Surface de plancher (SDP)",
+      "parkDwellings": "Stellplätze Wohnungen",
+      "parkOffice": "Stellplätze Büro",
+      "parkRetail": "Stellplätze Gewerbe",
+      "parkDemand": "= Benötigte Stellplätze",
+      "parkRequiredArea": "Benötigte Garagenfläche",
+      "parkGarage": "Geplante Garagenfläche (BGF)",
+      "parkUsable": "Fläche für Stellplätze und Fahrgassen",
+      "parkCapacity": "= Angebotene Stellplätze",
+      "parkBalance": "Differenz (angeboten − benötigt)",
+      "bikeSmall": "Wohnungen bis {{rooms}} Zimmer",
+      "bikeLarge": "Wohnungen ab {{rooms}} Zimmern",
+      "bikeOffice": "Büro",
+      "bikeSpaces": "= Benötigte Fahrradstellplätze",
+      "bikeArea": "= Fläche Fahrradraum"
+    },
+    "f": {
+      "bgf": "Summe der Grundflächen von {{levels}} Geschossen ({{masses}} Baukörper)",
+      "exteriorWalls": "Summe der Umfänge {{perimeter}} m × Wanddicke {{thickness}} m",
+      "interior": "{{pct}} % × BGF {{bgf}} m²",
+      "nrf": "BGF − Außenwände − innere Konstruktion",
+      "vf": "{{pct}} % × NRF {{base}} m² (ohne Parken und Technik)",
+      "vfMasses": "Je nach Erschließung des Baukörpers (Einzelheiten darunter)",
+      "none": "—",
+      "tf": "{{pct}} % × NRF {{base}} m²",
+      "tfStoreys": "+ Technikgeschosse {{area}} m²",
+      "nuf": "NRF − Verkehrsfläche − Technikfläche",
+      "livingArea": "NUF Wohnen {{nuf}} m² × Faktor {{factor}}",
+      "dwellings": "Wohnfläche ÷ {{avg}} m² (mittlere Wohnungsgröße des Mix), je Baukörper abgerundet",
+      "sdpGross": "Summe aller BGF, Untergeschosse eingeschlossen",
+      "sdpParking": "BGF der Parkgeschosse",
+      "sdpWalls": "Umfang × {{thickness}} m (Geschosse ohne Parken)",
+      "sdpTechnical": "Technikflächen der übrigen Geschosse",
+      "sdpAbatement": "{{pct}} % × Wohnanteil {{base}} m²",
+      "sdp": "Zwischensumme − Abschlag",
+      "parkDwellings": "{{n}} Wohnungen × {{rate}} Stellplatz/Stellplätze je Wohnung",
+      "perArea": "NUF {{nuf}} m² ÷ {{area}} m² je Stellplatz",
+      "roundUp": "{{exact}} aufgerundet",
+      "parkRequiredArea": "{{n}} Stellplätze × {{area}} m² ÷ Flächeneffizienz {{eff}} %",
+      "parkGarage": "BGF der Geschosse „Parken“",
+      "parkUsable": "{{bgf}} m² × Flächeneffizienz {{eff}} %",
+      "parkCapacity": "{{usable}} m² ÷ {{area}} m² je Stellplatz, abgerundet",
+      "parkBalance": "Angebotene − benötigte Stellplätze",
+      "bikeDwellings": "{{n}} Wohnungen × {{rate}} Stellplatz/Stellplätze",
+      "bikeOffice": "{{n}} Arbeitsplätze × {{pct}} %",
+      "bikeArea": "{{n}} Stellplätze × {{area}} m² (ohne Bewegungsfläche)"
+    },
+    "nufUsage": {
+      "wohnen": "davon Wohnen",
+      "wohnheim": "davon Wohnheim",
+      "buero": "davon Büro",
+      "gewerbe": "davon Gewerbe",
+      "gemeinbedarf": "davon Gemeinbedarf",
+      "parken": "davon Parken",
+      "technik": "davon Technik"
+    }
   }
 }

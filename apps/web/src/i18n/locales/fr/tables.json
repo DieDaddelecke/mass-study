@@ -10,6 +10,7 @@
     "surfaces": "Surfaces",
     "kpis": "Indicateurs",
     "typologies": "Typologies et programme",
+    "calculation": "Méthode de calcul",
     "comparison": "Comparaison des variantes"
   },
   "actions": {
@@ -64,7 +65,11 @@
     "workplaces": "Postes de travail",
     "parkingDemand": "Places requises",
     "parkingCapacity": "Places offertes",
-    "variant": "{{name}}"
+    "variant": "{{name}}",
+    "step": "Étape",
+    "formula": "Calcul",
+    "value": "Valeur",
+    "shareOfBgf": "% surface brute"
   },
   "row": {
     "aboveGround": "Sous-total hors sol",
@@ -122,5 +127,85 @@
     "kombibuero": "Bureaux combinés",
     "openSpace": "Open space",
     "atrium": "Atrium"
+  },
+  "calc": {
+    "group": {
+      "areas": "Surface brute → surface utile (approximation DIN 277)",
+      "sdp": "Surface de plancher (art. R.111-22, simplifiée)",
+      "parking": "Stationnement voitures",
+      "bikes": "Stationnement vélos (arrêté du 30 juin 2022, le PLU peut exiger plus)"
+    },
+    "row": {
+      "bgf": "Surface brute",
+      "exteriorWalls": "− Murs extérieurs",
+      "interior": "− Structure intérieure",
+      "nrf": "= Surface nette",
+      "vf": "− Circulations",
+      "tf": "− Locaux techniques",
+      "nuf": "= Surface utile",
+      "livingArea": "Surface habitable",
+      "dwellings": "Logements (estimation)",
+      "sdpGross": "Surface brute de tous les niveaux",
+      "sdpParking": "− Niveaux de stationnement",
+      "sdpWalls": "− Épaisseur des murs extérieurs",
+      "sdpTechnical": "− Locaux techniques",
+      "sdpBefore": "= Sous-total",
+      "sdpAbatement": "− Abattement logement",
+      "sdp": "= Surface de plancher (SDP)",
+      "parkDwellings": "Places pour les logements",
+      "parkOffice": "Places pour les bureaux",
+      "parkRetail": "Places pour les commerces",
+      "parkDemand": "= Places requises",
+      "parkRequiredArea": "Surface de parking nécessaire",
+      "parkGarage": "Surface brute du parking prévue",
+      "parkUsable": "Surface pour places et allées",
+      "parkCapacity": "= Places offertes",
+      "parkBalance": "Écart (offertes − requises)",
+      "bikeSmall": "Logements jusqu’à {{rooms}} pièces",
+      "bikeLarge": "Logements de {{rooms}} pièces et plus",
+      "bikeOffice": "Bureaux",
+      "bikeSpaces": "= Places vélos requises",
+      "bikeArea": "= Surface du local vélos"
+    },
+    "f": {
+      "bgf": "Somme des emprises de {{levels}} niveaux ({{masses}} volume(s))",
+      "exteriorWalls": "Somme des périmètres {{perimeter}} m × épaisseur {{thickness}} m",
+      "interior": "{{pct}} % × surface brute {{bgf}} m²",
+      "nrf": "Surface brute − murs extérieurs − structure intérieure",
+      "vf": "{{pct}} % × surface nette {{base}} m² (hors parking et technique)",
+      "vfMasses": "Selon la distribution de chaque volume (détail ci-dessous)",
+      "none": "—",
+      "tf": "{{pct}} % × surface nette {{base}} m²",
+      "tfStoreys": "+ niveaux techniques {{area}} m²",
+      "nuf": "Surface nette − circulations − locaux techniques",
+      "livingArea": "Surface utile logement {{nuf}} m² × facteur {{factor}}",
+      "dwellings": "Surface habitable ÷ {{avg}} m² (surface moyenne du programme), par volume arrondi à l’inférieur",
+      "sdpGross": "Somme de toutes les surfaces brutes, sous-sol compris",
+      "sdpParking": "Surface brute des niveaux de stationnement",
+      "sdpWalls": "Périmètre × {{thickness}} m (niveaux sans parking)",
+      "sdpTechnical": "Locaux techniques des niveaux restants",
+      "sdpAbatement": "{{pct}} % × part logement {{base}} m²",
+      "sdp": "Sous-total − abattement",
+      "parkDwellings": "{{n}} logements × {{rate}} place(s) par logement",
+      "perArea": "Surface utile {{nuf}} m² ÷ {{area}} m² par place",
+      "roundUp": "{{exact}} arrondi à l’entier supérieur",
+      "parkRequiredArea": "{{n}} places × {{area}} m² ÷ rendement {{eff}} %",
+      "parkGarage": "Surface brute des niveaux « Stationnement »",
+      "parkUsable": "{{bgf}} m² × rendement {{eff}} %",
+      "parkCapacity": "{{usable}} m² ÷ {{area}} m² par place, arrondi à l’inférieur",
+      "parkBalance": "Places offertes − places requises",
+      "bikeDwellings": "{{n}} logements × {{rate}} place(s)",
+      "bikeOffice": "{{n}} postes de travail × {{pct}} %",
+      "bikeArea": "{{n}} places × {{area}} m² (hors dégagement)"
+    },
+    "nufUsage": {
+      "wohnen": "dont logement",
+      "wohnheim": "dont résidence",
+      "buero": "dont bureaux",
+      "gewerbe": "dont commerce",
+      "gemeinbedarf": "dont équipement",
+      "parken": "dont stationnement",
+      "technik": "dont technique"
+    }
   }
 }

@@ -327,7 +327,12 @@
       "wc": "WC"
     },
     "facadeAreaRatio": "Mindestfassade in % der Fläche",
-    "facadeGrid": "Fassadenraster (Wohnungstrennwände)"
+    "facadeGrid": "Fassadenraster (Wohnungstrennwände)",
+    "bikes": "Fahrradstellplätze",
+    "bikePerSmall": "Stellplätze je Wohnung (T1, T2)",
+    "bikePerLarge": "Stellplätze je Wohnung (ab T3)",
+    "bikeOfficeShare": "Fahrradstellplätze je Arbeitsplatz",
+    "bikeArea": "Fläche je Fahrradstellplatz"
   },
   "rules": {
     "fr": "Frankreich (PLU)",

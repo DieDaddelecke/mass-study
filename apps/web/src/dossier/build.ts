@@ -1,5 +1,6 @@
 import {
   analyzeProject,
+  calculationSchedule,
   kpiSchedule,
   surfacesSchedule,
   typologySchedule,
@@ -39,6 +40,7 @@ export function buildDossier(
         surfacesSchedule(project, so),
         kpiSchedule(project, so),
         typologySchedule(project, so),
+        calculationSchedule(project, so),
       ],
       t: (k, p) => t(k, p ?? {}),
       formatNumber: (v, d) => formatNumber(v, d),
