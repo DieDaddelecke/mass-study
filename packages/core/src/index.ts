@@ -6,6 +6,7 @@ export * from './storeys.js';
 export * from './areas.js';
 export * from './typologies.js';
 export * from './mix.js';
+export * from './programme.js';
 export * from './analysis.js';
 export * from './rules.js';
 export * from './checks.js';

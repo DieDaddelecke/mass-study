@@ -1,5 +1,7 @@
 import {
   circulationShare,
+  defaultProgramme,
+  programmeResult,
   requiredFacade,
   resolveOutdoorRules,
   resolveUnitRules,
@@ -26,6 +28,48 @@ import { DossierDialog } from '../dossier/DossierDialog';
 import { RenderDialog } from '../render/RenderDialog';
 import { AutoStudyDialog } from '../autostudy/AutoStudyDialog';
 import { Dialog, NumField, Row } from './ui';
+import { ProgrammeEditor } from './ProgrammeFields';
+
+/**
+ * Project default of the housing programme (buildings without their own), with the achieved
+ * mix over those buildings; targets in dwellings are compared as entered.
+ */
+function ProjectProgramme({
+  project,
+  settings,
+  patch,
+}: {
+  project: Project;
+  settings: Settings;
+  patch: (f: (d: Settings) => Settings) => void;
+}) {
+  const { t } = useTranslation('shell');
+  const analysis = useAnalysis();
+  const cfg = settings.programme ?? { ...defaultProgramme(settings.unitMix), enabled: false };
+  const masses = activeVariant(project)?.masses ?? [];
+  const counts = new Map<string, number>();
+  let any = false;
+  for (const l of analysis?.layouts ?? []) {
+    const m = masses.find((x) => x.id === l.massId);
+    if (!m || m.programme || !l.programme) continue;
+    any = true;
+    for (const b of l.totals.byType) counts.set(b.typeId, (counts.get(b.typeId) ?? 0) + b.count);
+  }
+  const result =
+    any && cfg.enabled && settings.programme === project.settings.programme
+      ? programmeResult(cfg, settings.unitMix, counts)
+      : undefined;
+  return (
+    <ProgrammeEditor
+      cfg={cfg}
+      mix={settings.unitMix}
+      label={t('programme.projectEnabled')}
+      result={result}
+      absolute={cfg.mode === 'count'}
+      onChange={(c) => patch((d) => ({ ...d, programme: c }))}
+    />
+  );
+}
 
 export function Dialogs() {
   const dialog = useShellStore((s) => s.dialog);
@@ -238,6 +282,8 @@ function SettingsDialog({ project }: { project: Project }) {
             (v) => patch((d) => ({ ...d, workplaceArea: v })),
             { suffix: 'm²' },
           )}
+          <h3>{t('programme.title')}</h3>
+          <ProjectProgramme project={project} settings={s} patch={patch} />
         </div>
         <div>
           <h3>{t('settings.circulation')}</h3>

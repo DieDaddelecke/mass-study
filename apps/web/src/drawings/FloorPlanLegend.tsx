@@ -1,4 +1,10 @@
-import { requiredFacade, type MassLayout, type UnitRules, type UnitType } from '@kubatur/core';
+import {
+  requiredFacade,
+  unitOutdoors,
+  type MassLayout,
+  type UnitRules,
+  type UnitType,
+} from '@kubatur/core';
 import { FLOOR_PLAN_COLORS, roomColor, unitColor } from '@kubatur/drawing';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../i18n';
@@ -74,7 +80,11 @@ export function FloorPlanLegend({
   const outdoorFail = outdoor.filter((u) => !u.outdoor!.ok).length;
   const nuit = units.filter((u) => u.duplex?.level === 'nuit').length;
   const outdoorNone = units.length - nuit - outdoor.length;
-  const outdoorArea = outdoor.reduce((a, u) => a + u.outdoor!.area, 0);
+  const outdoorArea = units.reduce(
+    (a, u) => a + unitOutdoors(u).reduce((x, o) => x + o.area, 0),
+    0,
+  );
+  const extraOutdoor = units.reduce((a, u) => a + (u.outdoorExtra?.length ?? 0), 0);
   const neutral = unitColor(mix[0]?.id ?? '', mix);
   const hasOpen = here.some(({ s }) => s.open.length > 0);
   const blind = here.reduce(
@@ -277,7 +287,29 @@ export function FloorPlanLegend({
       {outdoorNone > 0 && outdoor.length > 0 && (
         <p className="dv-legend-note">{t('fp.outdoorNone', { count: outdoorNone })}</p>
       )}
+      {extraOutdoor > 0 && (
+        <p className="dv-legend-note">{t('fp.outdoorStacked', { count: extraOutdoor })}</p>
+      )}
       {nuit > 0 && <p className="dv-legend-note">{t('fp.duplexNuit', { count: nuit })}</p>}
+      {layouts
+        .filter((m) => m.programme && m.programme.total > 0)
+        .map((m) => (
+          <p
+            key={`p${m.massId}`}
+            className={`dv-legend-note${m.programme!.deviation >= 1 ? ' dv-legend-warn' : ''}`}
+          >
+            <strong>
+              {t('fp.programme')}
+              {layouts.length > 1 ? ` ${m.name}` : ''} :
+            </strong>{' '}
+            {m
+              .programme!.entries.map(
+                (e) => `${e.label} ${e.achieved}/${formatNumber(e.target, 0)}`,
+              )
+              .join(' · ')}{' '}
+            ({t('fp.programmeWhole')})
+          </p>
+        ))}
       {outOfRange && <p className="dv-legend-note">{t('fp.outOfRange')}</p>}
       {differs.map((m) => (
         <p key={m.massId} className="dv-legend-note">

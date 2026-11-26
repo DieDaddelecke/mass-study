@@ -125,7 +125,11 @@
       }
     },
     "blindFacade": "Façade aveugle (limite séparative)",
-    "partyBoundary": "Limite séparative"
+    "partyBoundary": "Limite séparative",
+    "outdoorStacked_one": "{{count}} espace extérieur ajouté pour que les balcons et loggias se répètent d'un étage à l'autre.",
+    "outdoorStacked_other": "{{count}} espaces extérieurs ajoutés pour que les balcons et loggias se répètent d'un étage à l'autre.",
+    "programme": "Programme",
+    "programmeWhole": "obtenu / objectif, tout le bâtiment"
   },
   "ridge": "faîtage"
 }

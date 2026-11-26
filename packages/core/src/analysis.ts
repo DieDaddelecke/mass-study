@@ -2,6 +2,7 @@ import { coreRange } from './unitRules.js';
 import { solidAreas, sumAreas, type AreaFigures } from './areas.js';
 import { polygonArea, union, polygonsArea } from './geometry.js';
 import { typologySegments } from './generators.js';
+import { programmeSettings } from './programme.js';
 import { parking, unitMix, workplaces, type ParkingResult, type UnitMixResult } from './mix.js';
 import {
   massToSolids,
@@ -187,7 +188,7 @@ function computeMass(mass: Mass, settings: Settings): MassResult {
       residualArea: 0,
     };
   } else {
-    dwellings = unitMix(areas.livingArea, settings.unitMix);
+    dwellings = unitMix(areas.livingArea, programmeSettings(mass, settings).unitMix);
   }
 
   let mixHint: MassResult['mixHint'];
