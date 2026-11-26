@@ -131,6 +131,18 @@ export function requiredCores(mass: Mass, access: AccessType, settings: Settings
 }
 
 /**
+ * Zeile whose sections (« tronçons », one stair core each) are fewer than the escape distance
+ * needs: the number needed, else undefined (Soheyl 26.11.2026).
+ */
+export function zeileCoreShortfall(mass: Mass, settings: Settings): number | undefined {
+  const t = mass.typology;
+  if (t.kind !== 'zeile' || (mass.usage ?? 'wohnen') !== 'wohnen') return undefined;
+  if (resolveAccess(mass, settings) === 'reihenhaus') return undefined;
+  const need = Math.max(1, Math.ceil(t.length / (2 * settings.cores.maxEscapeDistance) - 1e-9));
+  return Math.max(1, Math.round(t.sections)) < need ? need : undefined;
+}
+
+/**
  * Dwellings per core and storey expected for this mass: the user's number (`unitsPerCore`) for
  * gallery, corridor and point block, else the access type's range (settings).
  */

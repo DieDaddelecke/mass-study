@@ -23,6 +23,7 @@ export type WarningCode =
   | 'mixPlausibility'
   | 'estimatedContextHeights'
   | 'unitFacade'
+  | 'tronconsEscape'
   | 'prospect'
   | 'reculVoie'
   | 'buildingDistance';

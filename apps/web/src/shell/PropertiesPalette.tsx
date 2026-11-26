@@ -19,6 +19,7 @@ import { DISPLAY_MODES, setDisplayMode, useDisplayMode, type DisplayMode } from 
 import { useAnalysis } from '../store/useAnalysis';
 import { useUiStore } from '../store/uiStore';
 import { DuplexFields } from './DuplexFields';
+import { ProgrammeFields } from './ProgrammeFields';
 import { OutdoorFields } from './OutdoorFields';
 import { SiteBoundaryFields } from './SiteBoundaryFields';
 import { PlantingProperties, RoofFields, TerraceFields } from './MassShapeFields';
@@ -345,6 +346,7 @@ function MassProperties({ mass }: { mass: Mass }) {
         <>
           <OutdoorFields mass={mass} settings={project.settings} update={update} />
           <DuplexFields mass={mass} settings={project.settings} update={update} />
+          <ProgrammeFields mass={mass} settings={project.settings} update={update} />
         </>
       )}
       <UseFields mass={mass} settings={project.settings} update={update} />

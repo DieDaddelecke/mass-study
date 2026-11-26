@@ -362,6 +362,7 @@
     "mixPlausibility": "{{masses}} : {{actual}} logements par palier et noyau (attendu {{min}}–{{max}}).",
     "estimatedContextHeights": "Hauteur estimée pour {{count}} bâtiment(s) de contexte.",
     "unitFacade": "{{count}} logements ne respectent pas les longueurs de façade minimales ({{masses}}).",
+    "tronconsEscape": "{{masses}} : {{actual}} tronçon(s), donc autant de cages d'escalier ; la distance d'évacuation en demande {{required}}.",
     "constraintBelow": "{{key}} sous le minimum : {{actual}} au lieu de {{target}} min.",
     "prospect": "Le volume {{masses}} est à {{actual}} m d'une limite séparative (prospect : {{required}} m).",
     "reculVoie": "Le volume {{masses}} est à {{actual}} m de la voie (recul : {{required}} m).",
@@ -635,5 +636,26 @@
       "recul": "Reculs",
       "distance": "Distance entre bâtiments"
     }
+  },
+  "programme": {
+    "title": "Programme de logements",
+    "enabled": "Programme pour ce bâtiment",
+    "projectEnabled": "Programme par défaut des bâtiments",
+    "mode": "Valeurs",
+    "percent": "en %",
+    "count": "en nombre de logements",
+    "type": "Type",
+    "target": "Objectif",
+    "achieved": "Obtenu",
+    "total": "Total",
+    "merge": "Regrouper avec le type suivant",
+    "split": "Séparer le groupe",
+    "met": "Programme respecté sur l'ensemble du bâtiment.",
+    "deviation_one": "Écart : {{count}} logement d'un autre type que le programme.",
+    "deviation_other": "Écart : {{count}} logements d'un autre type que le programme.",
+    "other_one": "{{count}} logement hors programme.",
+    "other_other": "{{count}} logements hors programme.",
+    "useProject": "Reprendre le programme du projet",
+    "note": "Le programme vaut pour l'ensemble du bâtiment, pas par étage : les étages peuvent recevoir des plans différents, même à volume identique. Les noyaux restent identiques à chaque étage, un étage ne change que si cela ne crée pas de surface perdue, et les balcons et loggias se répètent d'un étage à l'autre (un T4 au-dessus de deux T2 reçoit deux espaces extérieurs)."
   }
 }

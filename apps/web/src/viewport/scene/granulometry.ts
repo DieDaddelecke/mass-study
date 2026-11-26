@@ -6,6 +6,7 @@ import {
   type Polygon,
   type StoreySolid,
   type UnitType,
+  unitOutdoors,
 } from '@kubatur/core';
 import { SPACE_COLORS, unitColor } from '@kubatur/drawing';
 import { BufferGeometry, Color, Float32BufferAttribute } from 'three';
@@ -96,9 +97,13 @@ export function buildGranulometry(
       };
       for (const u of st.units) {
         const color = unitColor(u.typeId, mix);
-        const cut = u.outdoor?.kind === 'loggia' ? (u.outdoor.cut ?? u.outdoor.polygon) : null;
+        // loggias (the dwelling's own and those repeated from the storeys around)
+        const cuts = unitOutdoors(u)
+          .filter((o) => o.kind === 'loggia')
+          .map((o) => o.cut ?? o.polygon);
+        const cut = cuts.length ? cuts : null;
         const zc = z1 - LOGGIA_SLAB;
-        const loggia = cut && zc > st.z0 ? big(intersection([u.polygon], [cut])) : [];
+        const loggia = cut && zc > st.z0 ? big(intersection([u.polygon], cut)) : [];
         // a duplex reads as one volume over two storeys: no outline between its levels
         const edgeOpts = {
           bottom: false,
@@ -110,7 +115,7 @@ export function buildGranulometry(
           continue;
         }
         // the dwelling without its loggia, and the slab of the storey above over the loggia
-        for (const p of big(difference([u.polygon], [cut]))) add(p, color, false);
+        for (const p of big(difference([u.polygon], cut))) add(p, color, false);
         for (const p of loggia) {
           add(p, color, false, zc, z1);
           prismEdges(p, st.z0, zc, { bottom: false }, edges);
@@ -162,28 +167,27 @@ export function buildOutdoor(layouts: readonly MassLayout[]): OutdoorScene {
   const loggias = new Map<string, Polygon[]>();
   for (const m of layouts)
     for (const st of m.storeys)
-      for (const u of st.units) {
-        const o = u.outdoor;
-        if (!o) continue;
-        const z = st.z0;
-        if (o.kind === 'loggia') {
-          const k = `${m.massId}#${st.storeyIndex}`;
-          loggias.set(k, [...(loggias.get(k) ?? []), o.cut ?? o.polygon]);
-          continue;
-        }
-        if (o.kind === 'terrasse') {
-          const g = extrudePolygon(o.polygon, z, z + 0.06);
+      for (const u of st.units)
+        for (const o of unitOutdoors(u)) {
+          const z = st.z0;
+          if (o.kind === 'loggia') {
+            const k = `${m.massId}#${st.storeyIndex}`;
+            loggias.set(k, [...(loggias.get(k) ?? []), o.cut ?? o.polygon]);
+            continue;
+          }
+          if (o.kind === 'terrasse') {
+            const g = extrudePolygon(o.polygon, z, z + 0.06);
+            if (g) slabs.push(g);
+            prismEdges(o.polygon, z + 0.06, z + 0.06, { bottom: false, vertical: false }, edges);
+            continue;
+          }
+          const g = extrudePolygon(o.polygon, z - SLAB, z);
           if (g) slabs.push(g);
-          prismEdges(o.polygon, z + 0.06, z + 0.06, { bottom: false, vertical: false }, edges);
-          continue;
+          const r = extrudePolygon(o.polygon, z, z + RAIL);
+          if (r) rails.push(r);
+          prismEdges(o.polygon, z - SLAB, z + RAIL, { vertical: false }, edges);
+          prismEdges(o.polygon, z, z, { top: false, vertical: false }, edges);
         }
-        const g = extrudePolygon(o.polygon, z - SLAB, z);
-        if (g) slabs.push(g);
-        const r = extrudePolygon(o.polygon, z, z + RAIL);
-        if (r) rails.push(r);
-        prismEdges(o.polygon, z - SLAB, z + RAIL, { vertical: false }, edges);
-        prismEdges(o.polygon, z, z, { top: false, vertical: false }, edges);
-      }
   const merge = (gs: BufferGeometry[]) => {
     if (!gs.length) return null;
     const out = mergeGeometries(

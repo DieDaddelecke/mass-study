@@ -362,6 +362,7 @@
     "mixPlausibility": "{{masses}}: {{actual}} Wohnungen je Geschoss und Kern (erwartet {{min}}–{{max}}).",
     "estimatedContextHeights": "Höhe von {{count}} Umgebungsgebäude(n) geschätzt.",
     "unitFacade": "{{count}} Wohnungen erfüllen die Mindest-Fassadenlängen nicht ({{masses}}).",
+    "tronconsEscape": "{{masses}}: {{actual}} Abschnitt(e) und damit ebenso viele Treppenhäuser; die Fluchtweglänge verlangt {{required}}.",
     "constraintBelow": "{{key}} unter dem Minimum: {{actual}} statt min. {{target}}.",
     "prospect": "Baukörper {{masses}} steht {{actual}} m von einer Nachbargrenze entfernt (Prospect: {{required}} m).",
     "reculVoie": "Baukörper {{masses}} steht {{actual}} m von der Straße entfernt (Abstand: {{required}} m).",
@@ -635,5 +636,26 @@
       "recul": "Abstände",
       "distance": "Gebäudeabstand"
     }
+  },
+  "programme": {
+    "title": "Wohnungsprogramm",
+    "enabled": "Programm für dieses Gebäude",
+    "projectEnabled": "Standardprogramm der Gebäude",
+    "mode": "Werte",
+    "percent": "in %",
+    "count": "als Anzahl Wohnungen",
+    "type": "Typ",
+    "target": "Soll",
+    "achieved": "Ist",
+    "total": "Summe",
+    "merge": "Mit dem nächsten Typ gruppieren",
+    "split": "Gruppe auflösen",
+    "met": "Programm im ganzen Gebäude eingehalten.",
+    "deviation_one": "Abweichung: {{count}} Wohnung mit einem anderen Typ als im Programm.",
+    "deviation_other": "Abweichung: {{count}} Wohnungen mit einem anderen Typ als im Programm.",
+    "other_one": "{{count}} Wohnung außerhalb des Programms.",
+    "other_other": "{{count}} Wohnungen außerhalb des Programms.",
+    "useProject": "Programm des Projekts übernehmen",
+    "note": "Das Programm gilt für das ganze Gebäude, nicht je Etage: Etagen können unterschiedliche Pläne bekommen, auch bei gleicher Kubatur. Die Kerne bleiben auf allen Etagen gleich, eine Etage ändert sich nur, wenn dabei keine tote Fläche entsteht, und Balkone und Loggien wiederholen sich über die Etagen (ein T4 über zwei T2 bekommt zwei Außenräume)."
   }
 }
