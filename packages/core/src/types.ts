@@ -470,6 +470,11 @@ export interface UnitType {
   areaMin: number;
   areaTarget: number;
   areaMax: number;
+  /**
+   * Margin above areaMax (0.15 = 15 %) before the programme counts a dwelling as too large;
+   * default by size: T1/T2 10 %, T3/T4 15 %, T5+ 17 % (Soheyl 26.11.2026). See unitAreaTolerance.
+   */
+  areaTolerance?: number;
   /** Number of main rooms (T3 = 3: living + 2 bedrooms); default: digit in id / label. */
   rooms?: number;
   /**
@@ -503,6 +508,12 @@ export interface UnitRules {
   /** Dwellings per stair core and storey (gallery, corridor, point block), min / max. */
   unitsPerCoreMin?: number;
   unitsPerCoreMax?: number;
+  /**
+   * The dwellings per core given (logements par palier, or the spänner type) are a preference:
+   * the generator may lay out one fewer or one or two more when that plans better (true,
+   * Soheyl 26.11.2026).
+   */
+  unitsPerCoreFlex?: boolean;
   /** Façade length at least this share of the dwelling area, m per m² (0.12). */
   facadeAreaRatio?: number;
   /** Party walls on this façade grid, m (1.25; 0 = off). */

@@ -129,7 +129,8 @@
     "outdoorStacked_one": "{{count}} outdoor space added so that balconies and loggias repeat from storey to storey.",
     "outdoorStacked_other": "{{count}} outdoor spaces added so that balconies and loggias repeat from storey to storey.",
     "programme": "Programme",
-    "programmeWhole": "achieved / target, whole building"
+    "programmeWhole": "achieved / target, whole building",
+    "perCoreChanged": "instead of {{given}} given: better plan"
   },
   "ridge": "ridge"
 }

@@ -5,10 +5,17 @@ import {
   massToSolids,
   polygonArea,
   resolveAccess,
+  resolveUnitRules,
+  type Settings,
 } from '../src/index.js';
 import { mass } from './helpers.js';
 
 const settings = defaultSettings('FR');
+/** The dwellings per core as given (no flexibility), for tests of one spänner type. */
+const fixed: Settings = {
+  ...settings,
+  unitRules: { ...resolveUnitRules(settings), unitsPerCoreFlex: false },
+};
 
 describe('dwellings per core set on the mass', () => {
   it('2 / 3 / 4 per landing pick the Zwei-, Drei-, Vierspänner', () => {
@@ -32,7 +39,7 @@ describe('dwellings per core set on the mass', () => {
     const t = { kind: 'solitaer', length: 60, depth: 17 } as const;
     const per = (n?: number) => {
       const m = mass(t, { access: 'mittelflur', ...(n ? { unitsPerCore: n } : {}) });
-      const ml = massLayout(m, massToSolids(m, settings), settings);
+      const ml = massLayout(m, massToSolids(m, fixed), fixed);
       const st = ml.storeys.find((s) => s.storeyIndex === 2)!;
       return { cores: st.cores.length, units: st.units.length, expected: ml.expectedUnitsPerCore };
     };
@@ -47,7 +54,7 @@ describe('dwellings per core set on the mass', () => {
 describe('spänner sections of library dwellings', () => {
   const layoutOf = (depth: number, unitsPerCore: number, length = 50) => {
     const m = mass({ kind: 'solitaer', length, depth }, { unitsPerCore });
-    const ml = massLayout(m, massToSolids(m, settings), settings);
+    const ml = massLayout(m, massToSolids(m, fixed), fixed);
     return { ml, st: ml.storeys.find((s) => s.storeyIndex === 2)! };
   };
   const rectangular = (p: { outer: [number, number][] }) => {
@@ -117,5 +124,30 @@ describe('orientation rule in the generator', () => {
           ).toBeGreaterThanOrEqual(2);
       }
     }
+  });
+});
+
+describe('dwellings per core are a preference (Soheyl 26.11.2026)', () => {
+  it('lays out another number per core when it plans better, and says so', () => {
+    const m = mass(
+      { kind: 'solitaer', length: 60, depth: 17 },
+      { access: 'mittelflur', unitsPerCore: 5 },
+    );
+    const flex = massLayout(m, massToSolids(m, settings), settings);
+    const fix = massLayout(m, massToSolids(m, fixed), fixed);
+    const open = (l: typeof flex) => l.storeys.reduce((s, st) => s + st.summary.openArea, 0);
+    expect(fix.unitsPerCoreChange).toBeUndefined();
+    expect(flex.unitsPerCoreChange?.given).toBe(5);
+    const chosen = flex.unitsPerCoreChange!.chosen;
+    expect(chosen).toBeGreaterThanOrEqual(4);
+    expect(chosen).toBeLessThanOrEqual(7);
+    expect(open(flex)).toBeLessThan(open(fix));
+  });
+
+  it('a spänner keeps its type when that plans best', () => {
+    const m = mass({ kind: 'solitaer', length: 50, depth: 14 }, { unitsPerCore: 3 });
+    const l = massLayout(m, massToSolids(m, settings), settings);
+    expect(l.access).toBe('dreispaenner');
+    expect(l.unitsPerCoreChange).toBeUndefined();
   });
 });

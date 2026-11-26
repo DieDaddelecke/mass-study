@@ -332,7 +332,16 @@
     "bikePerSmall": "Stellplätze je Wohnung (T1, T2)",
     "bikePerLarge": "Stellplätze je Wohnung (ab T3)",
     "bikeOfficeShare": "Fahrradstellplätze je Arbeitsplatz",
-    "bikeArea": "Fläche je Fahrradstellplatz"
+    "bikeArea": "Fläche je Fahrradstellplatz",
+    "unitSizes": "Wohnungsgrößen",
+    "areaMin": "min.",
+    "areaTarget": "Ziel",
+    "areaMax": "max.",
+    "areaTolerance": "Marge",
+    "areaLimit": "Grenze",
+    "unitSizesNote": "Wohnflächen in m². Die Marge kommt auf das Maximum: Über der Grenze bekommt eine Wohnung nie diesen Typ (sondern einen größeren). Zwischen Maximum und Grenze wird sie als außerhalb der Spanne markiert.",
+    "unitsPerCoreFlex": "Wohnungen je Treppenhaus flexibel",
+    "unitsPerCoreFlexNote": "Die Wohnungen je Treppenhaus (oder der Zwei-/Dreispänner) sind eine Vorgabe, keine feste Zahl: Der Plan kann eine weniger oder ein bis zwei mehr vorsehen, wenn Verteilung, Größen oder tote Fläche dadurch besser werden."
   },
   "rules": {
     "fr": "Frankreich (PLU)",

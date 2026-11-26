@@ -25,6 +25,7 @@ import {
 } from './analysis.js';
 import { largestRemainder, unitMix } from './mix.js';
 import {
+  clearlyOffRange,
   programmeDeviation,
   programmeResult,
   programmeSettings,
@@ -245,6 +246,11 @@ export interface MassLayout {
   areaBasedDwellings: number;
   /** Expected units per core of the access type (Zweispänner 2, Dreispänner 3, …). */
   expectedUnitsPerCore?: [number, number];
+  /**
+   * Dwellings per core laid out instead of the ones given (unitRules.unitsPerCoreFlex), when
+   * another number planned better: given and chosen.
+   */
+  unitsPerCoreChange?: { given: number; chosen: number };
   /** Target vs achieved of the building's housing programme (when it has one). */
   programme?: ProgrammeResult;
 }
@@ -1691,6 +1697,8 @@ function layoutStorey(
   const first = solids[0]!;
   const dim = layoutDimensions(settings);
   const mix = settings.unitMix.filter((t) => t.share > 0 && t.areaTarget > 0);
+  /** Every type, also those without a share (for dwellings too large for the mix's types). */
+  const allTypes = settings.unitMix.filter((t) => t.areaTarget > 0);
   const shareSum = mix.reduce((s, t) => s + t.share, 0);
   const avgTarget =
     shareSum > 0 ? mix.reduce((s, t) => s + (t.share / shareSum) * t.areaTarget, 0) : 60;
@@ -2520,12 +2528,11 @@ function layoutStorey(
       const pieces = facade.segments.map(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]));
       // from T3 two orientations (office rule): a one-sided dwelling is a T1 or T2
       const twoSides = orientationCheck(facade.segments, polygon, 3).orientationOk;
-      const allowed = mix.filter(
-        (t) =>
-          fc.req(t) <= facade.length + 1e-6 &&
-          roomsFit(t, pieces, rules) &&
-          (twoSides || unitRooms(t) < 3),
-      );
+      const fitsFacade = (t: UnitType) =>
+        fc.req(t) <= facade.length + 1e-6 &&
+        roomsFit(t, pieces, rules) &&
+        (twoSides || unitRooms(t) < 3);
+      const allowed = mix.filter(fitsFacade);
       const pool = allowed.length ? allowed : mix;
       let choice = u.type ?? typeByArea(area, pool, new Map());
       const t = choice.type;
@@ -2539,13 +2546,7 @@ function layoutStorey(
       let lm = choice.type.duplex ? undefined : libraryMatch(polygon, facade.segments, choice.type);
       if (!lm && rules.planLibrary !== false && !pass.duplex && !choice.type.duplex) {
         const alt = (allowed.length ? allowed : mix)
-          .filter(
-            (t) =>
-              t !== choice.type &&
-              !t.duplex &&
-              area >= t.areaMin * 0.9 - 1e-6 &&
-              area <= t.areaMax * 1.1 + 1e-6,
-          )
+          .filter((t) => t !== choice.type && !t.duplex && !clearlyOffRange(t, area))
           .sort((a, b) => Math.abs(a.areaTarget - area) - Math.abs(b.areaTarget - area));
         for (const t of alt) {
           lm = libraryMatch(polygon, facade.segments, t);
@@ -2553,6 +2554,23 @@ function layoutStorey(
             choice = { type: t, outOfRange: area < t.areaMin - 1e-6 || area > t.areaMax + 1e-6 };
             break;
           }
+        }
+      }
+      // the upper limit of a type (areaMax + its margin) is binding (Soheyl 26.11.2026: no T2
+      // of 70 m²): a dwelling above it takes the type it fits, also one outside the storey's
+      // mix, preferably one its façade allows (else it shows as a façade failure)
+      if (!choice.type.duplex && area > choice.type.areaMax && clearlyOffRange(choice.type, area)) {
+        const fitting = (ts: readonly UnitType[]) =>
+          ts
+            .filter((t) => !t.duplex && !clearlyOffRange(t, area))
+            .sort((a, b) => Math.abs(a.areaTarget - area) - Math.abs(b.areaTarget - area))[0];
+        const t =
+          fitting(allTypes.filter(fitsFacade)) ??
+          fitting(allTypes) ??
+          [...allTypes].filter((x) => !x.duplex).sort((a, b) => b.areaMax - a.areaMax)[0];
+        if (t && t !== choice.type) {
+          choice = { type: t, outOfRange: area < t.areaMin - 1e-6 || area > t.areaMax + 1e-6 };
+          lm = libraryMatch(polygon, facade.segments, t);
         }
       }
       const need = fc.req(choice.type);
@@ -2634,8 +2652,8 @@ function layoutStorey(
     }
   }
 
-  const byType: LayoutTypeCount[] = mix
-    .filter((t, i) => mix.findIndex((x) => x.id === t.id) === i)
+  const byType: LayoutTypeCount[] = allTypes
+    .filter((t, i) => allTypes.findIndex((x) => x.id === t.id) === i)
     .map((t) => {
       const list = units.filter((u) => u.typeId === t.id);
       const dpx = list.filter((u) => u.duplex?.level === 'jour').length;
@@ -3482,9 +3500,109 @@ const coresKey = (cores: readonly LayoutArea[]): string =>
 export function massLayout(
   mass: Mass,
   solids: readonly StoreySolid[],
+  settings: Settings,
+  areaBasedDwellings?: number,
+  site?: SiteEdges,
+): MassLayout {
+  const full = (m: Mass) => massLayoutWith(m, solids, settings, areaBasedDwellings, site);
+  const access = resolveAccess(mass, settings);
+  const given = givenUnitsPerCore(mass, access);
+  if (given === undefined || !resolveUnitRules(settings).unitsPerCoreFlex) return full(mass);
+  // the numbers per core are compared on plans without the programme's storey balancing (it
+  // takes the most time); the programme's deviation still counts. The best one is then planned
+  // in full.
+  const quick = (m: Mass) =>
+    massLayoutWith(m, solids, settings, areaBasedDwellings, site, { balance: false });
+  const spaenner = SPAENNER.includes(access);
+  const first = quick(mass);
+  // a step away from the number given costs half a dwelling per dwelling storey
+  const storeys = first.storeys.filter((st) => st.usage === 'wohnen' && st.units.length).length;
+  const cost = (l: MassLayout, n: number) =>
+    massLayoutCost(l, settings, first.totals.units) +
+    UNITS_PER_CORE_STEP * Math.max(1, storeys) * Math.abs(n - given);
+  let best = { mass, cost: cost(first, given), n: given };
+  for (const n of [given - 1, given + 1, given + 2]) {
+    if (n < 2 || (spaenner && n > 4)) continue;
+    const variant: Mass = {
+      ...mass,
+      unitsPerCore: n,
+      access: spaenner ? SPAENNER[n - 2]! : access,
+    };
+    const l = quick(variant);
+    if (!l.totals.units) continue;
+    const c = cost(l, n);
+    if (c < best.cost - 1e-6) best = { mass: variant, cost: c, n };
+  }
+  if (best.n === given) return resolveProgramme(mass, settings) ? full(mass) : first;
+  return { ...full(best.mass), unitsPerCoreChange: { given, chosen: best.n } };
+}
+
+const SPAENNER: readonly AccessType[] = ['zweispaenner', 'dreispaenner', 'vierspaenner'];
+
+/**
+ * Dwellings per core given for a residential mass: the number entered (logements par palier),
+ * else that of a spänner type (2 / 3 / 4); undefined for gallery, corridor and point block
+ * without a number (they take the settings range anyway) and for other uses.
+ */
+function givenUnitsPerCore(mass: Mass, access: AccessType): number | undefined {
+  if ((mass.usage ?? 'wohnen') !== 'wohnen') return undefined;
+  const k = SPAENNER.indexOf(access);
+  if (k >= 0) return k + 2;
+  if (access === 'laubengang' || access === 'mittelflur' || access === 'punkthaus')
+    return mass.unitsPerCore && mass.unitsPerCore >= 2 ? Math.round(mass.unitsPerCore) : undefined;
+  return undefined;
+}
+
+/**
+ * Cost of a building's plans, in dwellings: dead area, and per `perDwellings` dwellings those
+ * below their façade minimum, without double orientation or access, a little for those off their area range within the margin, much
+ * for those beyond it, and those off the housing programme (else off the unit mix).
+ */
+function massLayoutCost(l: MassLayout, settings: Settings, perDwellings: number): number {
+  const mix = settings.unitMix.filter((t) => t.share > 0 && t.areaTarget > 0);
+  const shareSum = mix.reduce((s, t) => s + t.share, 0) || 1;
+  const avg = mix.reduce((s, t) => s + (t.share / shareSum) * t.areaTarget, 0) || 60;
+  let dead = 0;
+  let fails = 0;
+  for (const st of l.storeys) {
+    if (st.usage !== 'wohnen' || !st.units.length) continue;
+    const here = st.units.filter((u) => u.duplex?.level !== 'nuit');
+    dead += (DEAD_AREA_WEIGHT * st.summary.openArea) / avg;
+    fails +=
+      here.filter((u) => !u.facadeOk).length +
+      // single-aspect from T3 or north only, no access, too little façade for the area
+      here.filter((u) => u.orientationOk === false).length +
+      here.filter((u) => u.accessOk === false).length +
+      0.5 * here.filter((u) => u.facadeRatioOk === false).length +
+      // within the margin a dwelling is acceptable, beyond it is not
+      0.3 * here.filter((u) => u.outOfRange).length +
+      3 * offRange(st, settings.unitMix);
+  }
+  // off the housing programme, else off the unit mix of the settings
+  let dev = l.programme?.deviation;
+  if (dev === undefined) {
+    const counts = new Map<string, number>();
+    for (const t of l.totals.byType) counts.set(t.typeId, (counts.get(t.typeId) ?? 0) + t.count);
+    dev = programmeDeviation(
+      mix.map((t) => ({ typeIds: [t.id], share: t.share / shareSum })),
+      counts,
+    );
+  }
+  // counts per dwelling, so that fewer, larger dwellings do not look better by number alone
+  const n = l.totals.units;
+  return n ? dead + ((fails + dev) / n) * perDwellings : Infinity;
+}
+
+/** Cost per dwelling storey of one dwelling per core more or fewer than given, in dwellings. */
+const UNITS_PER_CORE_STEP = 0.5;
+
+function massLayoutWith(
+  mass: Mass,
+  solids: readonly StoreySolid[],
   baseSettings: Settings,
   areaBasedDwellings?: number,
   site?: SiteEdges,
+  opts: { balance?: boolean } = {},
 ): MassLayout {
   // housing programme of the building: the storeys plan with its shares (and are balanced below)
   const programme = resolveProgramme(mass, baseSettings);
@@ -3570,7 +3688,7 @@ export function massLayout(
     return r.layout;
   });
   let planned = applyDuplex(mass, byStorey, settings, access, simplex, pins, party, frames);
-  if (programme && access !== 'reihenhaus')
+  if (programme && access !== 'reihenhaus' && opts.balance !== false)
     planned = balanceProgramme(
       planned.map((st, k) => ({
         layout: st,
@@ -3656,23 +3774,16 @@ function storeyCost(st: StoreyLayout, avgTarget: number): number {
 }
 
 /**
- * Dwellings clearly off their type's area range, more than 10 % (Soheyl 26.11.2026: no T2 of
- * 80 m² to reach the programme; T2 50 m² → at most 55 m²): the programme may never add one,
- * it counts as a deviation instead.
+ * Dwellings clearly off their type's area range, beyond the type's margin (Soheyl 26.11.2026:
+ * no T2 of 80 m² to reach the programme; T1/T2 +10 %, T3/T4 +15 %, T5 +17 %, see
+ * unitAreaTolerance): the programme may never add one, it counts as a deviation instead.
  */
 const offRange = (st: StoreyLayout, types: readonly UnitType[]): number =>
   st.units.filter((u) => {
     if (u.duplex?.level === 'nuit' || !u.outOfRange) return false;
     const t = types.find((x) => x.id === u.typeId);
-    if (!t) return true;
-    const a = u.duplex?.totalArea ?? u.area;
-    return (
-      a > t.areaMax * (1 + RANGE_TOLERANCE) + 1e-6 || a < t.areaMin * (1 - RANGE_TOLERANCE) - 1e-6
-    );
+    return !t || clearlyOffRange(t, u.duplex?.totalArea ?? u.area);
   }).length;
-
-/** Tolerance on a type's area range before the programme counts a dwelling as off range. */
-const RANGE_TOLERANCE = 0.1;
 
 /** Dwellings of programme deviation one average dwelling of dead area is worth. */
 const DEAD_AREA_WEIGHT = 2.5;

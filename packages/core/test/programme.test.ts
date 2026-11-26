@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clearlyOffRange,
   analyzeMasses,
   defaultSettings,
   massLayouts,
@@ -10,7 +11,9 @@ import {
   programmeResult,
   programmeShares,
   resolveProgramme,
+  resolveUnitRules,
   ringCentroid,
+  unitAreaTolerance,
   unitOutdoors,
   type ProgrammeConfig,
   type Settings,
@@ -91,8 +94,10 @@ describe('housing programme', () => {
   for (const access of ['laubengang', 'vierspaenner'] as const)
     it(`${access}: storeys of the same massing differ to meet the programme of the building`, () => {
       const sh = programmeShares(PROGRAMME, base.unitMix);
-      const before = layoutOf(base, access);
-      const l = layoutOf(withProgramme, access);
+      // the balancing of the storeys alone (the same number per core in both)
+      const fix = { ...resolveUnitRules(base), unitsPerCoreFlex: false };
+      const before = layoutOf({ ...base, unitRules: fix }, access);
+      const l = layoutOf({ ...withProgramme, unitRules: fix }, access);
       expect(l.programme).toBeDefined();
       // closer to the programme than identical storeys with the default mix
       expect(l.programme!.deviation).toBeLessThan(programmeDeviation(sh, counts(before)));
@@ -124,10 +129,7 @@ describe('housing programme', () => {
           return l.storeys.flatMap((st) =>
             st.units.filter((u) => {
               const t = base.unitMix.find((x) => x.id === u.typeId)!;
-              return (
-                u.duplex?.level !== 'nuit' &&
-                (u.area > t.areaMax * 1.1 + 1e-6 || u.area < t.areaMin * 0.9 - 1e-6)
-              );
+              return u.duplex?.level !== 'nuit' && clearlyOffRange(t, u.area);
             }),
           ).length;
         };
@@ -161,5 +163,22 @@ describe('housing programme', () => {
     expect(l.programme).toBeUndefined();
     const sigs = new Set(l.storeys.filter((s) => s.storeyIndex > 0).map((s) => s.signature));
     expect(sigs.size).toBe(1);
+  });
+});
+
+describe('area margins by type', () => {
+  it('defaults to 10 % for T1/T2, 15 % for T3/T4, 17 % for T5; own value wins', () => {
+    const mix = defaultSettings('FR').unitMix;
+    const tol = (id: string) => unitAreaTolerance(mix.find((t) => t.id === id)!);
+    expect([tol('t1'), tol('t2'), tol('t3'), tol('t4'), tol('t5')]).toEqual([
+      0.1, 0.1, 0.15, 0.15, 0.17,
+    ]);
+    const t2 = mix.find((t) => t.id === 't2')!;
+    expect(clearlyOffRange(t2, 55)).toBe(false);
+    expect(clearlyOffRange(t2, 56)).toBe(true);
+    expect(clearlyOffRange({ ...t2, areaTolerance: 0.2 }, 59)).toBe(false);
+    const t4 = mix.find((t) => t.id === 't4')!;
+    expect(clearlyOffRange(t4, 103)).toBe(false);
+    expect(clearlyOffRange(t4, 104)).toBe(true);
   });
 });

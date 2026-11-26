@@ -1916,6 +1916,16 @@ input[type='range'] {
   width: 3rem;
   text-align: right;
 }
+.unit-sizes .numfield input {
+  width: 2.6rem;
+}
+.unit-sizes .numfield:has(.numfield-suffix) input {
+  width: 3.6rem;
+  padding-right: 22px;
+}
+.unit-sizes .numfield-suffix {
+  right: 7px;
+}
 .programme-table td.warn,
 .prop-note.warn {
   color: var(--warning, #c77c00);

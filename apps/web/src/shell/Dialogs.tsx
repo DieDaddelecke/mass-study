@@ -15,7 +15,9 @@ import {
   type Settings,
   type StoreyNotation,
   type UnitRules,
+  type UnitType,
   type WarningCode,
+  unitAreaTolerance,
 } from '@kubatur/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -70,6 +72,69 @@ function ProjectProgramme({
       absolute={cfg.mode === 'count'}
       onChange={(c) => patch((d) => ({ ...d, programme: c }))}
     />
+  );
+}
+
+/**
+ * Areas of the dwelling types (min / target / max, m²) and the margin above max beyond which a
+ * dwelling of the type is never laid out (Soheyl 26.11.2026), with the resulting upper limit.
+ */
+function UnitSizes({ mix, onChange }: { mix: UnitType[]; onChange: (mix: UnitType[]) => void }) {
+  const { t } = useTranslation('shell');
+  const set = (i: number, p: Partial<UnitType>) =>
+    onChange(mix.map((u, j) => (j === i ? { ...u, ...p } : u)));
+  const field = (i: number, k: 'areaMin' | 'areaTarget' | 'areaMax', label: string) => (
+    <td className="num">
+      <NumField
+        ariaLabel={`${label} ${mix[i]!.label}`}
+        value={mix[i]![k]}
+        min={0}
+        digits={0}
+        onCommit={(v) => set(i, { [k]: v })}
+      />
+    </td>
+  );
+  return (
+    <>
+      <table className="programme-table unit-sizes">
+        <thead>
+          <tr>
+            <th>{t('programme.type')}</th>
+            <th className="num">{t('settings.areaMin')}</th>
+            <th className="num">{t('settings.areaTarget')}</th>
+            <th className="num">{t('settings.areaMax')}</th>
+            <th className="num">{t('settings.areaTolerance')}</th>
+            <th className="num">{t('settings.areaLimit')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {mix.map((u, i) =>
+            u.duplex ? null : (
+              <tr key={u.id}>
+                <td>{u.label}</td>
+                {field(i, 'areaMin', t('settings.areaMin'))}
+                {field(i, 'areaTarget', t('settings.areaTarget'))}
+                {field(i, 'areaMax', t('settings.areaMax'))}
+                <td className="num">
+                  <NumField
+                    ariaLabel={`${t('settings.areaTolerance')} ${u.label}`}
+                    value={Math.round(unitAreaTolerance(u) * 1000) / 10}
+                    min={0}
+                    digits={0}
+                    suffix="%"
+                    onCommit={(v) => set(i, { areaTolerance: v / 100 })}
+                  />
+                </td>
+                <td className="num muted">
+                  {formatNumber(u.areaMax * (1 + unitAreaTolerance(u)), 1)} m²
+                </td>
+              </tr>
+            ),
+          )}
+        </tbody>
+      </table>
+      <p className="muted prop-note">{t('settings.unitSizesNote')}</p>
+    </>
   );
 }
 
@@ -304,6 +369,8 @@ function SettingsDialog({ project }: { project: Project }) {
             suffix: 'm²',
             digits: 2,
           })}
+          <h3>{t('settings.unitSizes')}</h3>
+          <UnitSizes mix={s.unitMix} onChange={(unitMix) => patch((d) => ({ ...d, unitMix }))} />
           <h3>{t('programme.title')}</h3>
           <ProjectProgramme project={project} settings={s} patch={patch} />
         </div>
@@ -381,6 +448,15 @@ function SettingsDialog({ project }: { project: Project }) {
               })}
             </div>
           ))}
+          <Row label={t('settings.unitsPerCoreFlex')}>
+            <input
+              type="checkbox"
+              aria-label={t('settings.unitsPerCoreFlex')}
+              checked={rules.unitsPerCoreFlex}
+              onChange={(e) => setRule('unitsPerCoreFlex', e.target.checked)}
+            />
+          </Row>
+          <p className="muted prop-note">{t('settings.unitsPerCoreFlexNote')}</p>
           <h4>{t('settings.minAreas')}</h4>
           {(
             [

@@ -332,7 +332,16 @@
     "bikePerSmall": "Spaces per dwelling (T1, T2)",
     "bikePerLarge": "Spaces per dwelling (T3 and more)",
     "bikeOfficeShare": "Bicycle spaces per workplace",
-    "bikeArea": "Area per bicycle space"
+    "bikeArea": "Area per bicycle space",
+    "unitSizes": "Dwelling sizes",
+    "areaMin": "min.",
+    "areaTarget": "target",
+    "areaMax": "max.",
+    "areaTolerance": "margin",
+    "areaLimit": "limit",
+    "unitSizesNote": "Net living areas in m². The margin is added to the maximum: above the limit a dwelling never takes this type (it takes a larger one). Between maximum and limit it is flagged as out of range.",
+    "unitsPerCoreFlex": "Flexible dwellings per core",
+    "unitsPerCoreFlexNote": "The dwellings per core (or the Zwei-/Dreispänner type) are a preference: the plan may lay out one fewer or one or two more when the mix, the sizes or the dead area get better."
   },
   "rules": {
     "fr": "France (PLU)",
