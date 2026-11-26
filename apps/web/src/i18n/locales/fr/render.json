@@ -73,7 +73,7 @@
   "errors": {
     "no_key": "Aucune clé API",
     "invalid_key": "Clé API refusée par le fournisseur",
-    "payment_required": "Crédit insuffisant chez le fournisseur",
+    "payment_required": "Crédit insuffisant : OpenRouter réserve d'avance le coût maximal possible de la requête, même si l'image coûte moins. Restez en 1K, prenez un modèle moins cher ou vérifiez la limite de crédit de la clé sur openrouter.ai/settings/keys",
     "rate_limited": "Trop de requêtes, réessayez dans un instant",
     "blocked": "Le fournisseur a refusé la demande",
     "network": "Le serveur ne répond pas"
@@ -87,5 +87,6 @@
   "linesHint": "Affiche les arêtes de la vue 3D sur le rendu pour vérifier qu'il n'a pas bougé",
   "fixedHint": "Une graine fixe garde le même éclairage et les mêmes détails quand seul le style change.",
   "modeFree": "Mode libre : seul le point de vue est conservé ; façades, détails et abords sont interprétés librement. Au-delà de 85 % : mode strict (arêtes, aucun ajout).",
-  "modeStrict": "Mode strict : arêtes, étages et cadrage sont tenus au plus près ; moins de liberté artistique."
+  "modeStrict": "Mode strict : arêtes, étages et cadrage sont tenus au plus près ; moins de liberté artistique.",
+  "resolution": "Résolution"
 }

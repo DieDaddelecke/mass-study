@@ -36,7 +36,15 @@ export interface RenderRequest {
   guide?: string;
   /** Fixed seed (0 – 4 294 967 294) for series from the same view. */
   seed?: number;
+  /**
+   * Output size tier (OpenRouter). Without it OpenRouter reserves the most expensive size up
+   * front, which can exceed a small credit even though one image costs a few cents.
+   */
+  resolution?: RenderResolution;
 }
+
+export type RenderResolution = '1K' | '2K' | '4K';
+export const RENDER_RESOLUTIONS: readonly RenderResolution[] = ['1K', '2K', '4K'];
 
 export interface RenderResponse {
   /** `data:image/…;base64,…` */

@@ -165,6 +165,8 @@ describe('/api/render', () => {
     expect(sent.model).toBe('google/gemini-3-pro-image');
     expect(sent.input_references).toHaveLength(1);
     expect(sent.aspect_ratio).toBe('3:2');
+    // without a size tier OpenRouter reserves the 4K worst case
+    expect((sent as unknown as { resolution: string }).resolution).toBe('1K');
     expect(sent.input_references[0]!.image_url.url.startsWith('data:image/png;base64,')).toBe(true);
   });
 
@@ -221,6 +223,31 @@ describe('/api/render', () => {
       post({ provider: 'gemini', prompt: 'p', image: PNG, seed: -1 }),
     );
     expect(bad.status).toBe(400);
+  });
+
+  it('explains which OpenRouter limit refused the request', async () => {
+    const { app: a } = app({}, () =>
+      Response.json(
+        {
+          error: {
+            message: "This request's maximum cost exceeds your available credits.",
+            metadata: { limit_source: 'openrouter_key_limit' },
+          },
+        },
+        { status: 402 },
+      ),
+    );
+    const res = await a.request(
+      '/api/render',
+      post(
+        { provider: 'openrouter', prompt: 'p', image: PNG, resolution: '2K' },
+        { 'X-Render-Key': 'k' },
+      ),
+    );
+    expect(res.status).toBe(402);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe('payment_required');
+    expect(body.message).toContain('openrouter_key_limit');
   });
 
   it('picks output formats', () => {

@@ -73,7 +73,7 @@
   "errors": {
     "no_key": "No API key",
     "invalid_key": "Key refused by the provider",
-    "payment_required": "No credit left with the provider",
+    "payment_required": "Not enough credit: OpenRouter reserves the highest possible cost of the request up front, even if the image costs less. Stay at 1K, pick a cheaper model or check the key's credit limit at openrouter.ai/settings/keys",
     "rate_limited": "Too many requests, try again shortly",
     "blocked": "The provider refused the request",
     "network": "The server does not respond"
@@ -87,5 +87,6 @@
   "linesHint": "Lays the edges of the 3D view over the rendering to check for drift",
   "fixedHint": "A fixed seed keeps light and details when only the style changes.",
   "modeFree": "Free mode: only the viewpoint is kept; façades, details and surroundings are interpreted freely. From 85 %: strict mode (edges, nothing added).",
-  "modeStrict": "Strict mode: edges, floors and framing are kept as closely as possible; less artistic freedom."
+  "modeStrict": "Strict mode: edges, floors and framing are kept as closely as possible; less artistic freedom.",
+  "resolution": "Resolution"
 }

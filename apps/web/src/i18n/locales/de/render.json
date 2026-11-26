@@ -73,7 +73,7 @@
   "errors": {
     "no_key": "Kein API-Schlüssel",
     "invalid_key": "Schlüssel vom Anbieter abgelehnt",
-    "payment_required": "Kein Guthaben beim Anbieter",
+    "payment_required": "Guthaben reicht nicht: OpenRouter reserviert vorab die höchstmöglichen Kosten der Anfrage, auch wenn das Bild weniger kostet. 1K wählen, ein günstigeres Modell nehmen oder das Kreditlimit des Schlüssels auf openrouter.ai/settings/keys prüfen",
     "rate_limited": "Zu viele Anfragen, gleich noch einmal versuchen",
     "blocked": "Anfrage vom Anbieter abgelehnt",
     "network": "Der Server antwortet nicht"
@@ -87,5 +87,6 @@
   "linesHint": "Legt die Kanten der 3D-Ansicht über das Rendering, um Verschiebungen zu sehen",
   "fixedHint": "Ein fester Seed hält Licht und Details gleich, wenn nur der Stil wechselt.",
   "modeFree": "Freier Modus: nur der Blickpunkt bleibt; Fassaden, Details und Umgebung werden frei interpretiert. Ab 85 %: strenger Modus (Kanten, nichts Neues).",
-  "modeStrict": "Strenger Modus: Kanten, Geschosse und Ausschnitt werden möglichst genau gehalten; weniger künstlerische Freiheit."
+  "modeStrict": "Strenger Modus: Kanten, Geschosse und Ausschnitt werden möglichst genau gehalten; weniger künstlerische Freiheit.",
+  "resolution": "Auflösung"
 }
