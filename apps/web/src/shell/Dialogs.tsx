@@ -448,6 +448,7 @@ export const WARNING_CODES: WarningCode[] = [
   'mixPlausibility',
   'estimatedContextHeights',
   'unitFacade',
+  'tronconsEscape',
   'prospect',
   'reculVoie',
   'buildingDistance',

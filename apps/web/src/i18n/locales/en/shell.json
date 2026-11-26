@@ -357,6 +357,7 @@
     "mixPlausibility": "{{masses}}: {{actual}} units per storey and core (expected {{min}}–{{max}}).",
     "estimatedContextHeights": "Estimated height for {{count}} context building(s).",
     "unitFacade": "{{count}} dwellings do not meet the minimum façade lengths ({{masses}}).",
+    "tronconsEscape": "{{masses}}: {{actual}} section(s), so as many stair cores; the escape distance needs {{required}}.",
     "constraintBelow": "{{key}} below the minimum: {{actual}} instead of min. {{target}}.",
     "prospect": "Mass {{masses}} is {{actual}} m from a neighbour boundary (prospect: {{required}} m).",
     "reculVoie": "Mass {{masses}} is {{actual}} m from the street (set-back: {{required}} m).",

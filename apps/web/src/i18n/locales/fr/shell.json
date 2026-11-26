@@ -357,6 +357,7 @@
     "mixPlausibility": "{{masses}} : {{actual}} logements par palier et noyau (attendu {{min}}–{{max}}).",
     "estimatedContextHeights": "Hauteur estimée pour {{count}} bâtiment(s) de contexte.",
     "unitFacade": "{{count}} logements ne respectent pas les longueurs de façade minimales ({{masses}}).",
+    "tronconsEscape": "{{masses}} : {{actual}} tronçon(s), donc autant de cages d'escalier ; la distance d'évacuation en demande {{required}}.",
     "constraintBelow": "{{key}} sous le minimum : {{actual}} au lieu de {{target}} min.",
     "prospect": "Le volume {{masses}} est à {{actual}} m d'une limite séparative (prospect : {{required}} m).",
     "reculVoie": "Le volume {{masses}} est à {{actual}} m de la voie (recul : {{required}} m).",

@@ -4,6 +4,7 @@ import { siteBoundaries, siteEdges } from './boundaries.js';
 import { distanceWarnings, modelWarnings, type ModelWarning } from './checks.js';
 import { greenKpis, type GreenKpis } from './green.js';
 import { defaultTypology } from './generators.js';
+import { zeileCoreShortfall } from './typologies.js';
 import {
   normalizePolygon,
   polygonArea,
@@ -177,6 +178,17 @@ export function analyzeProject(
     const n = ml.storeys.reduce((x, st) => x + st.summary.facadeViolations, 0);
     if (n) failingMasses.push(ml.massId);
     failing += n;
+  }
+  // a Zeile has one stair core per section: enough sections for the escape distance
+  for (const m of result.masses) {
+    const need = zeileCoreShortfall(m.mass, project.settings);
+    if (need && m.mass.typology.kind === 'zeile')
+      warnings.push({
+        code: 'tronconsEscape',
+        severity: 'warning',
+        massIds: [m.mass.id],
+        data: { actual: Math.max(1, Math.round(m.mass.typology.sections)), required: need },
+      });
   }
   if (failing)
     warnings.push({

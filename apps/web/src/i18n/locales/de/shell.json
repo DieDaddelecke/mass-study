@@ -357,6 +357,7 @@
     "mixPlausibility": "{{masses}}: {{actual}} Wohnungen je Geschoss und Kern (erwartet {{min}}–{{max}}).",
     "estimatedContextHeights": "Höhe von {{count}} Umgebungsgebäude(n) geschätzt.",
     "unitFacade": "{{count}} Wohnungen erfüllen die Mindest-Fassadenlängen nicht ({{masses}}).",
+    "tronconsEscape": "{{masses}}: {{actual}} Abschnitt(e) und damit ebenso viele Treppenhäuser; die Fluchtweglänge verlangt {{required}}.",
     "constraintBelow": "{{key}} unter dem Minimum: {{actual}} statt min. {{target}}.",
     "prospect": "Baukörper {{masses}} steht {{actual}} m von einer Nachbargrenze entfernt (Prospect: {{required}} m).",
     "reculVoie": "Baukörper {{masses}} steht {{actual}} m von der Straße entfernt (Abstand: {{required}} m).",
